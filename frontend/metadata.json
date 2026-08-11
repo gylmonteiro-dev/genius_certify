@@ -1,0 +1,6 @@
+{
+  "name": "CertifyPro",
+  "description": "Enterprise Certificate Management & Event Registration Platform",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

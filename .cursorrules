@@ -1,0 +1,42 @@
+# Projeto: Nexus Genius - Plataforma de Certificação (SaaS Multi-Tenant)
+
+## 1. Contexto do Projeto
+Você está atuando como um Engenheiro de Software Sênior desenvolvendo um sistema B2B/SaaS para emissão, gestão e validação de certificados digitais. O sistema operará sob o domínio principal `nexusgenius.com.br` (com áreas como `admin.` e `certificados.`). O requisito central é a arquitetura **Multi-Tenant**, onde diferentes instituições (clientes) gerenciam seus próprios cursos e alunos de forma totalmente isolada.
+
+## 2. Stack Tecnológica Base
+- **Backend:** Python 3.11+, FastAPI.
+- **ORM & Banco de Dados:** SQLAlchemy 2.0 (modo assíncrono), PostgreSQL, Alembic (migrações).
+- **Geração de PDF:** Jinja2 (templates HTML) + WeasyPrint.
+- **Armazenamento:** AWS S3 (via Boto3) ou MinIO para arquivos estáticos (logos, assinaturas, templates).
+- **Infraestrutura e Containerização:** Docker, Docker Compose.
+- **Frontend:** React + Vite, TypeScript, TailwindCSS (pasta `frontend/`).
+
+## 3. Diretrizes de Arquitetura e Padrões de Código (Backend)
+Ao gerar código ou sugerir soluções, obedeça estritamente aos seguintes padrões:
+
+- **Isolamento Multi-Tenant:** TODAS as consultas ao banco de dados relacionadas a cursos, alunos e certificados DEVEM incluir um filtro obrigatório por `instituicao_id`. Nenhuma entidade deve vazar entre tenants. O `instituicao_id` deve ser extraído do token JWT do usuário autenticado.
+- **Arquitetura em Camadas:** Siga o padrão de separação de responsabilidades (Controller/Router -> Service -> Repository).
+- **Arquivos Estáticos:** NUNCA sugira salvar imagens (logos, assinaturas) em Base64 no banco de dados. O banco deve armazenar apenas a URL do arquivo hospedado no S3/MinIO.
+- **Geração de Certificados:** A emissão de PDFs deve ser feita "on the fly". Use templates Jinja2 em HTML, injete as variáveis e converta para PDF usando WeasyPrint.
+- **Tipagem e Linting:** Use Type Hints rigorosamente. Siga as convenções do PEP 8.
+- **Tratamento de Erros:** Utilize exceções customizadas e retorne códigos HTTP adequados.
+
+## 4. Diretrizes de Infraestrutura e Docker (Pronto para Produção)
+Ao interagir com a infraestrutura do projeto, obedeça a estas regras:
+- **Ambiente Containerizado:** Assuma que todo o desenvolvimento e execução ocorrem via Docker. Sempre que for sugerir a execução de um comando ou serviço, utilize o contexto do `docker compose`.
+- **Dockerfile Otimizado:** Ao criar ou editar `Dockerfiles`, utilize imagens base leves (ex: `python:3.11-slim`), implemente *multi-stage builds* (se necessário para reduzir o tamanho) e evite rodar o container como usuário `root`.
+- **Dependências de Sistema:** Lembre-se de que bibliotecas como WeasyPrint exigem dependências de sistema no container (ex: `pango`, `cairo`, `libgdk-pixbuf2.0-0`). Inclua essas instalações no Dockerfile.
+- **Variáveis de Ambiente:** Toda configuração sensível ou dependente de ambiente (Credenciais de Banco, Chaves S3, JWT Secret) deve ser consumida via `.env` no `docker-compose.yml` e NUNCA hardcoded.
+- **Serviços de Desenvolvimento:** O `docker-compose.yml` deve incluir, no mínimo, o serviço do FastAPI (`app`) e o serviço do PostgreSQL (`db`). Se necessário para desenvolvimento local de storage, inclua um serviço do MinIO.
+
+## 5. Comportamento da IA (Cursor)
+- **Pense antes de codificar:** Antes de escrever blocos complexos de código, explique brevemente a lógica e a estrutura que você pretende implementar.
+- **Foco em Segurança:** Nunca coloque chaves de API, senhas ou segredos hardcoded no código.
+- **Modularidade:** Mantenha arquivos pequenos e funções com responsabilidade única.
+
+## 6. Fluxos Principais (Para referência)
+1. Autenticação e RBAC (SuperAdmin vs Admin de Instituição).
+2. Upload de Assets (Logo/Assinaturas) para S3.
+3. Cadastro de Cursos e Alunos (manual ou via CSV em lote).
+4. Emissão do Certificado (Geração do código único UUID e renderização do PDF).
+5. Validação Pública (Busca rápida no banco de dados através do código UUID).
