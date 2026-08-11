@@ -27,7 +27,7 @@ Ao interagir com a infraestrutura do projeto, obedeça a estas regras:
 - **Dockerfile Otimizado:** Ao criar ou editar `Dockerfiles`, utilize imagens base leves (ex: `python:3.11-slim`), implemente *multi-stage builds* (se necessário para reduzir o tamanho) e evite rodar o container como usuário `root`.
 - **Dependências de Sistema:** Lembre-se de que bibliotecas como WeasyPrint exigem dependências de sistema no container (ex: `pango`, `cairo`, `libgdk-pixbuf2.0-0`). Inclua essas instalações no Dockerfile.
 - **Variáveis de Ambiente:** Toda configuração sensível ou dependente de ambiente (Credenciais de Banco, Chaves S3, JWT Secret) deve ser consumida via `.env` no `docker-compose.yml` e NUNCA hardcoded.
-- **Serviços de Desenvolvimento:** O `docker-compose.yml` deve incluir, no mínimo, o serviço do FastAPI (`app`) e o serviço do PostgreSQL (`db`). Se necessário para desenvolvimento local de storage, inclua um serviço do MinIO.
+- **Serviços de Desenvolvimento:** O `docker-compose.yml` deve incluir, no mínimo, os serviços `backend` (FastAPI), `db` (PostgreSQL) e, para storage local, `minio`. O frontend em produção/dev containerizado é servido via Nginx com proxy `/api` → `backend:8000`.
 
 ## 5. Comportamento da IA (Cursor)
 - **Pense antes de codificar:** Antes de escrever blocos complexos de código, explique brevemente a lógica e a estrutura que você pretende implementar.
