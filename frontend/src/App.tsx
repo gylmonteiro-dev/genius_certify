@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   NavTab,
   Institution,
@@ -16,6 +16,7 @@ import {
 
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
+import { LoginView } from './components/LoginView';
 import { DashboardView } from './components/DashboardView';
 import { CreateEventView } from './components/CreateEventView';
 import { InstitutionsView } from './components/InstitutionsView';
@@ -28,23 +29,35 @@ import { StudentsView } from './components/StudentsView';
 import { IssueCertificateModal } from './components/IssueCertificateModal';
 import { CertificateDetailModal } from './components/CertificateDetailModal';
 import { Toast } from './components/Toast';
+import { ApiError } from './lib/api';
+import {
+  AuthUser,
+  clearStoredToken,
+  fetchCurrentUser,
+  getStoredToken,
+  loginRequest,
+  setStoredToken,
+} from './lib/auth';
 
 export function App() {
+  const [authBootstrapping, setAuthBootstrapping] = useState(true);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // Core Datasets
   const [institutions, setInstitutions] = useState<Institution[]>(INITIAL_INSTITUTIONS);
   const [events, setEvents] = useState<EventItem[]>(INITIAL_EVENTS);
   const [certificates, setCertificates] = useState<Certificate[]>(INITIAL_CERTIFICATES);
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
 
-  // Selection states
   const [selectedEventForReg, setSelectedEventForReg] = useState<EventItem>(INITIAL_EVENTS[0]);
   const [selectedCertDetail, setSelectedCertDetail] = useState<Certificate | null>(null);
 
-  // Modals & Feedback
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -52,7 +65,68 @@ export function App() {
     setToastMessage(msg);
   };
 
-  // Handlers
+  useEffect(() => {
+    let cancelled = false;
+
+    const bootstrapAuth = async () => {
+      const token = getStoredToken();
+      if (!token) {
+        if (!cancelled) setAuthBootstrapping(false);
+        return;
+      }
+
+      try {
+        const user = await fetchCurrentUser(token);
+        if (!cancelled) {
+          setAuthToken(token);
+          setAuthUser(user);
+        }
+      } catch {
+        clearStoredToken();
+        if (!cancelled) {
+          setAuthToken(null);
+          setAuthUser(null);
+        }
+      } finally {
+        if (!cancelled) setAuthBootstrapping(false);
+      }
+    };
+
+    void bootstrapAuth();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleLogin = async (email: string, password: string) => {
+    setLoginLoading(true);
+    setLoginError(null);
+    try {
+      const { access_token } = await loginRequest(email, password);
+      const user = await fetchCurrentUser(access_token);
+      setStoredToken(access_token);
+      setAuthToken(access_token);
+      setAuthUser(user);
+      showToast(`Welcome, ${user.nome}`);
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : 'Unable to sign in. Check your credentials.';
+      setLoginError(message);
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    clearStoredToken();
+    setAuthToken(null);
+    setAuthUser(null);
+    setCurrentTab('dashboard');
+    setLoginError(null);
+  };
+
   const handleCreateEvent = (newEvent: EventItem) => {
     setEvents([newEvent, ...events]);
     showToast(`Event "${newEvent.title}" published successfully!`);
@@ -67,7 +141,7 @@ export function App() {
 
   const handleUpdateInstitutionStatus = (id: string, newStatus: Institution['status']) => {
     setInstitutions(
-      institutions.map((i) => (i.id === id ? { ...i, status: newStatus } : i))
+      institutions.map((i) => (i.id === id ? { ...i, status: newStatus } : i)),
     );
     showToast(`Institution status updated to ${newStatus}`);
   };
@@ -90,13 +164,15 @@ export function App() {
           return { ...c, status: nextStatus };
         }
         return c;
-      })
+      }),
     );
     showToast('Certificate status toggled.');
   };
 
-  const handleEventRegistrationSuccess = (event: EventItem, formData: RegistrationFormData) => {
-    // Check if student exists or create
+  const handleEventRegistrationSuccess = (
+    event: EventItem,
+    formData: RegistrationFormData,
+  ) => {
     const newStudent: Student = {
       id: `std-${Date.now()}`,
       name: formData.fullName,
@@ -111,11 +187,34 @@ export function App() {
     showToast(`Registration confirmed for ${formData.fullName}!`);
   };
 
+  if (authBootstrapping) {
+    return (
+      <div className="min-h-screen bg-[#f8f9ff] flex items-center justify-center text-slate-500 text-sm gap-2">
+        <span className="material-symbols-outlined animate-spin text-blue-600">
+          progress_activity
+        </span>
+        Loading CertifyPro...
+      </div>
+    );
+  }
+
+  if (!authUser || !authToken) {
+    return (
+      <>
+        <LoginView
+          onSubmit={handleLogin}
+          isSubmitting={loginLoading}
+          errorMessage={loginError}
+        />
+        <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
+      </>
+    );
+  }
+
   const isPublicRegistrationTab = currentTab === 'event-registration';
 
   return (
     <div className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex flex-col font-sans">
-      {/* Sidebar Navigation */}
       {!isPublicRegistrationTab && (
         <Sidebar
           currentTab={currentTab}
@@ -126,33 +225,33 @@ export function App() {
         />
       )}
 
-      {/* Top Header Navigation */}
       <TopBar
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onToggleMobileSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
         onSelectTab={setCurrentTab}
+        authUser={authUser}
+        onLogout={handleLogout}
         isPublicView={isPublicRegistrationTab}
         titleOverride={
           currentTab === 'create-event'
             ? 'Create Event'
             : currentTab === 'institutions'
-            ? 'Institutions'
-            : currentTab === 'register-institution'
-            ? 'Register Institution'
-            : currentTab === 'events-catalog'
-            ? 'Available Events'
-            : currentTab === 'events-directory'
-            ? 'Directory'
-            : currentTab === 'certificates'
-            ? 'Certificates'
-            : currentTab === 'students'
-            ? 'Students Roster'
-            : 'CertifyPro'
+              ? 'Institutions'
+              : currentTab === 'register-institution'
+                ? 'Register Institution'
+                : currentTab === 'events-catalog'
+                  ? 'Available Events'
+                  : currentTab === 'events-directory'
+                    ? 'Directory'
+                    : currentTab === 'certificates'
+                      ? 'Certificates'
+                      : currentTab === 'students'
+                        ? 'Students Roster'
+                        : 'CertifyPro'
         }
       />
 
-      {/* Main Content Area */}
       <main
         className={`flex-1 pt-16 transition-all ${
           isPublicRegistrationTab ? 'ml-0' : 'ml-0 md:ml-[260px]'
@@ -244,26 +343,33 @@ export function App() {
         {currentTab === 'settings' && (
           <div className="max-w-[1280px] mx-auto p-8">
             <h1 className="text-2xl font-bold mb-4">Enterprise System Settings</h1>
-            <p className="text-sm text-gray-600 mb-6">Configure system preferences, API webhooks, and security rules.</p>
+            <p className="text-sm text-gray-600 mb-6">
+              Configure system preferences, API webhooks, and security rules.
+            </p>
             <div className="bg-white border rounded-lg p-6 space-y-4 max-w-xl text-xs">
               <div>
-                <label className="font-bold block mb-1">ORGANIZATION NAME</label>
-                <input type="text" readOnly value="CertifyPro Enterprise Admin" className="w-full border p-2 rounded bg-gray-50" />
+                <label className="font-bold block mb-1">SIGNED IN AS</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={`${authUser.nome} (${authUser.email})`}
+                  className="w-full border p-2 rounded bg-gray-50"
+                />
               </div>
               <div>
-                <label className="font-bold block mb-1">CRYPTOGRAPHIC ALGORITHM</label>
-                <input type="text" readOnly value="SHA-256 Fingerprinting" className="w-full border p-2 rounded bg-gray-50" />
-              </div>
-              <div>
-                <label className="font-bold block mb-1">LEDGER AUTO-SYNC</label>
-                <span className="text-green-700 font-bold">Active & Enabled</span>
+                <label className="font-bold block mb-1">ROLE</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={authUser.role}
+                  className="w-full border p-2 rounded bg-gray-50"
+                />
               </div>
             </div>
           </div>
         )}
       </main>
 
-      {/* Global Modals */}
       <IssueCertificateModal
         isOpen={isIssueModalOpen}
         onClose={() => setIsIssueModalOpen(false)}
@@ -277,7 +383,6 @@ export function App() {
         onClose={() => setSelectedCertDetail(null)}
       />
 
-      {/* Global Toast Notification */}
       <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
     </div>
   );
