@@ -30,8 +30,9 @@ export async function apiRequest<T>(
   if (!response.ok) {
     let detail = 'Falha na requisição';
     try {
-      const data = (await response.json()) as { detail?: string };
-      if (data.detail) detail = data.detail;
+      const data: unknown = await response.json();
+      const parsed = extractApiDetail(data);
+      if (parsed) detail = parsed;
     } catch {
       // ignore parse errors
     }
@@ -43,4 +44,23 @@ export async function apiRequest<T>(
   }
 
   return (await response.json()) as T;
+}
+
+function extractApiDetail(data: unknown): string | null {
+  if (!data || typeof data !== 'object' || !('detail' in data)) {
+    return null;
+  }
+
+  const { detail } = data as { detail: unknown };
+  if (typeof detail === 'string' && detail.trim()) {
+    return detail;
+  }
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0];
+    if (typeof first === 'string') return first;
+    if (first && typeof first === 'object' && 'msg' in first) {
+      return String((first as { msg: unknown }).msg);
+    }
+  }
+  return null;
 }

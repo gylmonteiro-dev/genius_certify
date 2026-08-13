@@ -8,7 +8,6 @@ import {
   RegistrationFormData,
 } from './types';
 import {
-  INITIAL_INSTITUTIONS,
   INITIAL_EVENTS,
   INITIAL_CERTIFICATES,
   INITIAL_STUDENTS,
@@ -38,6 +37,14 @@ import {
   loginRequest,
   setStoredToken,
 } from './lib/auth';
+import {
+  InstituicaoCreatePayload,
+  createInstituicao,
+  deleteInstituicao,
+  listInstituicoes,
+  mapInstituicaoToUi,
+  updateInstituicaoStatus,
+} from './lib/instituicoes';
 
 export function App() {
   const [authBootstrapping, setAuthBootstrapping] = useState(true);
@@ -50,7 +57,11 @@ export function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  const [institutions, setInstitutions] = useState<Institution[]>(INITIAL_INSTITUTIONS);
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
+  const [institutionsLoading, setInstitutionsLoading] = useState(false);
+  const [institutionsError, setInstitutionsError] = useState<string | null>(null);
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
   const [events, setEvents] = useState<EventItem[]>(INITIAL_EVENTS);
   const [certificates, setCertificates] = useState<Certificate[]>(INITIAL_CERTIFICATES);
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
@@ -98,6 +109,44 @@ export function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!authToken) {
+      setInstitutions([]);
+      setInstitutionsError(null);
+      setInstitutionsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadInstitutions = async () => {
+      setInstitutionsLoading(true);
+      setInstitutionsError(null);
+      try {
+        const items = await listInstituicoes(authToken);
+        if (!cancelled) {
+          setInstitutions(items.map(mapInstituicaoToUi));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          const message =
+            err instanceof ApiError
+              ? err.message
+              : 'Unable to load institutions.';
+          setInstitutionsError(message);
+          setInstitutions([]);
+        }
+      } finally {
+        if (!cancelled) setInstitutionsLoading(false);
+      }
+    };
+
+    void loadInstitutions();
+    return () => {
+      cancelled = true;
+    };
+  }, [authToken]);
+
   const handleLogin = async (email: string, password: string) => {
     setLoginLoading(true);
     setLoginError(null);
@@ -125,6 +174,9 @@ export function App() {
     setAuthUser(null);
     setCurrentTab('dashboard');
     setLoginError(null);
+    setInstitutions([]);
+    setInstitutionsError(null);
+    setRegisterError(null);
   };
 
   const handleCreateEvent = (newEvent: EventItem) => {
@@ -133,22 +185,57 @@ export function App() {
     setCurrentTab('events');
   };
 
-  const handleRegisterInstitution = (newInst: Institution) => {
-    setInstitutions([newInst, ...institutions]);
-    showToast(`Institution "${newInst.name}" registered successfully!`);
-    setCurrentTab('institutions');
+  const handleRegisterInstitution = async (payload: InstituicaoCreatePayload) => {
+    if (!authToken) return;
+    setRegisterLoading(true);
+    setRegisterError(null);
+    try {
+      const created = await createInstituicao(authToken, payload);
+      setInstitutions((prev) => [mapInstituicaoToUi(created), ...prev]);
+      showToast(`Institution "${created.nome}" registered successfully!`);
+      setCurrentTab('institutions');
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : 'Unable to register institution.';
+      setRegisterError(message);
+    } finally {
+      setRegisterLoading(false);
+    }
   };
 
-  const handleUpdateInstitutionStatus = (id: string, newStatus: Institution['status']) => {
-    setInstitutions(
-      institutions.map((i) => (i.id === id ? { ...i, status: newStatus } : i)),
-    );
-    showToast(`Institution status updated to ${newStatus}`);
+  const handleUpdateInstitutionStatus = async (
+    id: string,
+    newStatus: Institution['status'],
+  ) => {
+    if (!authToken) return;
+    try {
+      const updated = await updateInstituicaoStatus(authToken, id, newStatus);
+      setInstitutions((prev) =>
+        prev.map((i) => (i.id === id ? mapInstituicaoToUi(updated) : i)),
+      );
+      showToast(`Institution status updated to ${newStatus}`);
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : 'Unable to update institution.';
+      showToast(message);
+    }
   };
 
-  const handleDeleteInstitution = (id: string) => {
-    setInstitutions(institutions.filter((i) => i.id !== id));
-    showToast('Institution removed from catalog.');
+  const handleDeleteInstitution = async (id: string) => {
+    if (!authToken) return;
+    try {
+      const updated = await deleteInstituicao(authToken, id);
+      setInstitutions((prev) =>
+        prev.map((i) => (i.id === id ? mapInstituicaoToUi(updated) : i)),
+      );
+      showToast('Institution suspended.');
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : 'Unable to suspend institution.';
+      showToast(message);
+    }
   };
 
   const handleIssueCertificateSuccess = (newCert: Certificate) => {
@@ -277,16 +364,24 @@ export function App() {
         {currentTab === 'institutions' && (
           <InstitutionsView
             institutions={institutions}
-            onAddInstitutionClick={() => setCurrentTab('register-institution')}
+            isLoading={institutionsLoading}
+            errorMessage={institutionsError}
+            canManage={authUser.role === 'super_admin'}
+            onAddInstitutionClick={() => {
+              setRegisterError(null);
+              setCurrentTab('register-institution');
+            }}
             onUpdateStatus={handleUpdateInstitutionStatus}
             onDeleteInstitution={handleDeleteInstitution}
           />
         )}
 
-        {currentTab === 'register-institution' && (
+        {currentTab === 'register-institution' && authUser.role === 'super_admin' && (
           <RegisterInstitutionView
-            onRegister={handleRegisterInstitution}
+            onSubmit={handleRegisterInstitution}
             onCancel={() => setCurrentTab('institutions')}
+            isSubmitting={registerLoading}
+            errorMessage={registerError}
           />
         )}
 
