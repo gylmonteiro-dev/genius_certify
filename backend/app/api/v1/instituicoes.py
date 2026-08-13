@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -63,6 +63,26 @@ async def update_instituicao(
         instituicao_id,
         body,
         actor=current_user,
+    )
+
+
+@router.post(
+    "/{instituicao_id}/assets/{asset_type}",
+    response_model=InstituicaoResponse,
+)
+async def upload_instituicao_asset(
+    instituicao_id: UUID,
+    asset_type: str,
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> InstituicaoResponse:
+    """Upload de logo ou assinatura para MinIO/S3. Salva apenas a URL no banco."""
+    return await InstituicaoService(session).upload_asset(
+        instituicao_id,
+        actor=current_user,
+        asset_type=asset_type,
+        file=file,
     )
 
 

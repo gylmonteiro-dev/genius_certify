@@ -25,11 +25,11 @@ Serviços:
 
 | Serviço   | URL |
 |-----------|-----|
-| Frontend  | http://localhost |
+| Frontend  | http://localhost:3000 |
 | API/docs  | http://localhost:8000/api/docs (também via http://localhost/api/docs) |
 | MinIO API | http://localhost:9000 |
 | MinIO UI  | http://localhost:9001 |
-| Postgres  | localhost:5432 |
+| Postgres  | só rede interna (`db:5432`) |
 
 ## Frontend (dev sem Docker)
 
@@ -89,6 +89,82 @@ curl -s -X POST http://localhost:8000/api/instituicoes \
 
 curl -s http://localhost:8000/api/instituicoes \
   -H "Authorization: Bearer $TOKEN"
+```
+
+### Upload logo / assinatura (MinIO)
+
+```bash
+# asset_type = logo | assinatura
+curl -s -X POST "http://localhost:8000/api/instituicoes/<uuid>/assets/logo" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@./logo.png"
+
+curl -s -X POST "http://localhost:8000/api/instituicoes/<uuid>/assets/assinatura" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@./assinatura.png"
+```
+
+O banco guarda só a URL. O PDF busca o arquivo no MinIO na hora da geração.
+
+### Cursos (smoke test)
+
+```bash
+# SuperAdmin precisa informar instituicao_id
+curl -s -X POST http://localhost:8000/api/cursos \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "titulo": "Python Avançado",
+    "descricao": "Curso de certificação",
+    "carga_horaria": 40,
+    "instrutor": "Ana Costa",
+    "status": "upcoming",
+    "instituicao_id": "<uuid-da-instituicao>"
+  }'
+
+curl -s "http://localhost:8000/api/cursos?instituicao_id=<uuid-da-instituicao>" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Admin da instituição: `instituicao_id` vem do JWT (não precisa enviar no body).
+
+### Alunos (smoke test)
+
+```bash
+curl -s -X POST http://localhost:8000/api/alunos \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "nome": "João Silva",
+    "email": "joao@email.com",
+    "documento": "12345678901",
+    "status": "verified",
+    "instituicao_id": "<uuid-da-instituicao>"
+  }'
+
+curl -s "http://localhost:8000/api/alunos?instituicao_id=<uuid-da-instituicao>" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Certificados (smoke test)
+
+```bash
+# Emitir
+curl -s -X POST http://localhost:8000/api/certificados/emitir \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "aluno_id": "<uuid-aluno>",
+    "curso_id": "<uuid-curso>",
+    "instituicao_id": "<uuid-da-instituicao>"
+  }'
+
+# PDF on-the-fly
+curl -OJ -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/certificados/<uuid-certificado>/pdf
+
+# Validação pública (sem token)
+curl -s http://localhost:8000/api/certificados/validar/<codigo_validacao>
 ```
 
 ### Schema (multi-tenant)

@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppError, ConflictError, ForbiddenError, NotFoundError
@@ -13,13 +14,27 @@ from app.schemas.instituicao import (
     InstituicaoResponse,
     InstituicaoUpdate,
 )
+from app.services.storage_service import StorageService, get_storage_service
+
+ALLOWED_IMAGE_TYPES = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/webp": "webp",
+}
+MAX_ASSET_BYTES = 2 * 1024 * 1024  # 2 MB
+ALLOWED_ASSET_TYPES = {"logo", "assinatura"}
 
 
 class InstituicaoService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        storage: StorageService | None = None,
+    ) -> None:
         self._session = session
         self._instituicoes = InstituicaoRepository(session)
         self._usuarios = UsuarioRepository(session)
+        self._storage = storage
 
     @staticmethod
     def _assert_access(user: Usuario, instituicao_id: UUID) -> None:
@@ -143,6 +158,45 @@ class InstituicaoService:
 
         instituicao = await self._get_or_404(instituicao_id)
         await self._instituicoes.soft_delete(instituicao)
+        await self._session.commit()
+        await self._session.refresh(instituicao)
+        return InstituicaoResponse.model_validate(instituicao)
+
+    async def upload_asset(
+        self,
+        instituicao_id: UUID,
+        *,
+        actor: Usuario,
+        asset_type: str,
+        file: UploadFile,
+    ) -> InstituicaoResponse:
+        if asset_type not in ALLOWED_ASSET_TYPES:
+            raise AppError("Tipo de asset inválido. Use logo ou assinatura")
+
+        self._assert_access(actor, instituicao_id)
+        instituicao = await self._get_or_404(instituicao_id)
+
+        content_type = (file.content_type or "").lower()
+        extension = ALLOWED_IMAGE_TYPES.get(content_type)
+        if extension is None:
+            raise AppError("Formato inválido. Use PNG, JPEG ou WebP")
+
+        data = await file.read()
+        if not data:
+            raise AppError("Arquivo vazio")
+        if len(data) > MAX_ASSET_BYTES:
+            raise AppError("Arquivo excede o limite de 2 MB")
+
+        storage = self._storage or get_storage_service()
+        key = storage.build_instituicao_asset_key(instituicao_id, asset_type, extension)
+        url = storage.upload_bytes(data=data, key=key, content_type=content_type)
+
+        if asset_type == "logo":
+            instituicao.logo_url = url
+        else:
+            instituicao.assinatura_url = url
+
+        await self._instituicoes.save(instituicao)
         await self._session.commit()
         await self._session.refresh(instituicao)
         return InstituicaoResponse.model_validate(instituicao)

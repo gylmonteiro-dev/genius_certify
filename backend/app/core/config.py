@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     superadmin_nome: str = "Super Admin"
 
     s3_endpoint_url: str | None = None
+    s3_public_endpoint_url: str | None = None
     s3_access_key: str | None = None
     s3_secret_key: str | None = None
     s3_bucket: str = "nexus-certify"

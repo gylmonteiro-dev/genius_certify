@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Certificado {{ numero_certificado }}</title>
+  <style>
+    @page { size: A4 landscape; margin: 1.5cm; }
+    body {
+      font-family: DejaVu Sans, sans-serif;
+      color: #0f172a;
+      margin: 0;
+    }
+    .frame {
+      border: 8px solid #0f766e;
+      padding: 28px 48px 36px;
+      min-height: 100%;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    .logo {
+      max-height: 64px;
+      max-width: 220px;
+      margin-bottom: 10px;
+    }
+    .eyebrow {
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      font-size: 12px;
+      color: #0f766e;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: 34px;
+      margin: 0 0 8px;
+    }
+    .institution {
+      font-size: 18px;
+      color: #334155;
+      margin-bottom: 28px;
+    }
+    .recipient {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 18px 0 8px;
+    }
+    .course {
+      font-size: 20px;
+      margin: 8px 0 24px;
+    }
+    .meta {
+      font-size: 13px;
+      color: #475569;
+      line-height: 1.6;
+    }
+    .signature-block {
+      margin-top: 28px;
+    }
+    .signature-block img {
+      max-height: 72px;
+      max-width: 220px;
+    }
+    .signature-label {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .footer {
+      margin-top: 28px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #64748b;
+    }
+    .code {
+      font-family: DejaVu Sans Mono, monospace;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    {% if logo_data_uri %}
+    <img class="logo" src="{{ logo_data_uri }}" alt="Logo da instituição" />
+    {% endif %}
+    <div class="eyebrow">Certificado de conclusão</div>
+    <h1>Nexus Genius Certify</h1>
+    <div class="institution">{{ instituicao_nome }}</div>
+    <p>Certificamos que</p>
+    <div class="recipient">{{ aluno_nome }}</div>
+    <p>concluiu com êxito o curso</p>
+    <div class="course">{{ curso_titulo }}</div>
+    <div class="meta">
+      Carga horária: {{ carga_horaria }} horas<br />
+      Instrutor(a): {{ instrutor or "—" }}<br />
+      Emitido em: {{ emitido_em }}<br />
+      Número: {{ numero_certificado }}
+    </div>
+    {% if assinatura_data_uri %}
+    <div class="signature-block">
+      <img src="{{ assinatura_data_uri }}" alt="Assinatura" />
+      <div class="signature-label">Assinatura autorizada</div>
+    </div>
+    {% endif %}
+    <div class="footer">
+      <div>
+        Código de validação<br />
+        <span class="code">{{ codigo_validacao }}</span>
+      </div>
+      <div>
+        Hash SHA-256<br />
+        <span class="code">{{ sha256 }}</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

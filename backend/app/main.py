@@ -15,6 +15,13 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     await seed_superadmin()
+    try:
+        from app.services.storage_service import get_storage_service
+
+        get_storage_service().ensure_bucket()
+        logger.info("Storage MinIO/S3 pronto")
+    except Exception:
+        logger.exception("Falha ao preparar bucket MinIO/S3 (uploads podem falhar)")
     yield
 
 
