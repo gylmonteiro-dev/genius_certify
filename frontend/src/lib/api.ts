@@ -46,6 +46,28 @@ export async function apiRequest<T>(
   return (await response.json()) as T;
 }
 
+export async function apiRequestBlob(
+  path: string,
+  token: string,
+): Promise<Blob> {
+  const headers = new Headers();
+  headers.set('Authorization', `Bearer ${token}`);
+
+  const response = await fetch(`${API_BASE}${path}`, { method: 'GET', headers });
+  if (!response.ok) {
+    let detail = 'Falha na requisição';
+    try {
+      const data: unknown = await response.json();
+      const parsed = extractApiDetail(data);
+      if (parsed) detail = parsed;
+    } catch {
+      // ignore parse errors
+    }
+    throw new ApiError(detail, response.status);
+  }
+  return response.blob();
+}
+
 function extractApiDetail(data: unknown): string | null {
   if (!data || typeof data !== 'object' || !('detail' in data)) {
     return null;

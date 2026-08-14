@@ -1,28 +1,38 @@
 import React, { useState } from 'react';
-import { EventItem } from '../types';
+import { Institution } from '../types';
+import { CursoCreatePayload } from '../lib/cursos';
 
 interface CreateEventViewProps {
-  onCreateEvent: (newEvent: EventItem) => void;
+  onSubmit: (payload: CursoCreatePayload) => Promise<void>;
   onCancel: () => void;
+  institutions: Institution[];
+  isSuperAdmin: boolean;
+  defaultInstituicaoId?: string | null;
+  isSubmitting?: boolean;
+  errorMessage?: string | null;
 }
 
 export const CreateEventView: React.FC<CreateEventViewProps> = ({
-  onCreateEvent,
+  onSubmit,
   onCancel,
+  institutions,
+  isSuperAdmin,
+  defaultInstituicaoId = null,
+  isSubmitting = false,
+  errorMessage = null,
 }) => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
-  // Form Fields
-  const [eventName, setEventName] = useState('Annual Tech Symposium 2024');
-  const [eventDate, setEventDate] = useState('2024-11-15');
+  const [eventName, setEventName] = useState('');
+  const [eventDate, setEventDate] = useState('');
   const [durationHours, setDurationHours] = useState<number>(8);
-  const [instructor, setInstructor] = useState('Dr. Sarah Jenkins');
-  const [description, setDescription] = useState(
-    'Advanced workshop covering modern web security architectures.'
-  );
+  const [instructor, setInstructor] = useState('');
+  const [description, setDescription] = useState('');
+  const [status, setStatus] = useState<'draft' | 'upcoming' | 'completed'>('upcoming');
+  const [instituicaoId, setInstituicaoId] = useState(defaultInstituicaoId ?? '');
   const [sampleStudent, setSampleStudent] = useState('Student Name');
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Step 2 Template Customizations
   const [templateTheme, setTemplateTheme] = useState<'Classic' | 'Modern Navy' | 'Gold Minimal'>('Modern Navy');
   const [badgeIcon, setBadgeIcon] = useState<'verified' | 'workspace_premium' | 'shield' | 'school'>('shield');
 
@@ -40,37 +50,30 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
     return eventDate;
   }, [eventDate]);
 
-  const handleFinish = () => {
-    const parts = eventDate.split('-');
-    const year = parts[0] || '2024';
-    const month = parts[1] || '11';
-    const day = parts[2] || '15';
+  const handleFinish = async () => {
+    setFormError(null);
+    if (!eventName.trim()) {
+      setFormError('Event name is required.');
+      setCurrentStep(1);
+      return;
+    }
+    if (isSuperAdmin && !instituicaoId) {
+      setFormError('Select an institution.');
+      setCurrentStep(1);
+      return;
+    }
 
-    const monthNames = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
-    const monthIndex = parseInt(month) - 1;
-    const monthStr = monthNames[monthIndex] || 'NOVEMBER';
-
-    const newEvt: EventItem = {
-      id: `evt-${Date.now()}`,
-      title: eventName || 'New Enterprise Event',
-      category: 'Technology',
-      type: 'Workshop',
-      modality: 'Online',
-      date: eventDate,
-      dateMonth: monthStr,
-      dateDay: day,
-      time: '9:00 AM - 5:00 PM EST',
-      durationHours: Number(durationHours) || 8,
-      instructor: instructor || 'Dr. Sarah Jenkins',
-      instructorRole: 'Lead Instructor / Speaker',
-      institutionId: 'inst-5',
-      institutionName: 'Global Institute',
-      description: description || 'Enterprise certification event.',
-      status: 'Upcoming',
-      spotsLeft: 50,
+    const payload: CursoCreatePayload = {
+      titulo: eventName.trim(),
+      descricao: description.trim(),
+      carga_horaria: Number(durationHours) || 0,
+      instrutor: instructor.trim(),
+      status,
     };
-
-    onCreateEvent(newEvt);
+    if (isSuperAdmin) {
+      payload.instituicao_id = instituicaoId;
+    }
+    await onSubmit(payload);
   };
 
   return (
@@ -172,7 +175,32 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 Event Information
               </h2>
 
+              {(formError || errorMessage) && (
+                <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {formError || errorMessage}
+                </div>
+              )}
+
               <div className="space-y-5">
+                {isSuperAdmin && (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                      INSTITUTION
+                    </label>
+                    <select
+                      value={instituicaoId}
+                      onChange={(e) => setInstituicaoId(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select institution</option>
+                      {institutions.map((inst) => (
+                        <option key={inst.id} value={inst.id}>
+                          {inst.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 {/* Event Name */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
@@ -230,6 +258,21 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                     placeholder="Dr. Sarah Jenkins"
                     className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                    STATUS
+                  </label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as 'draft' | 'upcoming' | 'completed')}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="upcoming">Upcoming</option>
+                    <option value="draft">Draft</option>
+                    <option value="completed">Completed</option>
+                  </select>
                 </div>
 
                 {/* Description */}
@@ -371,6 +414,12 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 Please verify the configuration before publishing to the enterprise directory.
               </p>
 
+              {(formError || errorMessage) && (
+                <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {formError || errorMessage}
+                </div>
+              )}
+
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3 text-xs">
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
                   <span className="text-slate-400 font-medium">Event Name:</span>
@@ -383,6 +432,10 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
                   <span className="text-slate-400 font-medium">Duration:</span>
                   <span className="font-bold text-slate-800">{durationHours} Hours</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-slate-200/60">
+                  <span className="text-slate-400 font-medium">Status:</span>
+                  <span className="font-bold text-slate-800 capitalize">{status}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
                   <span className="text-slate-400 font-medium">Lead Instructor:</span>
@@ -411,11 +464,14 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={handleFinish}
-                  className="px-6 py-2.5 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shadow-md flex items-center gap-2 transition-colors"
+                  onClick={() => void handleFinish()}
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shadow-md flex items-center gap-2 transition-colors disabled:opacity-60"
                 >
-                  <span className="material-symbols-outlined text-[18px]">publish</span>
-                  Publish Event & Enable Certificates
+                  <span className="material-symbols-outlined text-[18px]">
+                    {isSubmitting ? 'progress_activity' : 'publish'}
+                  </span>
+                  {isSubmitting ? 'Publishing...' : 'Publish Event & Enable Certificates'}
                 </button>
               </div>
             </div>

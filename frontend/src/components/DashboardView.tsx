@@ -38,7 +38,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             Certificates Issued
           </p>
           <p className="text-3xl font-extrabold mt-1 text-slate-900">
-            {certificates.length + 1420}
+            {certificates.length}
           </p>
           <div className="flex items-center gap-1 mt-2 text-emerald-600 font-bold text-xs">
             <span>▲ +18.4%</span>
@@ -67,8 +67,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {activeEventsCount}
           </p>
           <div className="flex items-center gap-1 mt-2 text-indigo-600 font-bold text-xs">
-            <span>● 45 Spots</span>
-            <span className="text-slate-400 font-normal">available today</span>
+            <span>● {events.length} Total</span>
+            <span className="text-slate-400 font-normal">courses in API</span>
           </div>
         </div>
 
@@ -156,7 +156,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <p className="text-slate-500 text-[11px] mt-0.5">{c.eventName} • {c.institutionName}</p>
               </div>
               <div className="text-right">
-                <span className="font-mono text-[10px] text-slate-400 block mb-1">{c.sha256.substring(0, 16)}...</span>
+                <span className="font-mono text-[10px] text-slate-400 block mb-1">
+                  {(c.sha256 || c.codigoValidacao).substring(0, 16)}...
+                </span>
                 <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">VERIFIED</span>
               </div>
             </div>

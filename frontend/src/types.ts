@@ -52,11 +52,14 @@ export interface EventItem {
 
 export interface Certificate {
   id: string;
+  codigoValidacao: string;
   certificateNumber: string;
   studentName: string;
   studentEmail: string;
   eventName: string;
   eventId: string;
+  alunoId: string;
+  instituicaoId: string;
   institutionName: string;
   issueDate: string;
   durationHours: number;
@@ -67,6 +70,7 @@ export interface Certificate {
 
 export interface Student {
   id: string;
+  instituicaoId: string;
   name: string;
   email: string;
   documentId: string;

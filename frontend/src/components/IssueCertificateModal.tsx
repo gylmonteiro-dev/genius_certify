@@ -1,67 +1,74 @@
-import React, { useState } from 'react';
-import { Certificate, EventItem, Institution } from '../types';
+import React, { useEffect, useState } from 'react';
+import { EventItem, Institution, Student } from '../types';
+import { CertificadoEmitPayload } from '../lib/certificados';
 
 interface IssueCertificateModalProps {
   isOpen: boolean;
   onClose: () => void;
   events: EventItem[];
+  students: Student[];
   institutions: Institution[];
-  onIssueSuccess: (newCert: Certificate) => void;
+  isSuperAdmin: boolean;
+  isSubmitting?: boolean;
+  errorMessage?: string | null;
+  onSubmit: (payload: CertificadoEmitPayload) => Promise<void>;
 }
 
 export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
   isOpen,
   onClose,
   events,
+  students,
   institutions,
-  onIssueSuccess,
+  isSuperAdmin,
+  isSubmitting = false,
+  errorMessage = null,
+  onSubmit,
 }) => {
-  const [studentName, setStudentName] = useState('Jane Doe');
-  const [studentEmail, setStudentEmail] = useState('jane.doe@company.com');
-  const [selectedEventId, setSelectedEventId] = useState(events[0]?.id || '');
-  const [issueDate, setIssueDate] = useState('2024-10-25');
+  const [instituicaoId, setInstituicaoId] = useState('');
+  const [alunoId, setAlunoId] = useState('');
+  const [cursoId, setCursoId] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setFormError(null);
+    setInstituicaoId(isSuperAdmin ? '' : institutions[0]?.id ?? '');
+    setAlunoId('');
+    setCursoId('');
+  }, [isOpen, isSuperAdmin, institutions]);
 
   if (!isOpen) return null;
 
-  const handleIssue = (e: React.FormEvent) => {
+  const scopedStudents = isSuperAdmin && instituicaoId
+    ? students.filter((s) => s.instituicaoId === instituicaoId)
+    : students;
+  const scopedEvents = isSuperAdmin && instituicaoId
+    ? events.filter((e) => e.institutionId === instituicaoId)
+    : events;
+
+  const handleIssue = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!studentName || !studentEmail) {
-      alert('Please enter student name and email.');
+    setFormError(null);
+    if (!alunoId || !cursoId) {
+      setFormError('Select a student and a course.');
       return;
     }
-
-    const matchedEvt = events.find((e) => e.id === selectedEventId) || events[0];
-    const certNum = `CERT-2024-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    // Generate pseudo SHA256 hex string
-    const hexChars = '0123456789abcdef';
-    let sha = '';
-    for (let i = 0; i < 64; i++) {
-      sha += hexChars[Math.floor(Math.random() * 16)];
+    if (isSuperAdmin && !instituicaoId) {
+      setFormError('Select an institution.');
+      return;
     }
-
-    const newCert: Certificate = {
-      id: `cert-${Date.now()}`,
-      certificateNumber: certNum,
-      studentName,
-      studentEmail,
-      eventName: matchedEvt ? matchedEvt.title : 'Annual Tech Symposium 2024',
-      eventId: matchedEvt ? matchedEvt.id : 'evt-1',
-      institutionName: matchedEvt ? matchedEvt.institutionName : 'TechCorp Security Institute',
-      issueDate: issueDate || '2024-10-25',
-      durationHours: matchedEvt ? matchedEvt.durationHours : 8,
-      instructor: matchedEvt ? matchedEvt.instructor : 'Dr. Sarah Jenkins',
-      sha256: sha,
-      status: 'Active',
+    const payload: CertificadoEmitPayload = {
+      aluno_id: alunoId,
+      curso_id: cursoId,
     };
-
-    onIssueSuccess(newCert);
-    onClose();
+    if (isSuperAdmin) payload.instituicao_id = instituicaoId;
+    await onSubmit(payload);
   };
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 relative animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 relative">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors"
@@ -76,52 +83,55 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
           <div>
             <h2 className="text-lg font-bold text-slate-900">Issue New Certificate</h2>
             <p className="text-xs text-slate-500">
-              Generate a cryptographic SHA256 credential.
+              Select an existing student and course from the API.
             </p>
           </div>
         </div>
 
-        <form onSubmit={handleIssue} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              STUDENT FULL NAME
-            </label>
-            <input
-              type="text"
-              required
-              value={studentName}
-              onChange={(e) => setStudentName(e.target.value)}
-              placeholder="e.g. Alex Rivera"
-              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-            />
-          </div>
+        <form onSubmit={(e) => void handleIssue(e)} className="space-y-4">
+          {(formError || errorMessage) && (
+            <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {formError || errorMessage}
+            </div>
+          )}
+
+          {isSuperAdmin && (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                INSTITUTION
+              </label>
+              <select
+                value={instituicaoId}
+                onChange={(e) => {
+                  setInstituicaoId(e.target.value);
+                  setAlunoId('');
+                  setCursoId('');
+                }}
+                className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm text-slate-800"
+              >
+                <option value="">Select institution</option>
+                {institutions.map((inst) => (
+                  <option key={inst.id} value={inst.id}>
+                    {inst.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              STUDENT EMAIL ADDRESS
-            </label>
-            <input
-              type="email"
-              required
-              value={studentEmail}
-              onChange={(e) => setStudentEmail(e.target.value)}
-              placeholder="alex.rivera@example.com"
-              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              SELECT EVENT / WORKSHOP
+              STUDENT
             </label>
             <select
-              value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              value={alunoId}
+              onChange={(e) => setAlunoId(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm text-slate-800"
             >
-              {events.map((evt) => (
-                <option key={evt.id} value={evt.id}>
-                  {evt.title} ({evt.institutionName})
+              <option value="">Select student</option>
+              {scopedStudents.map((student) => (
+                <option key={student.id} value={student.id}>
+                  {student.name} ({student.email})
                 </option>
               ))}
             </select>
@@ -129,30 +139,37 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              ISSUE DATE
+              COURSE / EVENT
             </label>
-            <input
-              type="date"
-              value={issueDate}
-              onChange={(e) => setIssueDate(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-            />
+            <select
+              value={cursoId}
+              onChange={(e) => setCursoId(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm text-slate-800"
+            >
+              <option value="">Select course</option>
+              {scopedEvents.map((evt) => (
+                <option key={evt.id} value={evt.id}>
+                  {evt.title} ({evt.institutionName})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="pt-4 flex justify-end gap-2 border-t border-slate-200 mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-slate-200 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              className="px-4 py-2 border border-slate-200 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+              disabled={isSubmitting}
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm disabled:opacity-60"
             >
               <span className="material-symbols-outlined text-[16px]">verified</span>
-              Generate & Mint Credential
+              {isSubmitting ? 'Issuing...' : 'Issue Certificate'}
             </button>
           </div>
         </form>

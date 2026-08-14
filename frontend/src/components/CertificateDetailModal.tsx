@@ -4,11 +4,13 @@ import { Certificate } from '../types';
 interface CertificateDetailModalProps {
   certificate: Certificate | null;
   onClose: () => void;
+  onDownloadPdf?: (cert: Certificate) => void;
 }
 
 export const CertificateDetailModal: React.FC<CertificateDetailModalProps> = ({
   certificate,
   onClose,
+  onDownloadPdf,
 }) => {
   if (!certificate) return null;
 
@@ -74,7 +76,8 @@ export const CertificateDetailModal: React.FC<CertificateDetailModalProps> = ({
 
           {/* Cryptographic Hash Fingerprint */}
           <div className="mt-6 pt-3 border-t border-dashed border-slate-300 font-mono text-[9px] text-slate-400 break-all">
-            SHA256: {certificate.sha256}
+            Validation UUID: {certificate.codigoValidacao}
+            {certificate.sha256 ? ` · SHA256: ${certificate.sha256}` : ''}
           </div>
         </div>
 
@@ -85,12 +88,21 @@ export const CertificateDetailModal: React.FC<CertificateDetailModalProps> = ({
           </span>
 
           <div className="flex gap-2">
+            {onDownloadPdf && certificate.alunoId && (
+              <button
+                onClick={() => onDownloadPdf(certificate)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">download</span>
+                Download PDF
+              </button>
+            )}
             <button
               onClick={handlePrint}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">print</span>
-              Print / Save PDF
+              Print
             </button>
             <button
               onClick={onClose}

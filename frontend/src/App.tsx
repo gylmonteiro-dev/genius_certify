@@ -1,17 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   NavTab,
   Institution,
   EventItem,
   Certificate,
   Student,
-  RegistrationFormData,
 } from './types';
-import {
-  INITIAL_EVENTS,
-  INITIAL_CERTIFICATES,
-  INITIAL_STUDENTS,
-} from './data/initialData';
 
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
@@ -21,7 +15,6 @@ import { CreateEventView } from './components/CreateEventView';
 import { InstitutionsView } from './components/InstitutionsView';
 import { RegisterInstitutionView } from './components/RegisterInstitutionView';
 import { EventsCatalogView } from './components/EventsCatalogView';
-import { EventRegistrationView } from './components/EventRegistrationView';
 import { EventsDirectoryView } from './components/EventsDirectoryView';
 import { CertificatesView } from './components/CertificatesView';
 import { StudentsView } from './components/StudentsView';
@@ -45,6 +38,18 @@ import {
   mapInstituicaoToUi,
   updateInstituicaoStatus,
 } from './lib/instituicoes';
+import { CursoCreatePayload, createCurso, listCursos, mapCursoToUi } from './lib/cursos';
+import { AlunoCreatePayload, createAluno, listAlunos, mapAlunoToUi } from './lib/alunos';
+import {
+  CertificadoEmitPayload,
+  downloadCertificadoPdf,
+  emitirCertificado,
+  listCertificados,
+  mapCertificadoToUi,
+  mapPublicCertificadoToUi,
+  revogarCertificado,
+  validarCertificadoPublico,
+} from './lib/certificados';
 
 export function App() {
   const [authBootstrapping, setAuthBootstrapping] = useState(true);
@@ -62,19 +67,53 @@ export function App() {
   const [institutionsError, setInstitutionsError] = useState<string | null>(null);
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
-  const [events, setEvents] = useState<EventItem[]>(INITIAL_EVENTS);
-  const [certificates, setCertificates] = useState<Certificate[]>(INITIAL_CERTIFICATES);
-  const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
 
-  const [selectedEventForReg, setSelectedEventForReg] = useState<EventItem>(INITIAL_EVENTS[0]);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsError, setEventsError] = useState<string | null>(null);
+  const [createEventLoading, setCreateEventLoading] = useState(false);
+  const [createEventError, setCreateEventError] = useState<string | null>(null);
+
+  const [students, setStudents] = useState<Student[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [studentsError, setStudentsError] = useState<string | null>(null);
+  const [createStudentLoading, setCreateStudentLoading] = useState(false);
+  const [createStudentError, setCreateStudentError] = useState<string | null>(null);
+
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [certificatesLoading, setCertificatesLoading] = useState(false);
+  const [certificatesError, setCertificatesError] = useState<string | null>(null);
+  const [issueLoading, setIssueLoading] = useState(false);
+  const [issueError, setIssueError] = useState<string | null>(null);
+  const [verifyResult, setVerifyResult] = useState<Certificate | 'NOT_FOUND' | 'INVALID' | null>(null);
+  const [verifyMessage, setVerifyMessage] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+
   const [selectedCertDetail, setSelectedCertDetail] = useState<Certificate | null>(null);
-
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
   };
+
+  const institutionsWithCounts = useMemo(
+    () =>
+      institutions.map((inst) => ({
+        ...inst,
+        eventsCount: events.filter((evt) => evt.institutionId === inst.id).length,
+      })),
+    [institutions, events],
+  );
+
+  const studentsWithCounts = useMemo(
+    () =>
+      students.map((student) => ({
+        ...student,
+        certificatesCount: certificates.filter((cert) => cert.alunoId === student.id).length,
+      })),
+    [students, certificates],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -112,36 +151,78 @@ export function App() {
   useEffect(() => {
     if (!authToken) {
       setInstitutions([]);
+      setEvents([]);
+      setStudents([]);
+      setCertificates([]);
       setInstitutionsError(null);
-      setInstitutionsLoading(false);
+      setEventsError(null);
+      setStudentsError(null);
+      setCertificatesError(null);
       return;
     }
 
     let cancelled = false;
 
-    const loadInstitutions = async () => {
+    const loadAll = async () => {
       setInstitutionsLoading(true);
+      setEventsLoading(true);
+      setStudentsLoading(true);
+      setCertificatesLoading(true);
       setInstitutionsError(null);
-      try {
-        const items = await listInstituicoes(authToken);
-        if (!cancelled) {
-          setInstitutions(items.map(mapInstituicaoToUi));
-        }
-      } catch (err) {
-        if (!cancelled) {
-          const message =
-            err instanceof ApiError
-              ? err.message
-              : 'Unable to load institutions.';
-          setInstitutionsError(message);
-          setInstitutions([]);
-        }
-      } finally {
-        if (!cancelled) setInstitutionsLoading(false);
+      setEventsError(null);
+      setStudentsError(null);
+      setCertificatesError(null);
+
+      const [instResult, cursoResult, alunoResult, certResult] = await Promise.allSettled([
+        listInstituicoes(authToken),
+        listCursos(authToken),
+        listAlunos(authToken),
+        listCertificados(authToken),
+      ]);
+
+      if (cancelled) return;
+
+      const instUi =
+        instResult.status === 'fulfilled'
+          ? instResult.value.map(mapInstituicaoToUi)
+          : [];
+      setInstitutions(instUi);
+      if (instResult.status === 'rejected') {
+        const err = instResult.reason;
+        setInstitutionsError(err instanceof ApiError ? err.message : 'Unable to load institutions.');
       }
+
+      if (cursoResult.status === 'fulfilled') {
+        setEvents(cursoResult.value.map((item) => mapCursoToUi(item, instUi)));
+      } else {
+        const err = cursoResult.reason;
+        setEventsError(err instanceof ApiError ? err.message : 'Unable to load events.');
+        setEvents([]);
+      }
+
+      if (alunoResult.status === 'fulfilled') {
+        setStudents(alunoResult.value.map((item) => mapAlunoToUi(item, instUi)));
+      } else {
+        const err = alunoResult.reason;
+        setStudentsError(err instanceof ApiError ? err.message : 'Unable to load students.');
+        setStudents([]);
+      }
+
+      if (certResult.status === 'fulfilled') {
+        setCertificates(certResult.value.map(mapCertificadoToUi));
+      } else {
+        const err = certResult.reason;
+        setCertificatesError(err instanceof ApiError ? err.message : 'Unable to load certificates.');
+        setCertificates([]);
+      }
+
+      setInstitutionsLoading(false);
+      setEventsLoading(false);
+      setStudentsLoading(false);
+      setCertificatesLoading(false);
     };
 
-    void loadInstitutions();
+    void loadAll();
     return () => {
       cancelled = true;
     };
@@ -175,14 +256,17 @@ export function App() {
     setCurrentTab('dashboard');
     setLoginError(null);
     setInstitutions([]);
+    setEvents([]);
+    setStudents([]);
+    setCertificates([]);
     setInstitutionsError(null);
+    setEventsError(null);
+    setStudentsError(null);
+    setCertificatesError(null);
     setRegisterError(null);
-  };
-
-  const handleCreateEvent = (newEvent: EventItem) => {
-    setEvents([newEvent, ...events]);
-    showToast(`Event "${newEvent.title}" published successfully!`);
-    setCurrentTab('events');
+    setCreateEventError(null);
+    setCreateStudentError(null);
+    setIssueError(null);
   };
 
   const handleRegisterInstitution = async (payload: InstituicaoCreatePayload) => {
@@ -238,40 +322,109 @@ export function App() {
     }
   };
 
-  const handleIssueCertificateSuccess = (newCert: Certificate) => {
-    setCertificates([newCert, ...certificates]);
-    showToast(`Certificate ${newCert.certificateNumber} minted for ${newCert.studentName}!`);
+  const handleCreateEvent = async (payload: CursoCreatePayload) => {
+    if (!authToken) return;
+    setCreateEventLoading(true);
+    setCreateEventError(null);
+    try {
+      const created = await createCurso(authToken, payload);
+      setEvents((prev) => [mapCursoToUi(created, institutions), ...prev]);
+      showToast(`Event "${created.titulo}" published successfully!`);
+      setCurrentTab('events');
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : 'Unable to create event.';
+      setCreateEventError(message);
+    } finally {
+      setCreateEventLoading(false);
+    }
   };
 
-  const handleToggleCertificateStatus = (id: string) => {
-    setCertificates(
-      certificates.map((c) => {
-        if (c.id === id) {
-          const nextStatus = c.status === 'Active' ? 'Revoked' : 'Active';
-          return { ...c, status: nextStatus };
-        }
-        return c;
-      }),
-    );
-    showToast('Certificate status toggled.');
+  const handleCreateStudent = async (payload: AlunoCreatePayload) => {
+    if (!authToken) return;
+    setCreateStudentLoading(true);
+    setCreateStudentError(null);
+    try {
+      const created = await createAluno(authToken, payload);
+      setStudents((prev) => [mapAlunoToUi(created, institutions), ...prev]);
+      showToast(`Student "${created.nome}" registered successfully!`);
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : 'Unable to register student.';
+      setCreateStudentError(message);
+      throw err;
+    } finally {
+      setCreateStudentLoading(false);
+    }
   };
 
-  const handleEventRegistrationSuccess = (
-    event: EventItem,
-    formData: RegistrationFormData,
-  ) => {
-    const newStudent: Student = {
-      id: `std-${Date.now()}`,
-      name: formData.fullName,
-      email: formData.email,
-      documentId: formData.documentId,
-      institution: event.institutionName,
-      certificatesCount: 1,
-      joinedDate: new Date().toISOString().split('T')[0],
-      status: 'Verified',
-    };
-    setStudents([newStudent, ...students]);
-    showToast(`Registration confirmed for ${formData.fullName}!`);
+  const handleIssueCertificate = async (payload: CertificadoEmitPayload) => {
+    if (!authToken) return;
+    setIssueLoading(true);
+    setIssueError(null);
+    try {
+      const created = await emitirCertificado(authToken, payload);
+      const mapped = mapCertificadoToUi(created);
+      setCertificates((prev) => [mapped, ...prev]);
+      showToast(`Certificate ${created.numero_certificado} issued for ${created.aluno_nome}!`);
+      setIsIssueModalOpen(false);
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : 'Unable to issue certificate.';
+      setIssueError(message);
+    } finally {
+      setIssueLoading(false);
+    }
+  };
+
+  const handleRevokeCertificate = async (id: string) => {
+    if (!authToken) return;
+    try {
+      const updated = await revogarCertificado(authToken, id);
+      const mapped = mapCertificadoToUi(updated);
+      setCertificates((prev) => prev.map((c) => (c.id === id ? mapped : c)));
+      showToast('Certificate revoked.');
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : 'Unable to revoke certificate.';
+      showToast(message);
+    }
+  };
+
+  const handleDownloadPdf = async (cert: Certificate) => {
+    if (!authToken || !cert.alunoId) {
+      showToast('PDF is only available for issued certificates.');
+      return;
+    }
+    try {
+      await downloadCertificadoPdf(authToken, cert.id, `${cert.certificateNumber}.pdf`);
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : 'Unable to download PDF.';
+      showToast(message);
+    }
+  };
+
+  const handleVerifyCertificate = async (codigo: string) => {
+    setIsVerifying(true);
+    setVerifyResult(null);
+    setVerifyMessage(null);
+    try {
+      const result = await validarCertificadoPublico(codigo);
+      setVerifyMessage(result.mensagem);
+      if (result.valido) {
+        setVerifyResult(mapPublicCertificadoToUi(result));
+      } else if (result.numero_certificado) {
+        setVerifyResult('INVALID');
+      } else {
+        setVerifyResult('NOT_FOUND');
+      }
+    } catch (err) {
+      setVerifyResult('INVALID');
+      setVerifyMessage(err instanceof ApiError ? err.message : 'Invalid validation code.');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   if (authBootstrapping) {
@@ -298,19 +451,20 @@ export function App() {
     );
   }
 
-  const isPublicRegistrationTab = currentTab === 'event-registration';
+  const isSuperAdmin = authUser.role === 'super_admin';
 
   return (
     <div className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex flex-col font-sans">
-      {!isPublicRegistrationTab && (
-        <Sidebar
-          currentTab={currentTab}
-          onSelectTab={setCurrentTab}
-          onOpenIssueModal={() => setIsIssueModalOpen(true)}
-          isOpenMobile={mobileSidebarOpen}
-          onCloseMobile={() => setMobileSidebarOpen(false)}
-        />
-      )}
+      <Sidebar
+        currentTab={currentTab}
+        onSelectTab={setCurrentTab}
+        onOpenIssueModal={() => {
+          setIssueError(null);
+          setIsIssueModalOpen(true);
+        }}
+        isOpenMobile={mobileSidebarOpen}
+        onCloseMobile={() => setMobileSidebarOpen(false)}
+      />
 
       <TopBar
         searchTerm={searchTerm}
@@ -319,7 +473,6 @@ export function App() {
         onSelectTab={setCurrentTab}
         authUser={authUser}
         onLogout={handleLogout}
-        isPublicView={isPublicRegistrationTab}
         titleOverride={
           currentTab === 'create-event'
             ? 'Create Event'
@@ -339,34 +492,38 @@ export function App() {
         }
       />
 
-      <main
-        className={`flex-1 pt-16 transition-all ${
-          isPublicRegistrationTab ? 'ml-0' : 'ml-0 md:ml-[260px]'
-        }`}
-      >
+      <main className="flex-1 pt-16 transition-all ml-0 md:ml-[260px]">
         {currentTab === 'dashboard' && (
           <DashboardView
-            institutions={institutions}
+            institutions={institutionsWithCounts}
             events={events}
             certificates={certificates}
             onSelectTab={setCurrentTab}
-            onOpenIssueModal={() => setIsIssueModalOpen(true)}
+            onOpenIssueModal={() => {
+              setIssueError(null);
+              setIsIssueModalOpen(true);
+            }}
           />
         )}
 
         {currentTab === 'create-event' && (
           <CreateEventView
-            onCreateEvent={handleCreateEvent}
+            onSubmit={handleCreateEvent}
             onCancel={() => setCurrentTab('events')}
+            institutions={institutionsWithCounts}
+            isSuperAdmin={isSuperAdmin}
+            defaultInstituicaoId={authUser.instituicao_id}
+            isSubmitting={createEventLoading}
+            errorMessage={createEventError}
           />
         )}
 
         {currentTab === 'institutions' && (
           <InstitutionsView
-            institutions={institutions}
+            institutions={institutionsWithCounts}
             isLoading={institutionsLoading}
             errorMessage={institutionsError}
-            canManage={authUser.role === 'super_admin'}
+            canManage={isSuperAdmin}
             onAddInstitutionClick={() => {
               setRegisterError(null);
               setCurrentTab('register-institution');
@@ -376,7 +533,7 @@ export function App() {
           />
         )}
 
-        {currentTab === 'register-institution' && authUser.role === 'super_admin' && (
+        {currentTab === 'register-institution' && isSuperAdmin && (
           <RegisterInstitutionView
             onSubmit={handleRegisterInstitution}
             onCancel={() => setCurrentTab('institutions')}
@@ -385,12 +542,14 @@ export function App() {
           />
         )}
 
-        {currentTab === 'events' && (
+        {(currentTab === 'events' || currentTab === 'events-directory') && (
           <EventsDirectoryView
             events={events}
-            onSelectEvent={(evt) => {
-              setSelectedEventForReg(evt);
-              setCurrentTab('event-registration');
+            isLoading={eventsLoading}
+            errorMessage={eventsError}
+            onCreateEventClick={() => {
+              setCreateEventError(null);
+              setCurrentTab('create-event');
             }}
           />
         )}
@@ -398,42 +557,41 @@ export function App() {
         {currentTab === 'events-catalog' && (
           <EventsCatalogView
             events={events}
-            onSelectRegister={(evt) => {
-              setSelectedEventForReg(evt);
-              setCurrentTab('event-registration');
-            }}
-          />
-        )}
-
-        {currentTab === 'event-registration' && (
-          <EventRegistrationView
-            event={selectedEventForReg}
-            onSuccessRegister={handleEventRegistrationSuccess}
-            onBack={() => setCurrentTab('events-catalog')}
-          />
-        )}
-
-        {currentTab === 'events-directory' && (
-          <EventsDirectoryView
-            events={events}
-            isPublicView={true}
-            onSelectEvent={(evt) => {
-              setSelectedEventForReg(evt);
-              setCurrentTab('event-registration');
-            }}
+            onSelectRegister={() => setCurrentTab('students')}
           />
         )}
 
         {currentTab === 'certificates' && (
           <CertificatesView
             certificates={certificates}
-            onOpenIssueModal={() => setIsIssueModalOpen(true)}
+            isLoading={certificatesLoading}
+            errorMessage={certificatesError}
+            verifyResult={verifyResult}
+            verifyMessage={verifyMessage}
+            isVerifying={isVerifying}
+            onOpenIssueModal={() => {
+              setIssueError(null);
+              setIsIssueModalOpen(true);
+            }}
             onViewCertificateDetail={(cert) => setSelectedCertDetail(cert)}
-            onToggleStatus={handleToggleCertificateStatus}
+            onRevoke={(id) => void handleRevokeCertificate(id)}
+            onDownloadPdf={(cert) => void handleDownloadPdf(cert)}
+            onVerify={handleVerifyCertificate}
           />
         )}
 
-        {currentTab === 'students' && <StudentsView students={students} />}
+        {currentTab === 'students' && (
+          <StudentsView
+            students={studentsWithCounts}
+            institutions={institutionsWithCounts}
+            isSuperAdmin={isSuperAdmin}
+            isLoading={studentsLoading}
+            errorMessage={studentsError}
+            isSubmitting={createStudentLoading}
+            submitError={createStudentError}
+            onCreate={handleCreateStudent}
+          />
+        )}
 
         {currentTab === 'settings' && (
           <div className="max-w-[1280px] mx-auto p-8">
@@ -469,13 +627,18 @@ export function App() {
         isOpen={isIssueModalOpen}
         onClose={() => setIsIssueModalOpen(false)}
         events={events}
-        institutions={institutions}
-        onIssueSuccess={handleIssueCertificateSuccess}
+        students={studentsWithCounts}
+        institutions={institutionsWithCounts}
+        isSuperAdmin={isSuperAdmin}
+        isSubmitting={issueLoading}
+        errorMessage={issueError}
+        onSubmit={handleIssueCertificate}
       />
 
       <CertificateDetailModal
         certificate={selectedCertDetail}
         onClose={() => setSelectedCertDetail(null)}
+        onDownloadPdf={(cert) => void handleDownloadPdf(cert)}
       />
 
       <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
