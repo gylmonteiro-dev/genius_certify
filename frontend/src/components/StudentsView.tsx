@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Institution, Student } from '../types';
-import { AlunoCreatePayload } from '../lib/alunos';
+import { AlunoCreatePayload, AlunoImportResult } from '../lib/alunos';
+import { ApiError } from '../lib/api';
 
 interface StudentsViewProps {
   students: Student[];
@@ -11,6 +12,8 @@ interface StudentsViewProps {
   isSubmitting?: boolean;
   submitError?: string | null;
   onCreate: (payload: AlunoCreatePayload) => Promise<void>;
+  onImportCsv?: (file: File, instituicaoId?: string) => Promise<AlunoImportResult>;
+  isImporting?: boolean;
 }
 
 export const StudentsView: React.FC<StudentsViewProps> = ({
@@ -22,6 +25,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   isSubmitting = false,
   submitError = null,
   onCreate,
+  onImportCsv,
+  isImporting = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -30,6 +35,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [documento, setDocumento] = useState('');
   const [instituicaoId, setInstituicaoId] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [importInstituicaoId, setImportInstituicaoId] = useState('');
+  const [importResult, setImportResult] = useState<AlunoImportResult | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const filtered = students.filter(
     (s) =>
@@ -83,14 +91,97 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             Student roster loaded from the API.
           </p>
         </div>
-        <button
-          onClick={() => setShowForm((open) => !open)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-md font-semibold text-sm transition-colors flex items-center gap-2 shadow-sm"
-        >
-          <span className="material-symbols-outlined text-[18px]">person_add</span>
-          Add Student
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {onImportCsv && (
+            <label className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-2.5 rounded-md font-semibold text-sm transition-colors flex items-center gap-2 shadow-sm cursor-pointer">
+              <span className="material-symbols-outlined text-[18px]">upload_file</span>
+              {isImporting ? 'Importing...' : 'Import CSV'}
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                disabled={isImporting}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!file) return;
+                  void (async () => {
+                    setImportError(null);
+                    setImportResult(null);
+                    if (isSuperAdmin && !importInstituicaoId) {
+                      setImportError('Select an institution before importing CSV.');
+                      return;
+                    }
+                    try {
+                      const result = await onImportCsv(
+                        file,
+                        isSuperAdmin ? importInstituicaoId : undefined,
+                      );
+                      setImportResult(result);
+                    } catch (err) {
+                      setImportError(
+                        err instanceof ApiError
+                          ? err.message
+                          : 'Unable to import CSV.',
+                      );
+                    }
+                  })();
+                }}
+              />
+            </label>
+          )}
+          <button
+            onClick={() => setShowForm((open) => !open)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-md font-semibold text-sm transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <span className="material-symbols-outlined text-[18px]">person_add</span>
+            Add Student
+          </button>
+        </div>
       </div>
+
+      {onImportCsv && isSuperAdmin && (
+        <div className="max-w-md">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+            Institution for CSV import
+          </label>
+          <select
+            value={importInstituicaoId}
+            onChange={(e) => setImportInstituicaoId(e.target.value)}
+            className="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm"
+          >
+            <option value="">Select institution</option>
+            {institutions.map((inst) => (
+              <option key={inst.id} value={inst.id}>
+                {inst.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {(importError || importResult) && (
+        <div
+          className={`rounded-md border px-4 py-3 text-sm ${
+            importError
+              ? 'border-rose-200 bg-rose-50 text-rose-700'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+          }`}
+        >
+          {importError ||
+            (importResult &&
+              `Imported ${importResult.created} student(s); skipped ${importResult.skipped}.`)}
+          {importResult && importResult.errors.length > 0 && (
+            <ul className="mt-2 text-xs space-y-0.5">
+              {importResult.errors.slice(0, 8).map((err) => (
+                <li key={`${err.linha}-${err.mensagem}`}>
+                  Line {err.linha}: {err.mensagem}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {showForm && (
         <form

@@ -59,6 +59,11 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
       </div>
 
       {/* Bento Grid */}
+      {filteredEvents.length === 0 ? (
+        <div className="bg-white border border-slate-200 rounded-xl py-16 text-center text-sm text-slate-500">
+          No events available right now.
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredEvents.map((evt) => {
           // Default banner images if missing
@@ -130,6 +135,7 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
           );
         })}
       </div>
+      )}
     </div>
   );
 };

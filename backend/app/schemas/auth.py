@@ -24,3 +24,8 @@ class UsuarioResponse(BaseModel):
     role: UsuarioRole
     instituicao_id: UUID | None
     is_active: bool
+
+
+class AlterarSenhaRequest(BaseModel):
+    senha_atual: str = Field(min_length=8, max_length=128)
+    senha_nova: str = Field(min_length=8, max_length=128)

@@ -52,3 +52,14 @@ class AlunoResponse(BaseModel):
     status: AlunoStatus
     created_at: datetime
     updated_at: datetime
+
+
+class AlunoImportError(BaseModel):
+    linha: int
+    mensagem: str
+
+
+class AlunoImportResponse(BaseModel):
+    created: int
+    skipped: int
+    errors: list[AlunoImportError]

@@ -1,12 +1,13 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import RequireInstituicaoAdmin
+from app.core.exceptions import AppError
 from app.models.usuario import Usuario
-from app.schemas.aluno import AlunoCreate, AlunoResponse, AlunoUpdate
+from app.schemas.aluno import AlunoCreate, AlunoImportResponse, AlunoResponse, AlunoUpdate
 from app.services.aluno_service import AlunoService
 
 router = APIRouter(prefix="/alunos", tags=["alunos"])
@@ -23,6 +24,24 @@ async def create_aluno(
     current_user: Usuario = Depends(RequireInstituicaoAdmin),
 ) -> AlunoResponse:
     return await AlunoService(session).create(body, actor=current_user)
+
+
+@router.post("/importar", response_model=AlunoImportResponse)
+async def importar_alunos(
+    file: UploadFile = File(...),
+    instituicao_id: UUID | None = Form(default=None),
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> AlunoImportResponse:
+    filename = (file.filename or "").lower()
+    if filename and not filename.endswith(".csv"):
+        raise AppError("Envie um arquivo .csv")
+    file_bytes = await file.read()
+    return await AlunoService(session).import_csv(
+        actor=current_user,
+        file_bytes=file_bytes,
+        instituicao_id=instituicao_id,
+    )
 
 
 @router.get("", response_model=list[AlunoResponse])

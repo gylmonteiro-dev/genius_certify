@@ -1,0 +1,36 @@
+# Produção na VPS (não carrega o override de portas locais):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# DNS A/AAAA de $DOMAIN deve apontar para a VPS antes do Let's Encrypt.
+
+services:
+  backend:
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      S3_PUBLIC_ENDPOINT_URL: ${S3_PUBLIC_ENDPOINT_URL}
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: nexus_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+      - minio
+    networks:
+      - nexus
+
+volumes:
+  caddy_data:
+  caddy_config:

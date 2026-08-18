@@ -7,6 +7,7 @@ interface SidebarProps {
   onOpenIssueModal: () => void;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
+  onLogout: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -15,6 +16,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenIssueModal,
   isOpenMobile,
   onCloseMobile,
+  onLogout,
 }) => {
   const isEventsActive = 
     currentTab === 'events' || 
@@ -219,7 +221,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <li>
               <button
                 onClick={() => {
-                  onSelectTab('events-directory');
+                  onLogout();
                   onCloseMobile();
                 }}
                 className="w-full flex items-center gap-3 px-3.5 py-2 rounded-lg text-sm text-rose-400 hover:bg-rose-950/40 transition-colors"

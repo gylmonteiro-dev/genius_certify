@@ -121,9 +121,8 @@ minio-data/
 # ---------------------------------------------------------------------------
 # Docker
 # ---------------------------------------------------------------------------
-# Keep compose files tracked; ignore local overrides with secrets
-docker-compose.override.yml
-*.override.yml
+# docker-compose.override.yml is tracked (dev ports). Ignore ad-hoc secret overrides.
+docker-compose.*.local.yml
 
 # ---------------------------------------------------------------------------
 # Misc

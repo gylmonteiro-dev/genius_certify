@@ -42,3 +42,8 @@ class UsuarioRepository:
         await self._session.flush()
         await self._session.refresh(usuario)
         return usuario
+
+    async def save(self, usuario: Usuario) -> Usuario:
+        await self._session.flush()
+        await self._session.refresh(usuario)
+        return usuario

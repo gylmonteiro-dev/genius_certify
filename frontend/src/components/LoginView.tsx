@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 interface LoginViewProps {
   onSubmit: (email: string, password: string) => Promise<void>;
@@ -169,7 +170,16 @@ export const LoginView: React.FC<LoginViewProps> = ({
             </form>
           </div>
 
-          <p className="text-center text-[11px] text-slate-400 mt-6">
+          <p className="text-center text-[11px] text-slate-400 mt-6 space-x-3">
+            <Link to="/validar" className="text-blue-600 hover:underline font-semibold">
+              Validate certificate
+            </Link>
+            <span>·</span>
+            <Link to="/eventos" className="text-blue-600 hover:underline font-semibold">
+              Public events
+            </Link>
+          </p>
+          <p className="text-center text-[11px] text-slate-400 mt-2">
             CertifyPro System · Nexus Genius
           </p>
         </div>

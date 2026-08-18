@@ -3,33 +3,41 @@ import { EventItem, RegistrationFormData } from '../types';
 
 interface EventRegistrationViewProps {
   event: EventItem;
-  onSuccessRegister: (event: EventItem, formData: RegistrationFormData) => void;
+  onSuccessRegister: (event: EventItem, formData: RegistrationFormData) => void | Promise<void>;
   onBack: () => void;
+  isSubmitting?: boolean;
+  errorMessage?: string | null;
 }
 
 export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
   event,
   onSuccessRegister,
   onBack,
+  isSubmitting = false,
+  errorMessage = null,
 }) => {
   const [fullName, setFullName] = useState('');
   const [workEmail, setWorkEmail] = useState('');
   const [documentId, setDocumentId] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName || !workEmail || !documentId) {
       alert('Please complete all registration fields.');
       return;
     }
 
-    setIsSubmitted(true);
-    onSuccessRegister(event, {
-      fullName,
-      email: workEmail,
-      documentId,
-    });
+    try {
+      await onSuccessRegister(event, {
+        fullName,
+        email: workEmail,
+        documentId,
+      });
+      setIsSubmitted(true);
+    } catch {
+      // parent shows errorMessage
+    }
   };
 
   return (
@@ -118,7 +126,12 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                   Secure Your Spot
                 </h2>
 
-                <form id="regForm" onSubmit={handleSubmit} className="space-y-5">
+                {errorMessage && (
+                  <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    {errorMessage}
+                  </div>
+                )}
+                <form id="regForm" onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
                   <div>
                     <label
                       htmlFor="fullName"
@@ -182,9 +195,10 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                 <button
                   type="submit"
                   form="regForm"
-                  className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-md transition-colors shadow-sm flex items-center justify-center gap-2 active:scale-[0.98]"
+                  disabled={isSubmitting}
+                  className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-md transition-colors shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
                 >
-                  Register Now
+                  {isSubmitting ? 'Registering...' : 'Register Now'}
                   <span className="material-symbols-outlined text-[18px]">
                     arrow_forward
                   </span>

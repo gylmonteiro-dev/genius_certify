@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     s3_bucket: str = "nexus-certify"
     s3_region: str = "us-east-1"
 
+    environment: str = "development"
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.strip().lower() == "production"
+
     @property
     def database_url_sync(self) -> str:
         """URL síncrona para o Alembic (psycopg)."""

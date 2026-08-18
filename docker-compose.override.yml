@@ -1,0 +1,16 @@
+# Carregado automaticamente por `docker compose up` (dev local).
+# Na VPS use: docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+services:
+  minio:
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  backend:
+    ports:
+      - "8000:8000"
+
+  frontend:
+    ports:
+      # Host 3000 evita conflito com Apache na 80
+      - "3000:80"

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Institution } from '../types';
-import { CursoCreatePayload } from '../lib/cursos';
+import { CursoApiCategoria, CursoApiModalidade, CursoApiTipo, CursoCreatePayload } from '../lib/cursos';
 
 interface CreateEventViewProps {
   onSubmit: (payload: CursoCreatePayload) => Promise<void>;
@@ -29,6 +29,9 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   const [instructor, setInstructor] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'draft' | 'upcoming' | 'completed'>('upcoming');
+  const [categoria, setCategoria] = useState<CursoApiCategoria>('technology');
+  const [modalidade, setModalidade] = useState<CursoApiModalidade>('online');
+  const [tipo, setTipo] = useState<CursoApiTipo>('workshop');
   const [instituicaoId, setInstituicaoId] = useState(defaultInstituicaoId ?? '');
   const [sampleStudent, setSampleStudent] = useState('Student Name');
   const [formError, setFormError] = useState<string | null>(null);
@@ -69,6 +72,10 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       carga_horaria: Number(durationHours) || 0,
       instrutor: instructor.trim(),
       status,
+      data_evento: eventDate || null,
+      categoria,
+      modalidade,
+      tipo,
     };
     if (isSuperAdmin) {
       payload.instituicao_id = instituicaoId;
@@ -273,6 +280,53 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                     <option value="draft">Draft</option>
                     <option value="completed">Completed</option>
                   </select>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                      CATEGORY
+                    </label>
+                    <select
+                      value={categoria}
+                      onChange={(e) => setCategoria(e.target.value as CursoApiCategoria)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="technology">Technology</option>
+                      <option value="business">Business</option>
+                      <option value="design">Design</option>
+                      <option value="data_science">Data Science</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                      MODALITY
+                    </label>
+                    <select
+                      value={modalidade}
+                      onChange={(e) => setModalidade(e.target.value as CursoApiModalidade)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="online">Online</option>
+                      <option value="presencial">In-Person</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                      TYPE
+                    </label>
+                    <select
+                      value={tipo}
+                      onChange={(e) => setTipo(e.target.value as CursoApiTipo)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="workshop">Workshop</option>
+                      <option value="seminar">Seminar</option>
+                      <option value="exam_prep">Exam Prep</option>
+                      <option value="summit">Summit</option>
+                      <option value="conference">Conference</option>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Description */}

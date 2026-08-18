@@ -6,30 +6,52 @@ Plataforma SaaS multi-tenant para emissão, gestão e validação de certificado
 
 ```text
 .
-├── frontend/              # React + Vite + TypeScript + Tailwind
-├── backend/               # FastAPI + SQLAlchemy + PostgreSQL
-├── docker-compose.yml
+├── frontend/                     # React + Vite + TypeScript + Tailwind
+├── backend/                      # FastAPI + SQLAlchemy + PostgreSQL
+├── docker-compose.yml            # serviços (sem ports de API/MinIO no host)
+├── docker-compose.override.yml   # ports de dev (auto-load no `docker compose up`)
+├── docker-compose.prod.yml       # Caddy 80/443 na VPS
+├── Caddyfile
 ├── .env.example
 ├── .gitignore
 └── .cursorrules
 ```
 
-## Subir com Docker
+## Subir localmente (dev)
 
 ```bash
 cp .env.example .env
 docker compose up --build
 ```
 
-Serviços:
+`docker compose up` junta `docker-compose.yml` + `docker-compose.override.yml` e publica as portas de desenvolvimento.
 
 | Serviço   | URL |
 |-----------|-----|
 | Frontend  | http://localhost:3000 |
-| API/docs  | http://localhost:8000/api/docs (também via http://localhost/api/docs) |
+| Vite (hot reload) | `cd frontend && npm run dev` (3000 ou 3001) |
+| API/docs  | http://localhost:8000/api/docs |
 | MinIO API | http://localhost:9000 |
 | MinIO UI  | http://localhost:9001 |
 | Postgres  | só rede interna (`db:5432`) |
+
+Páginas públicas (sem login): `/validar`, `/eventos`.
+
+## Deploy na VPS (produção)
+
+1. Clone o repo, `cp .env.example .env` e **troque todos os segredos**.
+2. Defina `ENVIRONMENT=production`, `DOMAIN` (ex.: `nexusgenius.com.br`) e `ACME_EMAIL`.
+3. Aponte o DNS A/AAAA de `DOMAIN` para o IP da VPS **antes** de subir (Let's Encrypt).
+4. `S3_PUBLIC_ENDPOINT_URL=https://SEU_DOMINIO/files` (Caddy faz proxy `/files` → MinIO interno).
+5. Suba **sem** o override de portas locais:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+Nesse modo a API (8000) e o MinIO (9000/9001) **não** ficam no host. Só 80/443 via Caddy. Swagger fica desligado.
+
+Zerar dados: `docker compose down -v` (apaga volumes) e subir de novo → seed recria só o SuperAdmin.
 
 ## Frontend (dev sem Docker)
 
@@ -165,6 +187,36 @@ curl -OJ -H "Authorization: Bearer $TOKEN" \
 
 # Validação pública (sem token)
 curl -s http://localhost:8000/api/certificados/validar/<codigo_validacao>
+
+# Catálogo público de eventos
+curl -s http://localhost:8000/api/publico/cursos
+
+# Inscrição pública (só cursos upcoming de instituição active)
+curl -s -X POST http://localhost:8000/api/publico/cursos/<uuid-curso>/inscrever \
+  -H 'Content-Type: application/json' \
+  -d '{"nome":"Ana Lima","email":"ana@email.com","documento":"12345678901"}'
+```
+
+Páginas públicas no frontend: `/validar`, `/validar/:codigo`, `/eventos`.
+
+### Alterar senha
+
+```bash
+curl -s -X POST http://localhost:8000/api/auth/alterar-senha \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"senha_atual":"changeme_superadmin","senha_nova":"novaSenha123"}'
+```
+
+### Import CSV de alunos
+
+Cabeçalho: `nome,email,documento` (`status` opcional). SuperAdmin envia `instituicao_id` no form.
+
+```bash
+curl -s -X POST http://localhost:8000/api/alunos/importar \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@./alunos.csv" \
+  -F "instituicao_id=<uuid-da-instituicao>"
 ```
 
 ### Schema (multi-tenant)
@@ -173,6 +225,6 @@ curl -s http://localhost:8000/api/certificados/validar/<codigo_validacao>
 |--------|------------|
 | `instituicoes` | tenant; `logo_url` / `assinatura_url` (S3) |
 | `usuarios` | `super_admin` ou `instituicao_admin` |
-| `cursos` | sempre com `instituicao_id` |
+| `cursos` | sempre com `instituicao_id`; `data_evento`, `categoria`, `modalidade`, `tipo` |
 | `alunos` | unique por tenant (email/documento) |
 | `certificados` | `codigo_validacao` (UUID) para validação pública |

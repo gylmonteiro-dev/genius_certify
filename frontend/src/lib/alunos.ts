@@ -59,3 +59,31 @@ export async function createAluno(
     token,
   );
 }
+
+export interface AlunoImportError {
+  linha: number;
+  mensagem: string;
+}
+
+export interface AlunoImportResult {
+  created: number;
+  skipped: number;
+  errors: AlunoImportError[];
+}
+
+export async function importAlunosCsv(
+  token: string,
+  file: File,
+  instituicaoId?: string,
+): Promise<AlunoImportResult> {
+  const body = new FormData();
+  body.append('file', file);
+  if (instituicaoId) {
+    body.append('instituicao_id', instituicaoId);
+  }
+  return apiRequest<AlunoImportResult>(
+    '/api/alunos/importar',
+    { method: 'POST', body },
+    token,
+  );
+}

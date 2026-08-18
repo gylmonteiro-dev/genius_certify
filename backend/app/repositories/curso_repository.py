@@ -2,9 +2,11 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.certificado import Certificado
-from app.models.curso import Curso
+from app.models.curso import Curso, CursoStatus
+from app.models.instituicao import Instituicao, InstituicaoStatus
 
 
 class CursoRepository:
@@ -36,6 +38,41 @@ class CursoRepository:
         stmt = stmt.offset(skip).limit(limit)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
+
+    async def list_publico(
+        self,
+        *,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> list[Curso]:
+        stmt = (
+            select(Curso)
+            .join(Instituicao)
+            .where(
+                Curso.status != CursoStatus.DRAFT,
+                Instituicao.status == InstituicaoStatus.ACTIVE,
+            )
+            .options(selectinload(Curso.instituicao))
+            .order_by(Curso.data_evento.asc().nulls_last(), Curso.titulo.asc())
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().unique().all())
+
+    async def get_publico(self, curso_id: UUID) -> Curso | None:
+        stmt = (
+            select(Curso)
+            .join(Instituicao)
+            .where(
+                Curso.id == curso_id,
+                Curso.status != CursoStatus.DRAFT,
+                Instituicao.status == InstituicaoStatus.ACTIVE,
+            )
+            .options(selectinload(Curso.instituicao))
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def create(self, **fields: object) -> Curso:
         curso = Curso(**fields)

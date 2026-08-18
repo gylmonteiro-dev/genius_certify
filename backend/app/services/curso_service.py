@@ -56,6 +56,10 @@ class CursoService:
             carga_horaria=data.carga_horaria,
             instrutor=data.instrutor.strip(),
             status=data.status,
+            data_evento=data.data_evento,
+            categoria=data.categoria,
+            modalidade=data.modalidade,
+            tipo=data.tipo.strip() if data.tipo else None,
         )
         await self._session.commit()
         await self._session.refresh(curso)
@@ -104,6 +108,8 @@ class CursoService:
             payload["titulo"] = payload["titulo"].strip()
         if "instrutor" in payload and payload["instrutor"] is not None:
             payload["instrutor"] = payload["instrutor"].strip()
+        if "tipo" in payload and payload["tipo"] is not None:
+            payload["tipo"] = payload["tipo"].strip() or None
 
         for field, value in payload.items():
             setattr(curso, field, value)

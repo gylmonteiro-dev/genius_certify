@@ -40,3 +40,18 @@ export async function loginRequest(email: string, password: string): Promise<Log
 export async function fetchCurrentUser(token: string): Promise<AuthUser> {
   return apiRequest<AuthUser>('/api/auth/me', { method: 'GET' }, token);
 }
+
+export async function alterarSenhaRequest(
+  token: string,
+  senhaAtual: string,
+  senhaNova: string,
+): Promise<void> {
+  await apiRequest(
+    '/api/auth/alterar-senha',
+    {
+      method: 'POST',
+      body: JSON.stringify({ senha_atual: senhaAtual, senha_nova: senhaNova }),
+    },
+    token,
+  );
+}

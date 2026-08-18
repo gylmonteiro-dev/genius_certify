@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     # Sem ports no host: backend acessa via rede Docker (db:5432).
-    # Evita conflito com Postgres local (5432/5433) e é o padrão seguro.
+    # Portas de API/MinIO/frontend ficam no docker-compose.override.yml (dev).
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -33,9 +33,6 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - minio_data:/data
-    ports:
-      - "9000:9000"
-      - "9001:9001"
     networks:
       - nexus
 
@@ -48,6 +45,7 @@ services:
     env_file:
       - .env
     environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-1440}
@@ -65,8 +63,6 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
-    ports:
-      - "8000:8000" # Swagger/API em dev; em prod prefira só o proxy do frontend
     networks:
       - nexus
 
@@ -78,9 +74,6 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
-    ports:
-      # Host 3000 evita conflito com Apache na 80
-      - "3000:80"
     networks:
       - nexus
 

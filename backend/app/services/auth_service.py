@@ -2,7 +2,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import UnauthorizedError
+from app.core.exceptions import AppError, UnauthorizedError
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.usuario import Usuario, UsuarioRole
 from app.repositories.usuario_repository import UsuarioRepository
@@ -34,6 +34,21 @@ class AuthService:
         if usuario is None or not usuario.is_active:
             raise UnauthorizedError("Usuário inválido ou inativo")
         return usuario
+
+    async def alterar_senha(
+        self,
+        usuario: Usuario,
+        *,
+        senha_atual: str,
+        senha_nova: str,
+    ) -> None:
+        if not verify_password(senha_atual, usuario.hashed_password):
+            raise UnauthorizedError("Senha atual inválida")
+        if senha_atual == senha_nova:
+            raise AppError("A nova senha deve ser diferente da atual")
+        usuario.hashed_password = hash_password(senha_nova)
+        await self._usuarios.save(usuario)
+        await self._session.commit()
 
     @staticmethod
     def to_response(usuario: Usuario) -> UsuarioResponse:
