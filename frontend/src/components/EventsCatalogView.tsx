@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { EventItem } from '../types';
+import { labelEventModality, labelEventType, useT } from '../i18n';
 
 interface EventsCatalogViewProps {
   events: EventItem[];
@@ -10,19 +11,20 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
   events,
   onSelectRegister,
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('All Events');
+  const { t } = useT();
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const categories = [
-    'All Events',
-    'Technology',
-    'Business',
-    'Design',
-    'Upcoming (30 days)',
+    { id: 'all', label: t('catalog.filterAll') },
+    { id: 'Technology', label: t('eventMeta.category.technology') },
+    { id: 'Business', label: t('eventMeta.category.business') },
+    { id: 'Design', label: t('eventMeta.category.design') },
+    { id: 'upcoming', label: t('catalog.filterUpcoming') },
   ];
 
   const filteredEvents = events.filter((evt) => {
-    if (selectedCategory === 'All Events') return true;
-    if (selectedCategory === 'Upcoming (30 days)') return evt.status === 'Upcoming';
+    if (selectedCategory === 'all') return true;
+    if (selectedCategory === 'upcoming') return evt.status === 'Upcoming';
     return evt.category === selectedCategory;
   });
 
@@ -31,28 +33,28 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
       {/* Page Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-          Available Events
+          {t('catalog.title')}
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Discover and register for certification events and workshops.
+          {t('catalog.subtitle')}
         </p>
       </div>
 
       {/* Category Pills Filter */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
         {categories.map((cat) => {
-          const isActive = selectedCategory === cat;
+          const isActive = selectedCategory === cat.id;
           return (
             <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
               className={`px-4 py-1.5 rounded-full font-bold text-xs uppercase tracking-wider shrink-0 transition-colors ${
                 isActive
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              {cat}
+              {cat.label}
             </button>
           );
         })}
@@ -61,7 +63,7 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
       {/* Bento Grid */}
       {filteredEvents.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-xl py-16 text-center text-sm text-slate-500">
-          No events available right now.
+          {t('catalog.empty')}
         </div>
       ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -86,7 +88,7 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
 
                 {/* Badge top right */}
                 <div className="absolute top-3 right-3 px-2.5 py-0.5 bg-blue-600 text-white rounded-md font-bold text-[10px] uppercase tracking-wider shadow-xs">
-                  {evt.type}
+                  {labelEventType(t, evt.type)}
                 </div>
               </div>
 
@@ -111,15 +113,15 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100">
                   {evt.spotsLeft ? (
                     <span className="text-xs font-semibold px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
-                      {evt.spotsLeft} Spots Left
+                      {t('catalog.spotsLeft', { count: evt.spotsLeft })}
                     </span>
                   ) : evt.closingSoon ? (
                     <span className="text-xs font-semibold px-2.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full">
-                      Closing Soon
+                      {t('catalog.closingSoon')}
                     </span>
                   ) : (
                     <span className="text-xs font-semibold px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-full">
-                      {evt.modality}
+                      {labelEventModality(t, evt.modality)}
                     </span>
                   )}
 
@@ -127,7 +129,7 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
                     onClick={() => onSelectRegister(evt)}
                     className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold text-xs transition-colors shadow-xs"
                   >
-                    Register
+                    {t('catalog.register')}
                   </button>
                 </div>
               </div>

@@ -7,8 +7,10 @@ import {
   validarCertificadoPublico,
 } from '../lib/certificados';
 import { PublicLayout } from './PublicLayout';
+import { useT } from '../i18n';
 
 export const PublicValidateView: React.FC = () => {
+  const { t } = useT();
   const { codigo } = useParams<{ codigo?: string }>();
   const navigate = useNavigate();
   const [codigoInput, setCodigoInput] = useState(codigo ?? '');
@@ -32,7 +34,7 @@ export const PublicValidateView: React.FC = () => {
       }
     } catch (err) {
       setResult('INVALID');
-      setMessage(err instanceof ApiError ? err.message : 'Invalid validation code.');
+      setMessage(err instanceof ApiError ? err.message : t('public.invalidCode'));
     } finally {
       setIsVerifying(false);
     }
@@ -58,10 +60,10 @@ export const PublicValidateView: React.FC = () => {
       <div className="max-w-xl mx-auto p-6 md:p-10 space-y-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            Validate a certificate
+            {t('public.validateTitle')}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Paste the validation UUID printed on the certificate.
+            {t('public.validateHint')}
           </p>
         </div>
 
@@ -73,7 +75,7 @@ export const PublicValidateView: React.FC = () => {
             type="text"
             value={codigoInput}
             onChange={(e) => setCodigoInput(e.target.value)}
-            placeholder="codigo_validacao (UUID)"
+            placeholder={t('public.validatePlaceholder')}
             className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
@@ -81,13 +83,13 @@ export const PublicValidateView: React.FC = () => {
             disabled={isVerifying}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-2.5 rounded-md disabled:opacity-60"
           >
-            {isVerifying ? 'Verifying...' : 'Validate'}
+            {isVerifying ? t('public.verifying') : t('public.validate')}
           </button>
         </form>
 
         {result && result !== 'NOT_FOUND' && result !== 'INVALID' && (
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-sm text-emerald-900 space-y-1">
-            <p className="font-bold text-emerald-800">Valid certificate</p>
+            <p className="font-bold text-emerald-800">{t('public.validCertificate')}</p>
             <p>{result.studentName}</p>
             <p>{result.eventName}</p>
             <p className="text-emerald-700">{result.institutionName}</p>
@@ -98,7 +100,7 @@ export const PublicValidateView: React.FC = () => {
 
         {(result === 'NOT_FOUND' || result === 'INVALID') && (
           <div className="bg-rose-50 border border-rose-200 rounded-xl p-5 text-sm text-rose-800 font-semibold">
-            {message || 'Certificate not found or invalid.'}
+            {message || t('public.notFound')}
           </div>
         )}
       </div>

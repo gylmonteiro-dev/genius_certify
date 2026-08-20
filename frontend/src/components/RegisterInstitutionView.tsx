@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { InstituicaoCreatePayload } from '../lib/instituicoes';
+import { useT } from '../i18n';
 
 interface RegisterInstitutionViewProps {
   onSubmit: (payload: InstituicaoCreatePayload) => Promise<void>;
@@ -14,6 +15,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
   isSubmitting = false,
   errorMessage = null,
 }) => {
+  const { t } = useT();
   const [instName, setInstName] = useState('');
   const [codigo, setCodigo] = useState('');
   const [cnpj, setCnpj] = useState('');
@@ -31,15 +33,15 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
 
     const cnpjDigits = cnpj.replace(/\D/g, '');
     if (!instName.trim() || !codigo.trim() || !respName.trim() || !email.trim()) {
-      setFormError('Fill in institution name, code, responsible name, and email.');
+      setFormError(t('registerInstitution.fillRequired'));
       return;
     }
     if (cnpjDigits.length !== 14) {
-      setFormError('CNPJ must contain 14 digits.');
+      setFormError(t('registerInstitution.cnpjInvalid'));
       return;
     }
     if (adminPassword.length < 8) {
-      setFormError('Admin password must be at least 8 characters.');
+      setFormError(t('registerInstitution.passwordMin'));
       return;
     }
 
@@ -63,10 +65,10 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
     <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-6">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-          Register New Institution
+          {t('registerInstitution.title')}
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Add a new educational institution to the certification network.
+          {t('registerInstitution.subtitle')}
         </p>
       </div>
 
@@ -87,7 +89,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
                 account_balance
               </span>
               <h2 className="text-lg font-bold text-slate-900">
-                Institution Details
+                {t('registerInstitution.details')}
               </h2>
             </div>
 
@@ -97,7 +99,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
                   htmlFor="inst_name"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
                 >
-                  Institution Name
+                  {t('registerInstitution.name')}
                 </label>
                 <input
                   id="inst_name"
@@ -106,7 +108,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
                   disabled={isSubmitting}
                   value={instName}
                   onChange={(e) => setInstName(e.target.value)}
-                  placeholder="e.g., Global Tech University"
+                  placeholder={t('registerInstitution.namePlaceholder')}
                   className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all disabled:opacity-60"
                 />
               </div>
@@ -116,7 +118,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
                   htmlFor="codigo"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
                 >
-                  Institution Code
+                  {t('registerInstitution.code')}
                 </label>
                 <input
                   id="codigo"
@@ -135,7 +137,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
                   htmlFor="cnpj"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
                 >
-                  CNPJ / Tax ID
+                  {t('institutions.cnpj')}
                 </label>
                 <input
                   id="cnpj"
@@ -154,7 +156,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
                   htmlFor="address"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
                 >
-                  Full Address
+                  {t('registerInstitution.address')}
                 </label>
                 <input
                   id="address"
@@ -162,7 +164,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
                   disabled={isSubmitting}
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Street, Number, City, State, ZIP"
+                  placeholder={t('registerInstitution.addressPlaceholder')}
                   className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all disabled:opacity-60"
                 />
               </div>
@@ -175,7 +177,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
                 person
               </span>
               <h2 className="text-lg font-bold text-slate-900">
-                Responsible User
+                {t('registerInstitution.responsible')}
               </h2>
             </div>
 
@@ -185,7 +187,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
                   htmlFor="resp_name"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
                 >
-                  Full Name
+                  {t('common.fullName')}
                 </label>
                 <input
                   id="resp_name"
@@ -204,7 +206,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
                   htmlFor="email"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
                 >
-                  Email Address
+                  {t('registerInstitution.email')}
                 </label>
                 <input
                   id="email"
@@ -223,7 +225,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
                   htmlFor="phone"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
                 >
-                  Phone Number
+                  {t('registerInstitution.phone')}
                 </label>
                 <input
                   id="phone"
@@ -241,7 +243,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
                   htmlFor="admin_password"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
                 >
-                  Admin Password
+                  {t('registerInstitution.adminPassword')}
                 </label>
                 <input
                   id="admin_password"
@@ -251,11 +253,11 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
                   disabled={isSubmitting}
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
-                  placeholder="Minimum 8 characters"
+                  placeholder={t('registerInstitution.passwordPlaceholder')}
                   className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all disabled:opacity-60"
                 />
                 <p className="mt-1 text-xs text-slate-400">
-                  Creates the institution admin account with this email and password.
+                  {t('registerInstitution.passwordHint')}
                 </p>
               </div>
             </div>
@@ -268,7 +270,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
               disabled={isSubmitting}
               className="px-4 py-2 rounded-md border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors disabled:opacity-60"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
@@ -278,7 +280,7 @@ export const RegisterInstitutionView: React.FC<RegisterInstitutionViewProps> = (
               <span className="material-symbols-outlined text-[18px]">
                 {isSubmitting ? 'progress_activity' : 'save'}
               </span>
-              {isSubmitting ? 'Saving...' : 'Register Institution'}
+              {isSubmitting ? t('common.saving') : t('registerInstitution.submit')}
             </button>
           </div>
         </form>

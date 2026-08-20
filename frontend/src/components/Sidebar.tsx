@@ -1,5 +1,7 @@
 import React from 'react';
 import { NavTab } from '../types';
+import { useT } from '../i18n';
+import { BrandLogo } from './BrandLogo';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -18,6 +20,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
   onLogout,
 }) => {
+  const { t } = useT();
   const isEventsActive = 
     currentTab === 'events' || 
     currentTab === 'create-event' || 
@@ -31,34 +34,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     {
       id: 'dashboard' as NavTab,
-      label: 'Dashboard',
+      label: t('nav.dashboard'),
       icon: 'dashboard',
     },
     {
       id: 'institutions' as NavTab,
-      label: 'Institutions',
+      label: t('nav.institutions'),
       icon: 'corporate_fare',
       isActive: isInstitutionsActive,
     },
     {
       id: 'certificates' as NavTab,
-      label: 'Certificates',
+      label: t('nav.certificates'),
       icon: 'verified',
     },
     {
       id: 'events' as NavTab,
-      label: 'Events',
+      label: t('nav.events'),
       icon: 'event',
       isActive: isEventsActive,
     },
     {
       id: 'students' as NavTab,
-      label: 'Students',
+      label: t('nav.students'),
       icon: 'group',
     },
     {
       id: 'settings' as NavTab,
-      label: 'Settings',
+      label: t('nav.settings'),
       icon: 'settings',
     },
   ];
@@ -81,18 +84,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         {/* Brand Header */}
         <div className="mb-6 px-2 mt-1">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center text-white font-bold text-base shadow-sm">
-              C
-            </div>
-            <div>
-              <h2 className="font-semibold text-xl leading-tight text-white tracking-tight">
-                CertifyPro
-              </h2>
-              <p className="text-xs text-slate-400">
-                Enterprise Admin
-              </p>
-            </div>
+          <div className="mb-5">
+            <BrandLogo onDark size="md" />
           </div>
 
           {/* Issue Certificate Primary Action Button */}
@@ -106,7 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
               add
             </span>
-            Issue Certificate
+            {t('nav.issueCertificate')}
           </button>
         </div>
 
@@ -145,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Quick Nav Sub-section: Event Views Direct Links */}
         <div className="py-3 border-t border-slate-800 px-1 my-2">
           <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase px-3 mb-2">
-            Quick Views
+            {t('nav.quickViews')}
           </p>
           <div className="space-y-1 text-xs">
             <button
@@ -158,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-              Manage Events Table
+              {t('nav.manageEvents')}
             </button>
 
             <button
@@ -171,7 +164,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-              Create Event & Preview
+              {t('nav.createEventPreview')}
             </button>
 
             <button
@@ -184,7 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              Available Events Bento
+              {t('nav.availableEventsBento')}
             </button>
 
             <button
@@ -197,7 +190,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-              Events Directory
+              {t('nav.eventsDirectory')}
             </button>
           </div>
         </div>
@@ -210,12 +203,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 href="#support"
                 onClick={(e) => {
                   e.preventDefault();
-                  alert('CertifyPro Enterprise Support: Contact support@certifypro.io or call +1 (800) 555-CERT');
+                  alert(t('support.contact'));
                 }}
                 className="flex items-center gap-3 px-3.5 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800/70 transition-colors"
               >
                 <span className="material-symbols-outlined text-[20px]">help_outline</span>
-                Support
+                {t('nav.support')}
               </a>
             </li>
             <li>
@@ -227,7 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className="w-full flex items-center gap-3 px-3.5 py-2 rounded-lg text-sm text-rose-400 hover:bg-rose-950/40 transition-colors"
               >
                 <span className="material-symbols-outlined text-[20px]">logout</span>
-                Sign Out
+                {t('nav.signOut')}
               </button>
             </li>
           </ul>

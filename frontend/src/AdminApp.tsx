@@ -35,6 +35,8 @@ import {
   updateInstituicaoStatus,
 } from './lib/instituicoes';
 import { CursoCreatePayload, createCurso, listCursos, mapCursoToUi } from './lib/cursos';
+import { APP_NAME } from './lib/brand';
+import { useT, labelInstitutionStatus } from './i18n';
 import { AlunoCreatePayload, createAluno, importAlunosCsv, listAlunos, mapAlunoToUi } from './lib/alunos';
 import {
   CertificadoEmitPayload,
@@ -54,6 +56,7 @@ interface AdminAppProps {
 }
 
 export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
+  const { t } = useT();
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -156,14 +159,14 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       setInstitutions(instUi);
       if (instResult.status === 'rejected') {
         const err = instResult.reason;
-        setInstitutionsError(err instanceof ApiError ? err.message : 'Unable to load institutions.');
+        setInstitutionsError(err instanceof ApiError ? err.message : t('errors.loadInstitutions'));
       }
 
       if (cursoResult.status === 'fulfilled') {
         setEvents(cursoResult.value.map((item) => mapCursoToUi(item, instUi)));
       } else {
         const err = cursoResult.reason;
-        setEventsError(err instanceof ApiError ? err.message : 'Unable to load events.');
+        setEventsError(err instanceof ApiError ? err.message : t('errors.loadEvents'));
         setEvents([]);
       }
 
@@ -171,7 +174,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         setStudents(alunoResult.value.map((item) => mapAlunoToUi(item, instUi)));
       } else {
         const err = alunoResult.reason;
-        setStudentsError(err instanceof ApiError ? err.message : 'Unable to load students.');
+        setStudentsError(err instanceof ApiError ? err.message : t('errors.loadStudents'));
         setStudents([]);
       }
 
@@ -179,7 +182,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         setCertificates(certResult.value.map(mapCertificadoToUi));
       } else {
         const err = certResult.reason;
-        setCertificatesError(err instanceof ApiError ? err.message : 'Unable to load certificates.');
+        setCertificatesError(err instanceof ApiError ? err.message : t('errors.loadCertificates'));
         setCertificates([]);
       }
 
@@ -201,11 +204,11 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     setPasswordSuccess(null);
     try {
       await alterarSenhaRequest(authToken, currentPassword, newPassword);
-      setPasswordSuccess('Password updated.');
-      showToast('Password updated.');
+      setPasswordSuccess(t('toasts.passwordUpdated'));
+      showToast(t('toasts.passwordUpdated'));
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Unable to update password.';
+        err instanceof ApiError ? err.message : t('errors.updatePassword');
       setPasswordError(message);
       throw err;
     } finally {
@@ -219,10 +222,10 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       const result = await importAlunosCsv(authToken, file, instituicaoId);
       const items = await listAlunos(authToken);
       setStudents(items.map((item) => mapAlunoToUi(item, institutions)));
-      showToast(`Imported ${result.created} student(s).`);
+      showToast(t('toasts.importedStudents', { created: result.created }));
       return result;
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Unable to import CSV.';
+      const message = err instanceof ApiError ? err.message : t('errors.importCsv');
       showToast(message);
       throw err;
     } finally {
@@ -237,13 +240,13 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     try {
       const created = await createInstituicao(authToken, payload);
       setInstitutions((prev) => [mapInstituicaoToUi(created), ...prev]);
-      showToast(`Institution "${created.nome}" registered successfully!`);
+      showToast(t('toasts.institutionRegistered', { name: created.nome }));
       setCurrentTab('institutions');
     } catch (err) {
       const message =
         err instanceof ApiError
           ? err.message
-          : 'Unable to register institution.';
+          : t('errors.registerInstitution');
       setRegisterError(message);
     } finally {
       setRegisterLoading(false);
@@ -260,10 +263,14 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       setInstitutions((prev) =>
         prev.map((i) => (i.id === id ? mapInstituicaoToUi(updated) : i)),
       );
-      showToast(`Institution status updated to ${newStatus}`);
+      showToast(
+        t('toasts.institutionStatus', {
+          status: labelInstitutionStatus(t, newStatus),
+        }),
+      );
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Unable to update institution.';
+        err instanceof ApiError ? err.message : t('errors.updateInstitution');
       showToast(message);
     }
   };
@@ -275,10 +282,10 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       setInstitutions((prev) =>
         prev.map((i) => (i.id === id ? mapInstituicaoToUi(updated) : i)),
       );
-      showToast('Institution suspended.');
+      showToast(t('toasts.institutionSuspended'));
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Unable to suspend institution.';
+        err instanceof ApiError ? err.message : t('errors.suspendInstitution');
       showToast(message);
     }
   };
@@ -290,11 +297,11 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     try {
       const created = await createCurso(authToken, payload);
       setEvents((prev) => [mapCursoToUi(created, institutions), ...prev]);
-      showToast(`Event "${created.titulo}" published successfully!`);
+      showToast(t('toasts.eventPublished', { title: created.titulo }));
       setCurrentTab('events');
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Unable to create event.';
+        err instanceof ApiError ? err.message : t('errors.createEvent');
       setCreateEventError(message);
     } finally {
       setCreateEventLoading(false);
@@ -308,10 +315,10 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     try {
       const created = await createAluno(authToken, payload);
       setStudents((prev) => [mapAlunoToUi(created, institutions), ...prev]);
-      showToast(`Student "${created.nome}" registered successfully!`);
+      showToast(t('toasts.studentRegistered', { name: created.nome }));
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Unable to register student.';
+        err instanceof ApiError ? err.message : t('errors.registerStudent');
       setCreateStudentError(message);
       throw err;
     } finally {
@@ -327,11 +334,16 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       const created = await emitirCertificado(authToken, payload);
       const mapped = mapCertificadoToUi(created);
       setCertificates((prev) => [mapped, ...prev]);
-      showToast(`Certificate ${created.numero_certificado} issued for ${created.aluno_nome}!`);
+      showToast(
+        t('toasts.certificateIssued', {
+          number: created.numero_certificado,
+          name: created.aluno_nome,
+        }),
+      );
       setIsIssueModalOpen(false);
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Unable to issue certificate.';
+        err instanceof ApiError ? err.message : t('errors.issueCertificate');
       setIssueError(message);
     } finally {
       setIssueLoading(false);
@@ -344,24 +356,24 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       const updated = await revogarCertificado(authToken, id);
       const mapped = mapCertificadoToUi(updated);
       setCertificates((prev) => prev.map((c) => (c.id === id ? mapped : c)));
-      showToast('Certificate revoked.');
+      showToast(t('toasts.certificateRevoked'));
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Unable to revoke certificate.';
+        err instanceof ApiError ? err.message : t('errors.revokeCertificate');
       showToast(message);
     }
   };
 
   const handleDownloadPdf = async (cert: Certificate) => {
     if (!authToken || !cert.alunoId) {
-      showToast('PDF is only available for issued certificates.');
+      showToast(t('errors.pdfOnlyIssued'));
       return;
     }
     try {
       await downloadCertificadoPdf(authToken, cert.id, `${cert.certificateNumber}.pdf`);
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Unable to download PDF.';
+        err instanceof ApiError ? err.message : t('errors.downloadPdf');
       showToast(message);
     }
   };
@@ -382,7 +394,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       }
     } catch (err) {
       setVerifyResult('INVALID');
-      setVerifyMessage(err instanceof ApiError ? err.message : 'Invalid validation code.');
+      setVerifyMessage(err instanceof ApiError ? err.message : t('errors.invalidCode'));
     } finally {
       setIsVerifying(false);
     }
@@ -413,20 +425,20 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         onLogout={onLogout}
         titleOverride={
           currentTab === 'create-event'
-            ? 'Create Event'
+            ? t('topbar.createEvent')
             : currentTab === 'institutions'
-              ? 'Institutions'
+              ? t('nav.institutions')
               : currentTab === 'register-institution'
-                ? 'Register Institution'
+                ? t('topbar.registerInstitution')
                 : currentTab === 'events-catalog'
-                  ? 'Available Events'
+                  ? t('topbar.availableEvents')
                   : currentTab === 'events-directory'
-                    ? 'Directory'
+                    ? t('topbar.directory')
                     : currentTab === 'certificates'
-                      ? 'Certificates'
+                      ? t('nav.certificates')
                       : currentTab === 'students'
-                        ? 'Students Roster'
-                        : 'CertifyPro'
+                        ? t('topbar.studentsRoster')
+                        : APP_NAME
         }
       />
 

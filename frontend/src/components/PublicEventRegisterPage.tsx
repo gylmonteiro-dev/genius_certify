@@ -9,8 +9,10 @@ import {
 } from '../lib/cursos';
 import { EventRegistrationView } from './EventRegistrationView';
 import { PublicLayout } from './PublicLayout';
+import { useT } from '../i18n';
 
 export const PublicEventRegisterPage: React.FC = () => {
+  const { t } = useT();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [event, setEvent] = useState<EventItem | null>(null);
@@ -30,7 +32,7 @@ export const PublicEventRegisterPage: React.FC = () => {
         if (!cancelled) setEvent(mapCursoPublicToUi(item));
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof ApiError ? err.message : 'Event not found.');
+          setError(err instanceof ApiError ? err.message : t('public.eventNotFound'));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -53,7 +55,7 @@ export const PublicEventRegisterPage: React.FC = () => {
       });
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : 'Unable to complete registration.';
+        err instanceof ApiError ? err.message : t('public.registerFallbackError');
       setSubmitError(message);
       throw err;
     } finally {
@@ -68,7 +70,7 @@ export const PublicEventRegisterPage: React.FC = () => {
           <span className="material-symbols-outlined animate-spin text-blue-600">
             progress_activity
           </span>
-          Loading event...
+          {t('public.loadingEvent')}
         </div>
       )}
       {error && (

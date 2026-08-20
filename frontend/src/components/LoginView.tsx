@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useT } from '../i18n';
+import { APP_NAME } from '../lib/brand';
+import { BrandLogo } from './BrandLogo';
+import { LanguageSwitch } from './LanguageSwitch';
 
 interface LoginViewProps {
   onSubmit: (email: string, password: string) => Promise<void>;
@@ -12,6 +16,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   isSubmitting = false,
   errorMessage = null,
 }) => {
+  const { t } = useT();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +28,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex font-sans">
+    <div className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex font-sans relative">
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageSwitch />
+      </div>
       {/* Brand panel — mirrors sidebar palette */}
       <aside className="hidden lg:flex w-[42%] max-w-[520px] bg-[#0f172a] text-slate-300 flex-col justify-between p-10 relative overflow-hidden">
         <div className="absolute inset-0 opacity-30 pointer-events-none"
@@ -34,38 +42,30 @@ export const LoginView: React.FC<LoginViewProps> = ({
         />
 
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center text-white font-bold text-lg shadow-sm">
-              C
-            </div>
-            <div>
-              <h1 className="font-semibold text-2xl leading-tight text-white tracking-tight">
-                CertifyPro
-              </h1>
-              <p className="text-xs text-slate-400">Enterprise Admin</p>
-            </div>
+          <div className="mb-10">
+            <BrandLogo onDark size="lg" />
           </div>
 
           <h2 className="text-3xl font-bold text-white tracking-tight leading-snug max-w-sm">
-            Secure certificate management for institutions.
+            {t('login.headline')}
           </h2>
           <p className="mt-4 text-sm text-slate-400 max-w-sm leading-relaxed">
-            Sign in to issue, validate and manage digital certificates across your multi-tenant network.
+            {t('login.subtitle')}
           </p>
         </div>
 
         <div className="relative z-10 space-y-3 text-xs text-slate-400">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-blue-400 text-[18px]">verified_user</span>
-            JWT authentication & RBAC
+            {t('login.featureAuth')}
           </div>
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-blue-400 text-[18px]">domain</span>
-            Isolated institution tenants
+            {t('login.featureTenants')}
           </div>
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-blue-400 text-[18px]">picture_as_pdf</span>
-            On-the-fly PDF certificates
+            {t('login.featurePdf')}
           </div>
         </div>
       </aside>
@@ -73,21 +73,15 @@ export const LoginView: React.FC<LoginViewProps> = ({
       {/* Form panel */}
       <main className="flex-1 flex items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-9 h-9 rounded-lg bg-blue-500 flex items-center justify-center text-white font-bold shadow-sm">
-              C
-            </div>
-            <div>
-              <h1 className="font-semibold text-xl text-slate-900 tracking-tight">CertifyPro</h1>
-              <p className="text-xs text-slate-500">Enterprise Admin</p>
-            </div>
+          <div className="lg:hidden mb-8">
+            <BrandLogo size="md" />
           </div>
 
           <div className="bg-white border border-slate-200 rounded-xl p-6 md:p-8 shadow-sm">
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Sign in</h2>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t('login.signIn')}</h2>
               <p className="text-sm text-slate-500 mt-1">
-                Use your administrator credentials to access the console.
+                {t('login.signInHint')}
               </p>
             </div>
 
@@ -97,7 +91,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   htmlFor="login_email"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
                 >
-                  Email
+                  {t('common.email')}
                 </label>
                 <input
                   id="login_email"
@@ -116,7 +110,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   htmlFor="login_password"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
                 >
-                  Password
+                  {t('common.password')}
                 </label>
                 <div className="relative">
                   <input
@@ -134,7 +128,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                   >
                     <span className="material-symbols-outlined text-[18px]">
                       {showPassword ? 'visibility_off' : 'visibility'}
@@ -158,12 +152,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 {isSubmitting ? (
                   <>
                     <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                    Signing in...
+                    {t('login.signingIn')}
                   </>
                 ) : (
                   <>
                     <span className="material-symbols-outlined text-[18px]">login</span>
-                    Sign in
+                    {t('login.signIn')}
                   </>
                 )}
               </button>
@@ -172,15 +166,15 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
           <p className="text-center text-[11px] text-slate-400 mt-6 space-x-3">
             <Link to="/validar" className="text-blue-600 hover:underline font-semibold">
-              Validate certificate
+              {t('login.validateCertificate')}
             </Link>
             <span>·</span>
             <Link to="/eventos" className="text-blue-600 hover:underline font-semibold">
-              Public events
+              {t('login.publicEvents')}
             </Link>
           </p>
           <p className="text-center text-[11px] text-slate-400 mt-2">
-            CertifyPro System · Nexus Genius
+            {APP_NAME}
           </p>
         </div>
       </main>

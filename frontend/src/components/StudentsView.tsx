@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Institution, Student } from '../types';
 import { AlunoCreatePayload, AlunoImportResult } from '../lib/alunos';
 import { ApiError } from '../lib/api';
+import { useT, labelStudentStatus } from '../i18n';
 
 interface StudentsViewProps {
   students: Student[];
@@ -28,6 +29,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   onImportCsv,
   isImporting = false,
 }) => {
+  const { t } = useT();
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [nome, setNome] = useState('');
@@ -58,11 +60,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     e.preventDefault();
     setFormError(null);
     if (!nome.trim() || !email.trim() || documento.trim().length < 5) {
-      setFormError('Fill name, email, and a document with at least 5 characters.');
+      setFormError(t('students.fillRequired'));
       return;
     }
     if (isSuperAdmin && !instituicaoId) {
-      setFormError('Select an institution.');
+      setFormError(t('students.selectInstitution'));
       return;
     }
     const payload: AlunoCreatePayload = {
@@ -85,17 +87,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-            Registered Students
+            {t('students.title')}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Student roster loaded from the API.
+            {t('students.subtitle')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {onImportCsv && (
             <label className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-2.5 rounded-md font-semibold text-sm transition-colors flex items-center gap-2 shadow-sm cursor-pointer">
               <span className="material-symbols-outlined text-[18px]">upload_file</span>
-              {isImporting ? 'Importing...' : 'Import CSV'}
+              {isImporting ? t('students.importing') : t('students.importCsv')}
               <input
                 type="file"
                 accept=".csv,text/csv"
@@ -109,7 +111,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     setImportError(null);
                     setImportResult(null);
                     if (isSuperAdmin && !importInstituicaoId) {
-                      setImportError('Select an institution before importing CSV.');
+                      setImportError(t('students.csvNeedInstitution'));
                       return;
                     }
                     try {
@@ -122,7 +124,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       setImportError(
                         err instanceof ApiError
                           ? err.message
-                          : 'Unable to import CSV.',
+                          : t('errors.importCsv'),
                       );
                     }
                   })();
@@ -135,7 +137,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-md font-semibold text-sm transition-colors flex items-center gap-2 shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">person_add</span>
-            Add Student
+            {t('students.add')}
           </button>
         </div>
       </div>
@@ -143,14 +145,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {onImportCsv && isSuperAdmin && (
         <div className="max-w-md">
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-            Institution for CSV import
+            {t('students.csvInstitution')}
           </label>
           <select
             value={importInstituicaoId}
             onChange={(e) => setImportInstituicaoId(e.target.value)}
             className="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm"
           >
-            <option value="">Select institution</option>
+            <option value="">{t('common.selectInstitution')}</option>
             {institutions.map((inst) => (
               <option key={inst.id} value={inst.id}>
                 {inst.name}
@@ -170,12 +172,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         >
           {importError ||
             (importResult &&
-              `Imported ${importResult.created} student(s); skipped ${importResult.skipped}.`)}
+              t('students.imported', { created: importResult.created, skipped: importResult.skipped }))}
           {importResult && importResult.errors.length > 0 && (
             <ul className="mt-2 text-xs space-y-0.5">
               {importResult.errors.slice(0, 8).map((err) => (
                 <li key={`${err.linha}-${err.mensagem}`}>
-                  Line {err.linha}: {err.mensagem}
+                  {t('students.lineError', { line: err.linha, message: err.mensagem })}
                 </li>
               ))}
             </ul>
@@ -196,14 +198,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           {isSuperAdmin && (
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                Institution
+                {t('common.institution')}
               </label>
               <select
                 value={instituicaoId}
                 onChange={(e) => setInstituicaoId(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm"
               >
-                <option value="">Select institution</option>
+                <option value="">{t('common.selectInstitution')}</option>
                 {institutions.map((inst) => (
                   <option key={inst.id} value={inst.id}>
                     {inst.name}
@@ -215,7 +217,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                Full name
+                {t('common.fullName')}
               </label>
               <input
                 value={nome}
@@ -226,7 +228,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                Email
+                {t('common.email')}
               </label>
               <input
                 type="email"
@@ -238,12 +240,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                Document / ID
+                {t('students.document')}
               </label>
               <input
                 value={documento}
                 onChange={(e) => setDocumento(e.target.value)}
-                placeholder="CPF or student ID (min. 5 characters)"
+                placeholder={t('students.documentPlaceholder')}
                 className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm"
                 required
               />
@@ -258,14 +260,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               }}
               className="px-4 py-2 rounded-md border border-slate-200 text-sm font-semibold"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold disabled:opacity-60"
             >
-              {isSubmitting ? 'Saving...' : 'Save student'}
+              {isSubmitting ? t('common.saving') : t('students.save')}
             </button>
           </div>
         </form>
@@ -277,7 +279,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search student by name, email, or ID..."
+            placeholder={t('students.searchPlaceholder')}
             className="w-full sm:w-72 bg-white border border-slate-200 rounded-md px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -293,15 +295,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <span className="material-symbols-outlined animate-spin text-blue-600">
               progress_activity
             </span>
-            Loading students...
+            {t('students.loading')}
           </div>
         )}
 
         {!isLoading && filtered.length === 0 && (
           <div className="py-16 text-center text-sm text-slate-500">
             {students.length === 0
-              ? 'No students registered yet.'
-              : 'No students match the current search.'}
+              ? t('students.empty')
+              : t('students.noMatch')}
           </div>
         )}
 
@@ -310,12 +312,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-100/70 border-b border-slate-200 text-xs font-bold tracking-wider text-slate-500 uppercase">
-                  <th className="py-3.5 px-5">STUDENT NAME</th>
-                  <th className="py-3.5 px-5">DOCUMENT / ID</th>
-                  <th className="py-3.5 px-5">INSTITUTION</th>
-                  <th className="py-3.5 px-5 text-center">CERTIFICATES</th>
-                  <th className="py-3.5 px-5">JOINED DATE</th>
-                  <th className="py-3.5 px-5">STATUS</th>
+                  <th className="py-3.5 px-5">{t('students.colName')}</th>
+                  <th className="py-3.5 px-5">{t('students.colDocument')}</th>
+                  <th className="py-3.5 px-5">{t('students.colInstitution')}</th>
+                  <th className="py-3.5 px-5 text-center">{t('students.colCertificates')}</th>
+                  <th className="py-3.5 px-5">{t('students.colJoined')}</th>
+                  <th className="py-3.5 px-5">{t('students.colStatus')}</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
@@ -339,7 +341,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                             : 'bg-blue-50 text-blue-700 border-blue-200'
                         }`}
                       >
-                        {s.status}
+                        {labelStudentStatus(t, s.status)}
                       </span>
                     </td>
                   </tr>

@@ -29,7 +29,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="Nexus Genius Certify API",
+    title="Genius Certify API",
     version="0.1.0",
     docs_url="/api/docs" if _docs_enabled else None,
     openapi_url="/api/openapi.json" if _docs_enabled else None,

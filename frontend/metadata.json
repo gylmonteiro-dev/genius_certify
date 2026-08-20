@@ -1,6 +1,6 @@
 {
-  "name": "CertifyPro",
-  "description": "Enterprise Certificate Management & Event Registration Platform",
+  "name": "Genius Certify",
+  "description": "Emissão, gestão e validação de certificados digitais — Nexus Genius",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

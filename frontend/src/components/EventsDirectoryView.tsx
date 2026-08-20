@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { EventItem } from '../types';
+import { formatMonthLabel, labelEventStatus, useT } from '../i18n';
 
 interface EventsDirectoryViewProps {
   events: EventItem[];
@@ -14,6 +15,7 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
   errorMessage = null,
   onCreateEventClick,
 }) => {
+  const { t, dateLocale } = useT();
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -31,10 +33,10 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-            Events Directory
+            {t('eventsDirectory.title')}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Courses mapped from the certification API (`cursos`).
+            {t('eventsDirectory.subtitle')}
           </p>
         </div>
         {onCreateEventClick && (
@@ -43,7 +45,7 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-md font-semibold text-sm transition-colors flex items-center gap-2 shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            Create Event
+            {t('eventsDirectory.create')}
           </button>
         )}
       </div>
@@ -56,21 +58,21 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
               onChange={(e) => setStatusFilter(e.target.value)}
               className="bg-white border border-slate-200 rounded-md px-3 py-1.5 text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="All">All Statuses</option>
-              <option value="Upcoming">Upcoming</option>
-              <option value="Draft">Draft</option>
-              <option value="Completed">Completed</option>
+              <option value="All">{t('common.allStatuses')}</option>
+              <option value="Upcoming">{t('status.event.upcoming')}</option>
+              <option value="Draft">{t('status.event.draft')}</option>
+              <option value="Completed">{t('status.event.completed')}</option>
             </select>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Filter by title, instructor..."
+              placeholder={t('eventsDirectory.filterPlaceholder')}
               className="bg-white border border-slate-200 rounded-md px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <span className="text-xs text-slate-500 font-medium">
-            Showing {filtered.length} of {events.length}
+            {t('common.showingOf', { filtered: filtered.length, total: events.length })}
           </span>
         </div>
 
@@ -85,15 +87,15 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
             <span className="material-symbols-outlined animate-spin text-blue-600">
               progress_activity
             </span>
-            Loading events...
+            {t('eventsDirectory.loading')}
           </div>
         )}
 
         {!isLoading && filtered.length === 0 && (
           <div className="py-16 text-center text-sm text-slate-500">
             {events.length === 0
-              ? 'No courses registered yet.'
-              : 'No events match the current filters.'}
+              ? t('eventsDirectory.empty')
+              : t('eventsDirectory.noMatch')}
           </div>
         )}
 
@@ -103,12 +105,12 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
               <div key={evt.id} className="p-5 flex flex-col md:flex-row gap-4">
                 <div className="md:w-36 shrink-0 flex flex-col items-center justify-center bg-slate-50 rounded-lg p-4 border border-slate-200 text-center">
                   <span className="text-xs font-bold tracking-widest text-blue-600 uppercase mb-1">
-                    {evt.dateMonth}
+                    {formatMonthLabel(evt.date, dateLocale)}
                   </span>
                   <span className="text-3xl font-bold text-slate-900 leading-none">
                     {evt.dateDay}
                   </span>
-                  <span className="text-[10px] text-slate-400 mt-1">{evt.status}</span>
+                  <span className="text-[10px] text-slate-400 mt-1">{labelEventStatus(t, evt.status)}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="text-lg font-bold text-slate-900 mb-1">{evt.title}</h4>

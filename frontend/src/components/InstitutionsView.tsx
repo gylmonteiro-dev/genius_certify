@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Institution } from '../types';
+import { labelInstitutionStatus, useT } from '../i18n';
 
 interface InstitutionsViewProps {
   institutions: Institution[];
@@ -20,6 +21,7 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
   onUpdateStatus,
   onDeleteInstitution,
 }) => {
+  const { t } = useT();
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedInstId, setSelectedInstId] = useState<string | null>(null);
@@ -60,7 +62,7 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
           onClick={() => handleStatus(inst.id, 'Active')}
           className="w-full text-left px-2.5 py-1.5 hover:bg-emerald-50 text-emerald-700 font-medium rounded-md transition-colors"
         >
-          Set Active
+          {t('institutions.setActive')}
         </button>
       )}
       {inst.status !== 'Suspended' && (
@@ -69,7 +71,7 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
           onClick={() => handleStatus(inst.id, 'Suspended')}
           className="w-full text-left px-2.5 py-1.5 hover:bg-rose-50 text-rose-700 font-medium rounded-md transition-colors"
         >
-          Suspend
+          {t('institutions.suspend')}
         </button>
       )}
       <button
@@ -81,7 +83,7 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
         }}
         className="w-full text-left px-2.5 py-1.5 hover:bg-slate-100 text-slate-700 rounded-md transition-colors"
       >
-        Remove
+        {t('institutions.remove')}
       </button>
     </>
   );
@@ -91,10 +93,10 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-            Manage Institutions
+            {t('institutions.title')}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            View and manage all registered educational institutions and partners.
+            {t('institutions.subtitle')}
           </p>
         </div>
 
@@ -104,7 +106,7 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-md font-semibold text-sm transition-colors flex items-center gap-2 shadow-sm active:scale-[0.98]"
           >
             <span className="material-symbols-outlined text-[18px]">add_business</span>
-            Add Institution
+            {t('institutions.add')}
           </button>
         )}
       </div>
@@ -118,10 +120,10 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="bg-white border border-slate-200 rounded-md px-3 py-1.5 text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="All">All Statuses</option>
-                <option value="Active">Active</option>
-                <option value="Pending Review">Pending Review</option>
-                <option value="Suspended">Suspended</option>
+                <option value="All">{t('common.allStatuses')}</option>
+                <option value="Active">{t('status.institution.active')}</option>
+                <option value="Pending Review">{t('status.institution.pendingReview')}</option>
+                <option value="Suspended">{t('status.institution.suspended')}</option>
               </select>
             </div>
 
@@ -129,13 +131,13 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Filter by name..."
+              placeholder={t('institutions.filterByName')}
               className="bg-white border border-slate-200 rounded-md px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <span className="text-xs text-slate-500 font-medium">
-            Showing {filtered.length} of {institutions.length} institutions
+            {t('institutions.showing', { filtered: filtered.length, total: institutions.length })}
           </span>
         </div>
 
@@ -150,15 +152,15 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
             <span className="material-symbols-outlined animate-spin text-blue-600">
               progress_activity
             </span>
-            Loading institutions...
+            {t('institutions.loading')}
           </div>
         )}
 
         {!isLoading && filtered.length === 0 && (
           <div className="py-16 text-center text-sm text-slate-500">
             {institutions.length === 0
-              ? 'No institutions registered yet.'
-              : 'No institutions match the current filters.'}
+              ? t('institutions.empty')
+              : t('institutions.noMatch')}
           </div>
         )}
 
@@ -167,11 +169,11 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-100/70 border-b border-slate-200 text-xs font-bold tracking-wider text-slate-500 uppercase">
-                  <th className="py-3.5 px-5">INSTITUTION NAME</th>
-                  <th className="py-3.5 px-5">RESPONSIBLE PERSON</th>
-                  <th className="py-3.5 px-5 text-center">EVENTS</th>
-                  <th className="py-3.5 px-5">STATUS</th>
-                  <th className="py-3.5 px-5 text-right">ACTIONS</th>
+                  <th className="py-3.5 px-5">{t('institutions.colName')}</th>
+                  <th className="py-3.5 px-5">{t('institutions.colResponsible')}</th>
+                  <th className="py-3.5 px-5 text-center">{t('institutions.colEvents')}</th>
+                  <th className="py-3.5 px-5">{t('institutions.colStatus')}</th>
+                  <th className="py-3.5 px-5 text-right">{t('institutions.colActions')}</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
@@ -219,17 +221,17 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
                       <td className="py-4 px-5">
                         {inst.status === 'Active' && (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            Active
+                            {labelInstitutionStatus(t, inst.status)}
                           </span>
                         )}
                         {inst.status === 'Pending Review' && (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                            Pending Review
+                            {labelInstitutionStatus(t, inst.status)}
                           </span>
                         )}
                         {inst.status === 'Suspended' && (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                            Suspended
+                            {labelInstitutionStatus(t, inst.status)}
                           </span>
                         )}
                       </td>
@@ -239,7 +241,7 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
                           <button
                             type="button"
                             onClick={() => setSelectedInstId(inst.id)}
-                            title="View Details"
+                            title={t('institutions.viewDetails')}
                             className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-slate-100 transition-colors"
                           >
                             <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -249,7 +251,7 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
                             <div className="relative inline-block">
                               <button
                                 type="button"
-                                title="More Actions"
+                                title={t('institutions.moreActions')}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setOpenMenuId((current) =>
@@ -281,7 +283,9 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
         )}
 
         <div className="p-4 border-t border-slate-200 bg-white text-xs text-slate-400 rounded-b-xl">
-          {institutions.length} institution{institutions.length === 1 ? '' : 's'} loaded from API
+          {institutions.length === 1
+            ? t('institutions.loadedFromApi', { count: institutions.length })
+            : t('institutions.loadedFromApiPlural', { count: institutions.length })}
         </div>
       </div>
 
@@ -297,20 +301,20 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
             </button>
 
             <h3 className="text-lg font-bold text-[#0b1c30] mb-4">
-              Institution Details: {selectedInst.name}
+              {t('institutions.detailsTitle', { name: selectedInst.name })}
             </h3>
 
             <div className="space-y-3 text-xs text-gray-700 mb-6">
-              <p><strong>Code ID:</strong> {selectedInst.code}</p>
-              <p><strong>CNPJ / Tax ID:</strong> {selectedInst.cnpjTaxId}</p>
-              <p><strong>Address:</strong> {selectedInst.address}</p>
-              <p><strong>Responsible User:</strong> {selectedInst.responsiblePerson}</p>
-              <p><strong>Contact Email:</strong> {selectedInst.email}</p>
-              <p><strong>Phone:</strong> {selectedInst.phone}</p>
-              <p><strong>Events Hosted:</strong> {selectedInst.eventsCount}</p>
+              <p><strong>{t('institutions.codeId')}:</strong> {selectedInst.code}</p>
+              <p><strong>{t('institutions.cnpj')}:</strong> {selectedInst.cnpjTaxId}</p>
+              <p><strong>{t('institutions.address')}:</strong> {selectedInst.address}</p>
+              <p><strong>{t('institutions.responsibleUser')}:</strong> {selectedInst.responsiblePerson}</p>
+              <p><strong>{t('institutions.contactEmail')}:</strong> {selectedInst.email}</p>
+              <p><strong>{t('institutions.phone')}:</strong> {selectedInst.phone}</p>
+              <p><strong>{t('institutions.eventsHosted')}:</strong> {selectedInst.eventsCount}</p>
               <p>
-                <strong>Current Status:</strong>{' '}
-                <span className="font-bold">{selectedInst.status}</span>
+                <strong>{t('institutions.currentStatus')}:</strong>{' '}
+                <span className="font-bold">{labelInstitutionStatus(t, selectedInst.status)}</span>
               </p>
             </div>
 
@@ -321,7 +325,7 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
                   onClick={() => handleStatus(selectedInst.id, 'Active')}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold"
                 >
-                  Set Active
+                  {t('institutions.setActive')}
                 </button>
               )}
               {canManage && selectedInst.status !== 'Suspended' && (
@@ -330,7 +334,7 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
                   onClick={() => handleStatus(selectedInst.id, 'Suspended')}
                   className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded text-xs font-semibold"
                 >
-                  Suspend
+                  {t('institutions.suspend')}
                 </button>
               )}
               <button
@@ -338,7 +342,7 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
                 onClick={() => setSelectedInstId(null)}
                 className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded text-xs font-semibold"
               >
-                Close
+                {t('common.close')}
               </button>
             </div>
           </div>

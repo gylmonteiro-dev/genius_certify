@@ -15,8 +15,11 @@ import {
   loginRequest,
   setStoredToken,
 } from './lib/auth';
+import { APP_NAME } from './lib/brand';
+import { useT } from './i18n';
 
 export function App() {
+  const { t } = useT();
   const [authBootstrapping, setAuthBootstrapping] = useState(true);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
@@ -66,12 +69,12 @@ export function App() {
       setStoredToken(access_token);
       setAuthToken(access_token);
       setAuthUser(user);
-      setToastMessage(`Welcome, ${user.nome}`);
+      setToastMessage(t('login.welcome', { name: user.nome }));
     } catch (err) {
       const message =
         err instanceof ApiError
           ? err.message
-          : 'Unable to sign in. Check your credentials.';
+          : t('login.fallbackError');
       setLoginError(message);
     } finally {
       setLoginLoading(false);
@@ -91,7 +94,7 @@ export function App() {
         <span className="material-symbols-outlined animate-spin text-blue-600">
           progress_activity
         </span>
-        Loading CertifyPro...
+        {t('login.loadingApp', { app: APP_NAME })}
       </div>
     );
   }

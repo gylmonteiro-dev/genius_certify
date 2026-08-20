@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { EventItem, Institution, Student } from '../types';
 import { CertificadoEmitPayload } from '../lib/certificados';
+import { useT } from '../i18n';
 
 interface IssueCertificateModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
   errorMessage = null,
   onSubmit,
 }) => {
+  const { t } = useT();
   const [instituicaoId, setInstituicaoId] = useState('');
   const [alunoId, setAlunoId] = useState('');
   const [cursoId, setCursoId] = useState('');
@@ -51,11 +53,11 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
     e.preventDefault();
     setFormError(null);
     if (!alunoId || !cursoId) {
-      setFormError('Select a student and a course.');
+      setFormError(t('issueModal.selectStudentAndCourse'));
       return;
     }
     if (isSuperAdmin && !instituicaoId) {
-      setFormError('Select an institution.');
+      setFormError(t('issueModal.selectInstitution'));
       return;
     }
     const payload: CertificadoEmitPayload = {
@@ -81,9 +83,9 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
             <span className="material-symbols-outlined text-[20px]">workspace_premium</span>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Issue New Certificate</h2>
+            <h2 className="text-lg font-bold text-slate-900">{t('issueModal.title')}</h2>
             <p className="text-xs text-slate-500">
-              Select an existing student and course from the API.
+              {t('issueModal.subtitle')}
             </p>
           </div>
         </div>
@@ -98,7 +100,7 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
           {isSuperAdmin && (
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                INSTITUTION
+                {t('common.institution')}
               </label>
               <select
                 value={instituicaoId}
@@ -109,7 +111,7 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
                 }}
                 className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm text-slate-800"
               >
-                <option value="">Select institution</option>
+                <option value="">{t('common.selectInstitution')}</option>
                 {institutions.map((inst) => (
                   <option key={inst.id} value={inst.id}>
                     {inst.name}
@@ -121,14 +123,14 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              STUDENT
+              {t('issueModal.student')}
             </label>
             <select
               value={alunoId}
               onChange={(e) => setAlunoId(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm text-slate-800"
             >
-              <option value="">Select student</option>
+              <option value="">{t('common.selectStudent')}</option>
               {scopedStudents.map((student) => (
                 <option key={student.id} value={student.id}>
                   {student.name} ({student.email})
@@ -139,14 +141,14 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              COURSE / EVENT
+              {t('issueModal.courseEvent')}
             </label>
             <select
               value={cursoId}
               onChange={(e) => setCursoId(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm text-slate-800"
             >
-              <option value="">Select course</option>
+              <option value="">{t('common.selectCourse')}</option>
               {scopedEvents.map((evt) => (
                 <option key={evt.id} value={evt.id}>
                   {evt.title} ({evt.institutionName})
@@ -161,7 +163,7 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 border border-slate-200 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
@@ -169,7 +171,7 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm disabled:opacity-60"
             >
               <span className="material-symbols-outlined text-[16px]">verified</span>
-              {isSubmitting ? 'Issuing...' : 'Issue Certificate'}
+              {isSubmitting ? t('issueModal.issuing') : t('issueModal.issue')}
             </button>
           </div>
         </form>

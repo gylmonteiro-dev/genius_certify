@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { NavTab } from '../types';
+import { useT, labelRole } from '../i18n';
 import { AuthUser } from '../lib/auth';
+import { APP_NAME } from '../lib/brand';
+import { LanguageSwitch } from './LanguageSwitch';
 
 interface TopBarProps {
   searchTerm: string;
@@ -23,16 +26,12 @@ export const TopBar: React.FC<TopBarProps> = ({
   authUser = null,
   onLogout,
 }) => {
+  const { t } = useT();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAppsMenu, setShowAppsMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
-  const roleLabel =
-    authUser?.role === 'super_admin'
-      ? 'Super Admin'
-      : authUser?.role === 'instituicao_admin'
-        ? 'Institution Admin'
-        : 'Administrator';
+  const roleLabel = authUser ? labelRole(t, authUser.role) : t('role.administrator');
 
   const initials = (authUser?.nome ?? 'A')
     .split(' ')
@@ -54,7 +53,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           <button
             onClick={onToggleMobileSidebar}
             className="p-1.5 rounded text-slate-600 md:hidden hover:bg-slate-100"
-            aria-label="Toggle Navigation"
+            aria-label={t('topbar.toggleNav')}
           >
             <span className="material-symbols-outlined">menu</span>
           </button>
@@ -62,10 +61,10 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         <div className="flex flex-col">
           <h2 className="text-lg font-bold leading-none text-slate-800">
-            {titleOverride || 'Enterprise Dashboard'}
+            {titleOverride || APP_NAME}
           </h2>
           <p className="text-xs text-slate-400 mt-1 hidden sm:block">
-            CertifyPro System v2.4.0
+            {APP_NAME}
           </p>
         </div>
       </div>
@@ -79,7 +78,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             type="text"
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search assets, events, certificates..."
+            placeholder={t('topbar.searchPlaceholder')}
             className="w-full bg-slate-100 border-none rounded-md py-2 pl-9 pr-8 text-sm text-slate-800 placeholder:text-slate-400 ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
           />
           {searchTerm && (
@@ -94,6 +93,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       <div className="flex items-center gap-3">
+        <LanguageSwitch />
         <div className="relative">
           <button
             onClick={() => {
@@ -110,16 +110,16 @@ export const TopBar: React.FC<TopBarProps> = ({
           {showNotifications && (
             <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 p-4">
               <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
-                <span className="font-bold text-sm text-slate-800">Notifications</span>
+                <span className="font-bold text-sm text-slate-800">{t('topbar.notifications')}</span>
                 <span className="text-xs text-blue-600 cursor-pointer font-semibold hover:underline">
-                  Mark all read
+                  {t('topbar.markAllRead')}
                 </span>
               </div>
               <div className="space-y-2 text-xs">
                 <div className="p-2.5 bg-blue-50/60 rounded-lg border-l-2 border-blue-600">
-                  <p className="font-bold text-slate-800">New Certificate Verified</p>
-                  <p className="text-slate-500">Certificate validation completed</p>
-                  <span className="text-[10px] text-slate-400">10m ago</span>
+                  <p className="font-bold text-slate-800">{t('topbar.newCertVerified')}</p>
+                  <p className="text-slate-500">{t('topbar.certValidationCompleted')}</p>
+                  <span className="text-[10px] text-slate-400">{t('topbar.timeAgo10m')}</span>
                 </div>
               </div>
             </div>
@@ -141,7 +141,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           {showAppsMenu && (
             <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-200 z-50 p-4">
               <span className="block font-bold text-[10px] text-slate-400 uppercase tracking-widest mb-3">
-                CertifyPro Apps
+                {APP_NAME}
               </span>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <button
@@ -152,7 +152,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   className="p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 text-left flex flex-col gap-1 transition-colors"
                 >
                   <span className="material-symbols-outlined text-blue-600">event</span>
-                  <span className="font-bold text-slate-800">Events Hub</span>
+                  <span className="font-bold text-slate-800">{t('topbar.eventsHub')}</span>
                 </button>
                 <button
                   onClick={() => {
@@ -162,7 +162,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   className="p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 text-left flex flex-col gap-1 transition-colors"
                 >
                   <span className="material-symbols-outlined text-blue-600">corporate_fare</span>
-                  <span className="font-bold text-slate-800">Institutions</span>
+                  <span className="font-bold text-slate-800">{t('topbar.institutions')}</span>
                 </button>
                 <button
                   onClick={() => {
@@ -172,7 +172,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   className="p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 text-left flex flex-col gap-1 transition-colors"
                 >
                   <span className="material-symbols-outlined text-blue-600">verified</span>
-                  <span className="font-bold text-slate-800">Certificates</span>
+                  <span className="font-bold text-slate-800">{t('topbar.certificates')}</span>
                 </button>
                 <button
                   onClick={() => {
@@ -182,7 +182,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   className="p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 text-left flex flex-col gap-1 transition-colors"
                 >
                   <span className="material-symbols-outlined text-blue-600">group</span>
-                  <span className="font-bold text-slate-800">Students</span>
+                  <span className="font-bold text-slate-800">{t('topbar.students')}</span>
                 </button>
               </div>
             </div>
@@ -210,7 +210,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                 </div>
                 <div>
                   <p className="font-bold text-sm text-slate-800">
-                    {authUser?.nome ?? 'Administrator'}
+                    {authUser?.nome ?? t('role.administrator')}
                   </p>
                   <p className="text-xs text-slate-400">{authUser?.email ?? ''}</p>
                   <span className="inline-block text-[10px] bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-full mt-1">
@@ -227,7 +227,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-lg text-slate-700 font-medium flex items-center gap-2 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">manage_accounts</span>
-                  Account Settings
+                  {t('topbar.accountSettings')}
                 </button>
                 {onLogout && (
                   <button
@@ -238,7 +238,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                     className="w-full text-left px-3 py-2 hover:bg-red-50 rounded-lg text-red-600 font-medium flex items-center gap-2 transition-colors"
                   >
                     <span className="material-symbols-outlined text-[16px]">logout</span>
-                    Sign out
+                    {t('topbar.signOut')}
                   </button>
                 )}
               </div>

@@ -5,8 +5,10 @@ import { ApiError } from '../lib/api';
 import { listCursosPublicos, mapCursoPublicToUi } from '../lib/cursos';
 import { EventsCatalogView } from './EventsCatalogView';
 import { PublicLayout } from './PublicLayout';
+import { useT } from '../i18n';
 
 export const PublicEventsPage: React.FC = () => {
+  const { t } = useT();
   const navigate = useNavigate();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +24,7 @@ export const PublicEventsPage: React.FC = () => {
         if (!cancelled) setEvents(items.map(mapCursoPublicToUi));
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof ApiError ? err.message : 'Unable to load events.');
+          setError(err instanceof ApiError ? err.message : t('public.loadEventsError'));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -48,7 +50,7 @@ export const PublicEventsPage: React.FC = () => {
           <span className="material-symbols-outlined animate-spin text-blue-600">
             progress_activity
           </span>
-          Loading events...
+          {t('public.loadingEvents')}
         </div>
       ) : (
         <EventsCatalogView

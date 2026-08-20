@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Certificate } from '../types';
+import { labelCertificateStatus, useT } from '../i18n';
 
 interface CertificatesViewProps {
   certificates: Certificate[];
@@ -28,6 +29,7 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
   onDownloadPdf,
   onVerify,
 }) => {
+  const { t } = useT();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [codigoInput, setCodigoInput] = useState('');
@@ -54,10 +56,10 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-            Certificates Management
+            {t('certificates.title')}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Audit, verify, issue, and revoke credentials from the API.
+            {t('certificates.subtitle')}
           </p>
         </div>
 
@@ -66,21 +68,21 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
           className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-md font-semibold text-sm transition-colors flex items-center gap-2 shadow-sm"
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
-          Issue Certificate
+          {t('certificates.issue')}
         </button>
       </div>
 
       <div className="bg-slate-900 border border-slate-800 text-white rounded-xl p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-2">
           <span className="material-symbols-outlined text-blue-400">verified_user</span>
-          <h3 className="font-bold text-white text-sm">Public validation (UUID)</h3>
+          <h3 className="font-bold text-white text-sm">{t('certificates.publicValidation')}</h3>
         </div>
         <form onSubmit={(e) => void handleVerify(e)} className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
             value={codigoInput}
             onChange={(e) => setCodigoInput(e.target.value)}
-            placeholder="Paste the validation UUID (codigo_validacao)..."
+            placeholder={t('certificates.uuidPlaceholder')}
             className="flex-1 bg-slate-800/80 border border-slate-700 rounded-md px-3.5 py-2 text-xs font-mono text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
@@ -88,16 +90,16 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
             disabled={isVerifying}
             className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-5 py-2 rounded-md shrink-0 transition-colors shadow-sm disabled:opacity-60"
           >
-            {isVerifying ? 'Verifying...' : 'Validate'}
+            {isVerifying ? t('certificates.validating') : t('certificates.validate')}
           </button>
         </form>
 
         {verifyResult && verifyResult !== 'NOT_FOUND' && verifyResult !== 'INVALID' && (
           <div className="mt-3 p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-lg text-xs flex items-center justify-between gap-3">
             <div>
-              <p className="font-bold">VALID CERTIFICATE</p>
+              <p className="font-bold">{t('certificates.validTitle')}</p>
               <p className="text-emerald-200">
-                {verifyResult.studentName} — {verifyResult.eventName} ({verifyResult.status})
+                {verifyResult.studentName} — {verifyResult.eventName} ({labelCertificateStatus(t, verifyResult.status)})
               </p>
               {verifyMessage && <p className="text-emerald-200/80 mt-1">{verifyMessage}</p>}
             </div>
@@ -105,14 +107,14 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
               onClick={() => onViewCertificateDetail(verifyResult)}
               className="px-3 py-1 bg-emerald-600 text-white font-bold rounded-md hover:bg-emerald-500"
             >
-              View
+              {t('common.view')}
             </button>
           </div>
         )}
 
         {(verifyResult === 'NOT_FOUND' || verifyResult === 'INVALID') && (
           <div className="mt-3 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-lg text-xs font-bold">
-            {verifyMessage || 'Certificate not found or invalid.'}
+            {verifyMessage || t('certificates.notFound')}
           </div>
         )}
       </div>
@@ -124,7 +126,7 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search cert #, recipient, or UUID..."
+              placeholder={t('certificates.searchPlaceholder')}
               className="bg-white border border-slate-200 rounded-md px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64"
             />
             <select
@@ -132,15 +134,15 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
               onChange={(e) => setStatusFilter(e.target.value)}
               className="bg-white border border-slate-200 rounded-md px-3 py-1.5 text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="All">All Statuses</option>
-              <option value="Active">Active</option>
-              <option value="Expired">Expired</option>
-              <option value="Revoked">Revoked</option>
+              <option value="All">{t('common.allStatuses')}</option>
+              <option value="Active">{t('status.certificate.active')}</option>
+              <option value="Expired">{t('status.certificate.expired')}</option>
+              <option value="Revoked">{t('status.certificate.revoked')}</option>
             </select>
           </div>
 
           <span className="text-xs text-slate-500 font-medium">
-            Total Certificates: {filtered.length}
+            {t('certificates.total', { count: filtered.length })}
           </span>
         </div>
 
@@ -155,15 +157,15 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
             <span className="material-symbols-outlined animate-spin text-blue-600">
               progress_activity
             </span>
-            Loading certificates...
+            {t('certificates.loading')}
           </div>
         )}
 
         {!isLoading && filtered.length === 0 && (
           <div className="py-16 text-center text-sm text-slate-500">
             {certificates.length === 0
-              ? 'No certificates issued yet.'
-              : 'No certificates match the current filters.'}
+              ? t('certificates.empty')
+              : t('certificates.noMatch')}
           </div>
         )}
 
@@ -172,13 +174,13 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-100/70 border-b border-slate-200 text-xs font-bold tracking-wider text-slate-500 uppercase">
-                  <th className="py-3.5 px-5">CERTIFICATE #</th>
-                  <th className="py-3.5 px-5">RECIPIENT</th>
-                  <th className="py-3.5 px-5">EVENT</th>
-                  <th className="py-3.5 px-5">ISSUE DATE</th>
-                  <th className="py-3.5 px-5">VALIDATION UUID</th>
-                  <th className="py-3.5 px-5">STATUS</th>
-                  <th className="py-3.5 px-5 text-right">ACTIONS</th>
+                  <th className="py-3.5 px-5">{t('certificates.colNumber')}</th>
+                  <th className="py-3.5 px-5">{t('certificates.colRecipient')}</th>
+                  <th className="py-3.5 px-5">{t('certificates.colEvent')}</th>
+                  <th className="py-3.5 px-5">{t('certificates.colIssueDate')}</th>
+                  <th className="py-3.5 px-5">{t('certificates.colUuid')}</th>
+                  <th className="py-3.5 px-5">{t('certificates.colStatus')}</th>
+                  <th className="py-3.5 px-5 text-right">{t('certificates.colActions')}</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
@@ -209,17 +211,17 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
                     <td className="py-4 px-5">
                       {cert.status === 'Active' && (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          Active
+                          {labelCertificateStatus(t, cert.status)}
                         </span>
                       )}
                       {cert.status === 'Expired' && (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                          Expired
+                          {labelCertificateStatus(t, cert.status)}
                         </span>
                       )}
                       {cert.status === 'Revoked' && (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                          Revoked
+                          {labelCertificateStatus(t, cert.status)}
                         </span>
                       )}
                     </td>
@@ -229,20 +231,20 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
                           onClick={() => onViewCertificateDetail(cert)}
                           className="px-2.5 py-1 text-blue-600 hover:text-blue-700 text-xs font-semibold hover:bg-blue-50 rounded-md"
                         >
-                          View
+                          {t('common.view')}
                         </button>
                         <button
                           onClick={() => onDownloadPdf(cert)}
                           className="px-2.5 py-1 text-slate-600 hover:text-slate-800 text-xs font-medium hover:bg-slate-100 rounded-md"
                         >
-                          PDF
+                          {t('common.pdf')}
                         </button>
                         {cert.status === 'Active' && (
                           <button
                             onClick={() => onRevoke(cert.id)}
                             className="px-2.5 py-1 text-slate-500 hover:text-rose-600 text-xs font-medium hover:bg-slate-100 rounded-md"
                           >
-                            Revoke
+                            {t('certificates.revoke')}
                           </button>
                         )}
                       </div>

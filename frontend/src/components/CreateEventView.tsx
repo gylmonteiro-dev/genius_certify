@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Institution } from '../types';
 import { CursoApiCategoria, CursoApiModalidade, CursoApiTipo, CursoCreatePayload } from '../lib/cursos';
+import { formatDisplayDate, labelEventStatus, useT } from '../i18n';
 
 interface CreateEventViewProps {
   onSubmit: (payload: CursoCreatePayload) => Promise<void>;
@@ -21,6 +22,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   isSubmitting = false,
   errorMessage = null,
 }) => {
+  const { t, dateLocale } = useT();
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
   const [eventName, setEventName] = useState('');
@@ -33,35 +35,26 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   const [modalidade, setModalidade] = useState<CursoApiModalidade>('online');
   const [tipo, setTipo] = useState<CursoApiTipo>('workshop');
   const [instituicaoId, setInstituicaoId] = useState(defaultInstituicaoId ?? '');
-  const [sampleStudent, setSampleStudent] = useState('Student Name');
+  const [sampleStudent, setSampleStudent] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
   const [templateTheme, setTemplateTheme] = useState<'Classic' | 'Modern Navy' | 'Gold Minimal'>('Modern Navy');
   const [badgeIcon, setBadgeIcon] = useState<'verified' | 'workspace_premium' | 'shield' | 'school'>('shield');
 
   const formattedDateDisplay = React.useMemo(() => {
-    if (!eventDate) return 'Nov 15, 2024';
-    try {
-      const parts = eventDate.split('-');
-      if (parts.length === 3) {
-        const dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-        return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      }
-    } catch {
-      // fallback
-    }
-    return eventDate;
-  }, [eventDate]);
+    if (!eventDate) return t('createEvent.dateFallback');
+    return formatDisplayDate(eventDate, dateLocale, eventDate);
+  }, [eventDate, dateLocale, t]);
 
   const handleFinish = async () => {
     setFormError(null);
     if (!eventName.trim()) {
-      setFormError('Event name is required.');
+      setFormError(t('createEvent.nameRequired'));
       setCurrentStep(1);
       return;
     }
     if (isSuperAdmin && !instituicaoId) {
-      setFormError('Select an institution.');
+      setFormError(t('createEvent.selectInstitution'));
       setCurrentStep(1);
       return;
     }
@@ -87,9 +80,9 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
     <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
       {/* Title Header */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Create New Event</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">{t('createEvent.title')}</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Configure event details and certificate template.
+          {t('createEvent.subtitle')}
         </p>
       </div>
 
@@ -112,7 +105,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 currentStep >= 1 ? 'text-blue-600' : 'text-slate-400'
               }`}
             >
-              Details
+              {t('createEvent.stepDetails')}
             </span>
           </div>
 
@@ -139,7 +132,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 currentStep >= 2 ? 'text-blue-600' : 'text-slate-400'
               }`}
             >
-              Template
+              {t('createEvent.stepTemplate')}
             </span>
           </div>
 
@@ -166,7 +159,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 currentStep === 3 ? 'text-blue-600' : 'text-slate-400'
               }`}
             >
-              Review
+              {t('createEvent.stepReview')}
             </span>
           </div>
         </div>
@@ -179,7 +172,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
           {currentStep === 1 && (
             <div>
               <h2 className="text-xl font-bold text-slate-800 mb-6">
-                Event Information
+                {t('createEvent.eventInformation')}
               </h2>
 
               {(formError || errorMessage) && (
@@ -192,14 +185,14 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 {isSuperAdmin && (
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                      INSTITUTION
+                      {t('common.institution')}
                     </label>
                     <select
                       value={instituicaoId}
                       onChange={(e) => setInstituicaoId(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">Select institution</option>
+                      <option value="">{t('common.selectInstitution')}</option>
                       {institutions.map((inst) => (
                         <option key={inst.id} value={inst.id}>
                           {inst.name}
@@ -211,13 +204,13 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 {/* Event Name */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                    EVENT NAME
+                    {t('createEvent.eventName')}
                   </label>
                   <input
                     type="text"
                     value={eventName}
                     onChange={(e) => setEventName(e.target.value)}
-                    placeholder="Annual Tech Symposium 2024"
+                    placeholder={t('createEvent.eventNamePlaceholder')}
                     className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                   />
                 </div>
@@ -226,7 +219,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                      DATE
+                      {t('common.date')}
                     </label>
                     <div className="relative">
                       <input
@@ -240,7 +233,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
 
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                      DURATION (HOURS)
+                      {t('createEvent.durationHours')}
                     </label>
                     <input
                       type="number"
@@ -256,7 +249,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 {/* Lead Instructor / Speaker */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                    LEAD INSTRUCTOR / SPEAKER
+                    {t('createEvent.instructor')}
                   </label>
                   <input
                     type="text"
@@ -269,62 +262,62 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                    STATUS
+                    {t('createEvent.status')}
                   </label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as 'draft' | 'upcoming' | 'completed')}
                     className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="upcoming">Upcoming</option>
-                    <option value="draft">Draft</option>
-                    <option value="completed">Completed</option>
+                    <option value="upcoming">{t('status.event.upcoming')}</option>
+                    <option value="draft">{t('status.event.draft')}</option>
+                    <option value="completed">{t('status.event.completed')}</option>
                   </select>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                      CATEGORY
+                      {t('createEvent.category')}
                     </label>
                     <select
                       value={categoria}
                       onChange={(e) => setCategoria(e.target.value as CursoApiCategoria)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="technology">Technology</option>
-                      <option value="business">Business</option>
-                      <option value="design">Design</option>
-                      <option value="data_science">Data Science</option>
+                      <option value="technology">{t('eventMeta.category.technology')}</option>
+                      <option value="business">{t('eventMeta.category.business')}</option>
+                      <option value="design">{t('eventMeta.category.design')}</option>
+                      <option value="data_science">{t('eventMeta.category.dataScience')}</option>
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                      MODALITY
+                      {t('createEvent.modality')}
                     </label>
                     <select
                       value={modalidade}
                       onChange={(e) => setModalidade(e.target.value as CursoApiModalidade)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="online">Online</option>
-                      <option value="presencial">In-Person</option>
+                      <option value="online">{t('eventMeta.modality.online')}</option>
+                      <option value="presencial">{t('eventMeta.modality.inPerson')}</option>
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                      TYPE
+                      {t('createEvent.type')}
                     </label>
                     <select
                       value={tipo}
                       onChange={(e) => setTipo(e.target.value as CursoApiTipo)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="workshop">Workshop</option>
-                      <option value="seminar">Seminar</option>
-                      <option value="exam_prep">Exam Prep</option>
-                      <option value="summit">Summit</option>
-                      <option value="conference">Conference</option>
+                      <option value="workshop">{t('eventMeta.type.workshop')}</option>
+                      <option value="seminar">{t('eventMeta.type.seminar')}</option>
+                      <option value="exam_prep">{t('eventMeta.type.examPrep')}</option>
+                      <option value="summit">{t('eventMeta.type.summit')}</option>
+                      <option value="conference">{t('eventMeta.type.conference')}</option>
                     </select>
                   </div>
                 </div>
@@ -332,13 +325,13 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 {/* Description */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                    DESCRIPTION (INTERNAL)
+                    {t('createEvent.descriptionInternal')}
                   </label>
                   <textarea
                     rows={4}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Advanced workshop covering modern web security architectures..."
+                    placeholder={t('createEvent.descriptionPlaceholder')}
                     className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                   />
                 </div>
@@ -351,14 +344,14 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                   onClick={onCancel}
                   className="px-5 py-2 rounded-md border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setCurrentStep(2)}
                   className="px-6 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2"
                 >
-                  Next Step
+                  {t('createEvent.nextStep')}
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </button>
               </div>
@@ -368,16 +361,16 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
           {currentStep === 2 && (
             <div>
               <h2 className="text-xl font-bold text-slate-800 mb-2">
-                Certificate Template Design
+                {t('createEvent.templateTitle')}
               </h2>
               <p className="text-xs text-slate-500 mb-6">
-                Customize the aesthetic layout and badge seal for certificates generated for this event.
+                {t('createEvent.templateHint')}
               </p>
 
               <div className="space-y-6">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
-                    THEME STYLE
+                    {t('createEvent.themeStyle')}
                   </label>
                   <div className="grid grid-cols-3 gap-3">
                     {(['Modern Navy', 'Classic', 'Gold Minimal'] as const).map((theme) => (
@@ -391,7 +384,11 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                             : 'border-slate-200 text-slate-700 hover:bg-slate-50'
                         }`}
                       >
-                        {theme}
+                        {theme === 'Modern Navy'
+                          ? t('createEvent.themeModernNavy')
+                          : theme === 'Classic'
+                            ? t('createEvent.themeClassic')
+                            : t('createEvent.themeGoldMinimal')}
                       </button>
                     ))}
                   </div>
@@ -399,14 +396,14 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
-                    BADGE ICON SEAL
+                    {t('createEvent.badgeSeal')}
                   </label>
                   <div className="grid grid-cols-4 gap-3">
                     {[
-                      { id: 'shield', label: 'Shield', icon: 'shield' },
-                      { id: 'verified', label: 'Verified', icon: 'verified' },
-                      { id: 'workspace_premium', label: 'Premium', icon: 'workspace_premium' },
-                      { id: 'school', label: 'Academic', icon: 'school' },
+                      { id: 'shield', label: t('createEvent.badgeShield'), icon: 'shield' },
+                      { id: 'verified', label: t('createEvent.badgeVerified'), icon: 'verified' },
+                      { id: 'workspace_premium', label: t('createEvent.badgePremium'), icon: 'workspace_premium' },
+                      { id: 'school', label: t('createEvent.badgeAcademic'), icon: 'school' },
                     ].map((item) => (
                       <button
                         key={item.id}
@@ -427,7 +424,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                    TEST RECIPIENT NAME FOR PREVIEW
+                    {t('createEvent.testRecipient')}
                   </label>
                   <input
                     type="text"
@@ -445,14 +442,14 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                   onClick={() => setCurrentStep(1)}
                   className="px-5 py-2 rounded-md border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50"
                 >
-                  Back
+                  {t('common.back')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setCurrentStep(3)}
                   className="px-6 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 flex items-center gap-2 shadow-sm"
                 >
-                  Review Details
+                  {t('createEvent.reviewDetails')}
                   <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </button>
               </div>
@@ -462,10 +459,10 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
           {currentStep === 3 && (
             <div>
               <h2 className="text-xl font-bold text-slate-800 mb-2">
-                Review & Publish Event
+                {t('createEvent.reviewTitle')}
               </h2>
               <p className="text-xs text-slate-500 mb-6">
-                Please verify the configuration before publishing to the enterprise directory.
+                {t('createEvent.reviewHint')}
               </p>
 
               {(formError || errorMessage) && (
@@ -476,31 +473,46 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
 
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3 text-xs">
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-400 font-medium">Event Name:</span>
+                  <span className="text-slate-400 font-medium">{t('createEvent.eventName')}:</span>
                   <span className="font-bold text-slate-800">{eventName}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-400 font-medium">Date:</span>
+                  <span className="text-slate-400 font-medium">{t('common.date')}:</span>
                   <span className="font-bold text-slate-800">{formattedDateDisplay}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-400 font-medium">Duration:</span>
-                  <span className="font-bold text-slate-800">{durationHours} Hours</span>
+                  <span className="text-slate-400 font-medium">{t('createEvent.durationHours')}:</span>
+                  <span className="font-bold text-slate-800">{t('createEvent.durationValue', { hours: durationHours })}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-400 font-medium">Status:</span>
-                  <span className="font-bold text-slate-800 capitalize">{status}</span>
+                  <span className="text-slate-400 font-medium">{t('createEvent.status')}:</span>
+                  <span className="font-bold text-slate-800">
+                    {labelEventStatus(
+                      t,
+                      status === 'upcoming' ? 'Upcoming' : status === 'draft' ? 'Draft' : 'Completed',
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-400 font-medium">Lead Instructor:</span>
+                  <span className="text-slate-400 font-medium">{t('createEvent.instructor')}:</span>
                   <span className="font-bold text-slate-800">{instructor}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-400 font-medium">Selected Template:</span>
-                  <span className="font-bold text-blue-600">{templateTheme} Theme ({badgeIcon} seal)</span>
+                  <span className="text-slate-400 font-medium">{t('createEvent.stepTemplate')}:</span>
+                  <span className="font-bold text-blue-600">
+                    {t('createEvent.selectedTemplate', {
+                      theme:
+                        templateTheme === 'Modern Navy'
+                          ? t('createEvent.themeModernNavy')
+                          : templateTheme === 'Classic'
+                            ? t('createEvent.themeClassic')
+                            : t('createEvent.themeGoldMinimal'),
+                      badge: badgeIcon,
+                    })}
+                  </span>
                 </div>
                 <div className="py-1">
-                  <span className="text-slate-400 font-medium block mb-1">Description:</span>
+                  <span className="text-slate-400 font-medium block mb-1">{t('common.description')}:</span>
                   <p className="text-slate-800 bg-white p-3 rounded-lg border border-slate-200">
                     {description}
                   </p>
@@ -514,7 +526,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                   onClick={() => setCurrentStep(2)}
                   className="px-5 py-2 rounded-md border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50"
                 >
-                  Back
+                  {t('common.back')}
                 </button>
                 <button
                   type="button"
@@ -525,7 +537,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                   <span className="material-symbols-outlined text-[18px]">
                     {isSubmitting ? 'progress_activity' : 'publish'}
                   </span>
-                  {isSubmitting ? 'Publishing...' : 'Publish Event & Enable Certificates'}
+                  {isSubmitting ? t('createEvent.publishing') : t('createEvent.publish')}
                 </button>
               </div>
             </div>
@@ -536,10 +548,10 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
         <div className="lg:col-span-5 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold tracking-widest text-slate-400 uppercase">
-              LIVE PREVIEW
+              {t('createEvent.livePreview')}
             </span>
             <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
-              Real-time Sync
+              {t('createEvent.realtimeSync')}
             </span>
           </div>
 
@@ -552,27 +564,27 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
 
             {/* Subtitle */}
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
-              CERTIFICATE OF COMPLETION
+              {t('createEvent.certificateOfCompletion')}
             </p>
 
             {/* Student Name */}
             <h3 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">
-              {sampleStudent || 'Student Name'}
+              {sampleStudent || t('createEvent.sampleStudentDefault')}
             </h3>
 
             <p className="text-xs text-slate-500 mb-4">
-              has successfully completed
+              {t('createEvent.hasCompleted')}
             </p>
 
             {/* Event Name Box */}
             <div className="bg-slate-900 text-white font-bold text-sm py-3 px-4 rounded-lg border border-slate-800 max-w-xs mx-auto mb-6 shadow-sm">
-              {eventName || 'Annual Tech Symposium 2024'}
+              {eventName || t('createEvent.eventNamePlaceholder')}
             </div>
 
             <div className="border-t border-slate-100 pt-4 flex justify-between items-end text-left text-xs">
               <div>
                 <span className="text-[10px] font-bold uppercase text-slate-400 block">
-                  DATE
+                  {t('common.date')}
                 </span>
                 <span className="font-semibold text-slate-800">
                   {formattedDateDisplay}
@@ -580,7 +592,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
               </div>
               <div className="text-right">
                 <span className="text-[10px] font-bold uppercase text-slate-400 block">
-                  ISSUER
+                  {t('createEvent.issuer')}
                 </span>
                 <span className="font-semibold text-slate-800">
                   {instructor || 'Dr. Sarah Jenkins'}
@@ -600,7 +612,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
               info
             </span>
             <p>
-              This is a dynamic preview. The layout will adapt based on the final template selected in Step 2.
+              {t('createEvent.previewHint')}
             </p>
           </div>
         </div>

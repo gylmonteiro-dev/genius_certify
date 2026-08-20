@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AuthUser } from '../lib/auth';
+import { labelRole, useT } from '../i18n';
 
 interface SettingsViewProps {
   authUser: AuthUser;
@@ -16,6 +17,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   errorMessage = null,
   successMessage = null,
 }) => {
+  const { t } = useT();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -25,11 +27,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     e.preventDefault();
     setFormError(null);
     if (newPassword.length < 8) {
-      setFormError('New password must have at least 8 characters.');
+      setFormError(t('settings.passwordMin'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setFormError('New password and confirmation do not match.');
+      setFormError(t('settings.passwordMismatch'));
       return;
     }
     try {
@@ -46,17 +48,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     <div className="max-w-[1280px] mx-auto p-6 md:p-8 space-y-6">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-          Settings
+          {t('settings.title')}
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Account security and session details.
+          {t('settings.subtitle')}
         </p>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4 max-w-xl">
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-            Signed in as
+            {t('settings.signedInAs')}
           </label>
           <input
             type="text"
@@ -67,12 +69,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-            Role
+            {t('settings.role')}
           </label>
           <input
             type="text"
             readOnly
-            value={authUser.role}
+            value={labelRole(t, authUser.role)}
             className="w-full border border-slate-200 p-2 rounded-md bg-slate-50 text-sm"
           />
         </div>
@@ -82,7 +84,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         onSubmit={(e) => void handleSubmit(e)}
         className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4 max-w-xl"
       >
-        <h2 className="text-lg font-bold text-slate-900">Change password</h2>
+        <h2 className="text-lg font-bold text-slate-900">{t('settings.changePassword')}</h2>
         {(formError || errorMessage) && (
           <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {formError || errorMessage}
@@ -95,7 +97,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         )}
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-            Current password
+            {t('settings.currentPassword')}
           </label>
           <input
             type="password"
@@ -109,7 +111,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-            New password
+            {t('settings.newPassword')}
           </label>
           <input
             type="password"
@@ -123,7 +125,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-            Confirm new password
+            {t('settings.confirmPassword')}
           </label>
           <input
             type="password"
@@ -140,7 +142,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           disabled={isSubmitting}
           className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-md font-semibold text-sm disabled:opacity-60"
         >
-          {isSubmitting ? 'Saving...' : 'Update password'}
+          {isSubmitting ? t('common.saving') : t('settings.updatePassword')}
         </button>
       </form>
     </div>
