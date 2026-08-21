@@ -1,5 +1,7 @@
 # Carregado automaticamente por `docker compose up` (dev local).
-# Na VPS use: docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+# Na VPS: docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+#         docker compose --env-file .env -f proxy/docker-compose.yml up -d
+#         (rode o proxy a partir de proxy/ ou com -f, usando --env-file da raiz)
 services:
   minio:
     ports:

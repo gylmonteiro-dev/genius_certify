@@ -1,0 +1,42 @@
+# Proxy compartilhado (único processo nas portas 80/443 da VPS).
+#
+# Uma vez: docker network create edge
+# Subir:   docker compose --env-file ../.env up -d
+#           (DOMAIN e ACME_EMAIL vêm do .env da raiz do Certify)
+#
+# Volumes genius-certify_caddy_* reaproveitam os certificados já emitidos.
+
+name: nexus-proxy
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: nexus_caddy
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - edge
+
+volumes:
+  caddy_data:
+    name: genius-certify_caddy_data
+    external: true
+  caddy_config:
+    name: genius-certify_caddy_config
+    external: true
+
+networks:
+  edge:
+    external: true

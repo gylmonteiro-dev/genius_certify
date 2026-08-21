@@ -2,6 +2,10 @@
 	email {$ACME_EMAIL}
 }
 
+# Proxy compartilhado da VPS (rede Docker `edge`).
+# Novo host: outro bloco aqui + o container do app na mesma rede.
+# reverse_proxy usa container_name (visível entre stacks Compose).
+
 {$DOMAIN} {
 	encode gzip
 
@@ -13,13 +17,12 @@
 		-Server
 	}
 
-	# Assets públicos do MinIO (path-style: /files/<bucket>/...)
 	handle /files/* {
 		uri strip_prefix /files
-		reverse_proxy minio:9000
+		reverse_proxy nexus_minio:9000
 	}
 
 	handle {
-		reverse_proxy frontend:80
+		reverse_proxy nexus_frontend:80
 	}
 }

@@ -10,8 +10,8 @@ Plataforma SaaS multi-tenant para emissão, gestão e validação de certificado
 ├── backend/                      # FastAPI + SQLAlchemy + PostgreSQL
 ├── docker-compose.yml            # serviços (sem ports de API/MinIO no host)
 ├── docker-compose.override.yml   # ports de dev (auto-load no `docker compose up`)
-├── docker-compose.prod.yml       # Caddy 80/443 na VPS
-├── Caddyfile
+├── docker-compose.prod.yml       # liga frontend/minio na rede `edge` (sem Caddy)
+├── proxy/                        # Caddy compartilhado (80/443) na VPS
 ├── .env.example
 ├── .gitignore
 └── .cursorrules
@@ -40,16 +40,18 @@ Páginas públicas (sem login): `/validar`, `/eventos`.
 ## Deploy na VPS (produção)
 
 1. Clone o repo, `cp .env.example .env` e **troque todos os segredos**.
-2. Defina `ENVIRONMENT=production`, `DOMAIN` (ex.: `nexusgenius.com.br`) e `ACME_EMAIL`.
+2. Defina `ENVIRONMENT=production`, `DOMAIN` (ex.: `certify.nexusgenius.com.br`) e `ACME_EMAIL`.
 3. Aponte o DNS A/AAAA de `DOMAIN` para o IP da VPS **antes** de subir (Let's Encrypt).
-4. `S3_PUBLIC_ENDPOINT_URL=https://SEU_DOMINIO/files` (Caddy faz proxy `/files` → MinIO interno).
-5. Suba **sem** o override de portas locais:
+4. `S3_PUBLIC_ENDPOINT_URL=https://SEU_DOMINIO/files` (Caddy em `proxy/` faz `/files` → MinIO).
+5. Crie a rede compartilhada **uma vez**: `docker network create edge`
+6. Suba o app **sem** o override de portas locais e, em seguida, o proxy:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env -f proxy/docker-compose.yml up -d
 ```
 
-Nesse modo a API (8000) e o MinIO (9000/9001) **não** ficam no host. Só 80/443 via Caddy. Swagger fica desligado.
+Nesse modo a API (8000) e o MinIO (9000/9001) **não** ficam no host. Só 80/443 via Caddy em `proxy/`. Swagger fica desligado. Outro site na VPS entra na rede `edge` e ganha um bloco no `proxy/Caddyfile`.
 
 Zerar dados: `docker compose down -v` (apaga volumes) e subir de novo → seed recria só o SuperAdmin.
 

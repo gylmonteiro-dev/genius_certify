@@ -1,7 +1,9 @@
 # Produção na VPS (não carrega o override de portas locais):
+#   docker network create edge   # uma vez
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#   docker compose --env-file .env -f proxy/docker-compose.yml up -d
 #
-# DNS A/AAAA de $DOMAIN deve apontar para a VPS antes do Let's Encrypt.
+# Caddy (80/443) está em proxy/. DNS A/AAAA de $DOMAIN deve apontar para a VPS.
 
 services:
   backend:
@@ -9,28 +11,16 @@ services:
       ENVIRONMENT: ${ENVIRONMENT:-production}
       S3_PUBLIC_ENDPOINT_URL: ${S3_PUBLIC_ENDPOINT_URL}
 
-  caddy:
-    image: caddy:2-alpine
-    container_name: nexus_caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    environment:
-      DOMAIN: ${DOMAIN}
-      ACME_EMAIL: ${ACME_EMAIL}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - frontend
-      - backend
-      - minio
+  frontend:
     networks:
       - nexus
+      - edge
 
-volumes:
-  caddy_data:
-  caddy_config:
+  minio:
+    networks:
+      - nexus
+      - edge
+
+networks:
+  edge:
+    external: true
