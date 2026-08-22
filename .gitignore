@@ -1,8 +1,11 @@
+# DOCS
+docs/
 *.local.md
 HANDOFF.local.md
 HANDOFF.local01.md
 HANDOFF.local02.md
 HANDOFF.local03.md
+acess_server.mb
 
 # ---------------------------------------------------------------------------
 # Environment & secrets
