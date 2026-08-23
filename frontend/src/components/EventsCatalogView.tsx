@@ -1,24 +1,28 @@
 import React, { useState } from 'react';
+import { CatalogoEventoItem, catalogByKind, catalogLabel } from '../lib/catalogoEventos';
 import { EventItem } from '../types';
 import { labelEventModality, labelEventType, useT } from '../i18n';
 
 interface EventsCatalogViewProps {
   events: EventItem[];
+  catalogItems?: CatalogoEventoItem[];
   onSelectRegister: (event: EventItem) => void;
 }
 
 export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
   events,
+  catalogItems = [],
   onSelectRegister,
 }) => {
-  const { t } = useT();
+  const { t, locale } = useT();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const categories = [
     { id: 'all', label: t('catalog.filterAll') },
-    { id: 'Technology', label: t('eventMeta.category.technology') },
-    { id: 'Business', label: t('eventMeta.category.business') },
-    { id: 'Design', label: t('eventMeta.category.design') },
+    ...catalogByKind(catalogItems, 'categoria').map((item) => ({
+      id: item.slug,
+      label: catalogLabel(catalogItems, 'categoria', item.slug, locale),
+    })),
     { id: 'upcoming', label: t('catalog.filterUpcoming') },
   ];
 
@@ -88,7 +92,7 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
 
                 {/* Badge top right */}
                 <div className="absolute top-3 right-3 px-2.5 py-0.5 bg-blue-600 text-white rounded-md font-bold text-[10px] uppercase tracking-wider shadow-xs">
-                  {labelEventType(t, evt.type)}
+                  {labelEventType(t, evt.type, catalogItems, locale)}
                 </div>
               </div>
 
@@ -121,7 +125,7 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
                     </span>
                   ) : (
                     <span className="text-xs font-semibold px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-full">
-                      {labelEventModality(t, evt.modality)}
+                      {labelEventModality(t, evt.modality, catalogItems, locale)}
                     </span>
                   )}
 

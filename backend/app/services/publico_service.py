@@ -44,6 +44,9 @@ class PublicoService:
             categoria=curso.categoria,
             modalidade=curso.modalidade,
             tipo=curso.tipo,
+            verso_parcerias=curso.verso_parcerias,
+            verso_conteudos=curso.verso_conteudos,
+            verso_observacoes=curso.verso_observacoes,
         )
 
     async def list_cursos(

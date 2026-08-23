@@ -1,5 +1,26 @@
+import { CatalogoEventoItem, catalogLabel } from '../lib/catalogoEventos';
 import { Certificate, EventItem, Institution, Participant } from '../types';
 import type { TranslateFn } from './locale';
+
+const CATEGORY_I18N: Record<string, string> = {
+  technology: 'eventMeta.category.technology',
+  business: 'eventMeta.category.business',
+  design: 'eventMeta.category.design',
+  data_science: 'eventMeta.category.dataScience',
+};
+
+const TYPE_I18N: Record<string, string> = {
+  workshop: 'eventMeta.type.workshop',
+  seminar: 'eventMeta.type.seminar',
+  exam_prep: 'eventMeta.type.examPrep',
+  summit: 'eventMeta.type.summit',
+  conference: 'eventMeta.type.conference',
+};
+
+const MODALITY_I18N: Record<string, string> = {
+  online: 'eventMeta.modality.online',
+  presencial: 'eventMeta.modality.inPerson',
+};
 
 export function labelInstitutionStatus(t: TranslateFn, status: Institution['status']): string {
   switch (status) {
@@ -53,47 +74,43 @@ export function labelStudentStatus(t: TranslateFn, status: Participant['status']
   }
 }
 
-export function labelEventCategory(t: TranslateFn, category: EventItem['category']): string {
-  switch (category) {
-    case 'Technology':
-      return t('eventMeta.category.technology');
-    case 'Business':
-      return t('eventMeta.category.business');
-    case 'Design':
-      return t('eventMeta.category.design');
-    case 'Data Science':
-      return t('eventMeta.category.dataScience');
-    default:
-      return category;
+export function labelEventCategory(
+  t: TranslateFn,
+  category: string,
+  catalog: CatalogoEventoItem[] = [],
+  locale = 'pt-BR',
+): string {
+  if (catalog.some((item) => item.kind === 'categoria' && item.slug === category)) {
+    return catalogLabel(catalog, 'categoria', category, locale);
   }
+  const key = CATEGORY_I18N[category];
+  return key ? t(key) : category;
 }
 
-export function labelEventType(t: TranslateFn, type: EventItem['type']): string {
-  switch (type) {
-    case 'Workshop':
-      return t('eventMeta.type.workshop');
-    case 'Seminar':
-      return t('eventMeta.type.seminar');
-    case 'Exam Prep':
-      return t('eventMeta.type.examPrep');
-    case 'Summit':
-      return t('eventMeta.type.summit');
-    case 'Conference':
-      return t('eventMeta.type.conference');
-    default:
-      return type;
+export function labelEventType(
+  t: TranslateFn,
+  type: string,
+  catalog: CatalogoEventoItem[] = [],
+  locale = 'pt-BR',
+): string {
+  if (catalog.some((item) => item.kind === 'tipo' && item.slug === type)) {
+    return catalogLabel(catalog, 'tipo', type, locale);
   }
+  const key = TYPE_I18N[type];
+  return key ? t(key) : type;
 }
 
-export function labelEventModality(t: TranslateFn, modality: EventItem['modality']): string {
-  switch (modality) {
-    case 'Online':
-      return t('eventMeta.modality.online');
-    case 'In-Person':
-      return t('eventMeta.modality.inPerson');
-    default:
-      return modality;
+export function labelEventModality(
+  t: TranslateFn,
+  modality: string,
+  catalog: CatalogoEventoItem[] = [],
+  locale = 'pt-BR',
+): string {
+  if (catalog.some((item) => item.kind === 'modalidade' && item.slug === modality)) {
+    return catalogLabel(catalog, 'modalidade', modality, locale);
   }
+  const key = MODALITY_I18N[modality];
+  return key ? t(key) : modality;
 }
 
 export function labelRole(t: TranslateFn, role: string): string {

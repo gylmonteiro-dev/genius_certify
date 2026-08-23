@@ -1,18 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { EventItem, Institution } from '../types';
 import {
-  CursoApiCategoria,
-  CursoApiModalidade,
-  CursoApiTipo,
   CursoCreatePayload,
   EventPublicVisibility,
   getEventPublicVisibility,
-  toCursoApiCategoria,
-  toCursoApiModalidade,
   toCursoApiStatus,
-  toCursoApiTipo,
 } from '../lib/cursos';
-import { fetchCertificadoTemplatePreview } from '../lib/certificados';
+import { catalogByKind, CatalogoEventoItem, catalogLabel } from '../lib/catalogoEventos';
+import { certificateHtmlForPage, fetchCertificadoTemplatePreview } from '../lib/certificados';
 import { formatDisplayDate, labelEventStatus, useT } from '../i18n';
 import { CertificateHtmlViewer } from './CertificateHtmlViewer';
 
@@ -32,6 +27,7 @@ interface CreateEventViewProps {
   errorMessage?: string | null;
   mode?: 'create' | 'edit';
   initialEvent?: EventItem | null;
+  catalogItems?: CatalogoEventoItem[];
 }
 
 function visibilityMessageKey(
@@ -58,8 +54,9 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   errorMessage = null,
   mode = 'create',
   initialEvent = null,
+  catalogItems = [],
 }) => {
-  const { t, dateLocale } = useT();
+  const { t, dateLocale, locale } = useT();
   const isEdit = mode === 'edit';
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
@@ -77,15 +74,32 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   const [status, setStatus] = useState<'draft' | 'upcoming' | 'completed'>(
     initialEvent ? toCursoApiStatus(initialEvent.status) : 'upcoming',
   );
-  const [categoria, setCategoria] = useState<CursoApiCategoria>(
-    initialEvent ? toCursoApiCategoria(initialEvent.category) : 'technology',
+  const categoriaOptions = useMemo(
+    () => catalogByKind(catalogItems, 'categoria', { includeSlug: initialEvent?.category }),
+    [catalogItems, initialEvent?.category],
   );
-  const [modalidade, setModalidade] = useState<CursoApiModalidade>(
-    initialEvent ? toCursoApiModalidade(initialEvent.modality) : 'online',
+  const modalidadeOptions = useMemo(
+    () => catalogByKind(catalogItems, 'modalidade', { includeSlug: initialEvent?.modality }),
+    [catalogItems, initialEvent?.modality],
   );
-  const [tipo, setTipo] = useState<CursoApiTipo>(
-    initialEvent ? toCursoApiTipo(initialEvent.type) : 'workshop',
+  const tipoOptions = useMemo(
+    () => catalogByKind(catalogItems, 'tipo', { includeSlug: initialEvent?.type }),
+    [catalogItems, initialEvent?.type],
   );
+
+  const [categoria, setCategoria] = useState(
+    initialEvent?.category || categoriaOptions[0]?.slug || '',
+  );
+  const [modalidade, setModalidade] = useState(
+    initialEvent?.modality || modalidadeOptions[0]?.slug || '',
+  );
+  const [tipo, setTipo] = useState(initialEvent?.type || tipoOptions[0]?.slug || '');
+  const [versoParcerias, setVersoParcerias] = useState(initialEvent?.versoParcerias ?? '');
+  const [versoConteudos, setVersoConteudos] = useState(initialEvent?.versoConteudos ?? '');
+  const [versoObservacoes, setVersoObservacoes] = useState(
+    initialEvent?.versoObservacoes ?? '',
+  );
+  const [previewPage, setPreviewPage] = useState<'frente' | 'verso'>('frente');
   const [instituicaoId, setInstituicaoId] = useState(
     initialEvent?.institutionId || defaultInstituicaoId || '',
   );
@@ -106,6 +120,21 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   );
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const hasVerso = Boolean(
+    versoParcerias.trim() || versoConteudos.trim() || versoObservacoes.trim(),
+  );
+
+  useEffect(() => {
+    if (!categoria && categoriaOptions[0]) setCategoria(categoriaOptions[0].slug);
+    if (!modalidade && modalidadeOptions[0]) setModalidade(modalidadeOptions[0].slug);
+    if (!tipo && tipoOptions[0]) setTipo(tipoOptions[0].slug);
+  }, [categoria, modalidade, tipo, categoriaOptions, modalidadeOptions, tipoOptions]);
+
+  useEffect(() => {
+    if (!hasVerso && previewPage === 'verso') {
+      setPreviewPage('frente');
+    }
+  }, [hasVerso, previewPage]);
 
   const selectedTemplate = CERTIFICATE_TEMPLATES.find((item) => item.id === templateId)
     ?? CERTIFICATE_TEMPLATES[0];
@@ -122,6 +151,9 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
             instituicaoId: instituicaoId || undefined,
             cargaHoraria: Number(durationHours) || 0,
             instrutor: instructor,
+            versoParcerias,
+            versoConteudos,
+            versoObservacoes,
           });
           setPreviewHtml(html);
           setPreviewError(null);
@@ -141,6 +173,9 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
     instituicaoId,
     durationHours,
     instructor,
+    versoParcerias,
+    versoConteudos,
+    versoObservacoes,
     t,
   ]);
 
@@ -169,11 +204,14 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       instrutor: instructor.trim(),
       status,
       data_evento: eventDate || null,
-      categoria,
-      modalidade,
-      tipo,
+      categoria: categoria || null,
+      modalidade: modalidade || null,
+      tipo: tipo || null,
       exigir_conclusao_para_emitir: exigirConclusao,
       template_id: templateId,
+      verso_parcerias: versoParcerias.trim() || null,
+      verso_conteudos: versoConteudos.trim() || null,
+      verso_observacoes: versoObservacoes.trim() || null,
     };
     if (!isEdit && isSuperAdmin) {
       payload.instituicao_id = instituicaoId;
@@ -430,13 +468,14 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                     </label>
                     <select
                       value={categoria}
-                      onChange={(e) => setCategoria(e.target.value as CursoApiCategoria)}
+                      onChange={(e) => setCategoria(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="technology">{t('eventMeta.category.technology')}</option>
-                      <option value="business">{t('eventMeta.category.business')}</option>
-                      <option value="design">{t('eventMeta.category.design')}</option>
-                      <option value="data_science">{t('eventMeta.category.dataScience')}</option>
+                      {categoriaOptions.map((item) => (
+                        <option key={item.id} value={item.slug}>
+                          {catalogLabel(catalogItems, 'categoria', item.slug, locale)}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -445,11 +484,14 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                     </label>
                     <select
                       value={modalidade}
-                      onChange={(e) => setModalidade(e.target.value as CursoApiModalidade)}
+                      onChange={(e) => setModalidade(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="online">{t('eventMeta.modality.online')}</option>
-                      <option value="presencial">{t('eventMeta.modality.inPerson')}</option>
+                      {modalidadeOptions.map((item) => (
+                        <option key={item.id} value={item.slug}>
+                          {catalogLabel(catalogItems, 'modalidade', item.slug, locale)}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -458,14 +500,14 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                     </label>
                     <select
                       value={tipo}
-                      onChange={(e) => setTipo(e.target.value as CursoApiTipo)}
+                      onChange={(e) => setTipo(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="workshop">{t('eventMeta.type.workshop')}</option>
-                      <option value="seminar">{t('eventMeta.type.seminar')}</option>
-                      <option value="exam_prep">{t('eventMeta.type.examPrep')}</option>
-                      <option value="summit">{t('eventMeta.type.summit')}</option>
-                      <option value="conference">{t('eventMeta.type.conference')}</option>
+                      {tipoOptions.map((item) => (
+                        <option key={item.id} value={item.slug}>
+                          {catalogLabel(catalogItems, 'tipo', item.slug, locale)}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -482,6 +524,51 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                     placeholder={t('createEvent.descriptionPlaceholder')}
                     className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                   />
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">
+                      {t('createEvent.versoTitle')}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">{t('createEvent.versoHint')}</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                      {t('createEvent.versoParcerias')}
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={versoParcerias}
+                      onChange={(e) => setVersoParcerias(e.target.value)}
+                      placeholder={t('createEvent.versoParceriasPlaceholder')}
+                      className="w-full bg-white border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                      {t('createEvent.versoConteudos')}
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={versoConteudos}
+                      onChange={(e) => setVersoConteudos(e.target.value)}
+                      placeholder={t('createEvent.versoConteudosPlaceholder')}
+                      className="w-full bg-white border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                      {t('createEvent.versoObservacoes')}
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={versoObservacoes}
+                      onChange={(e) => setVersoObservacoes(e.target.value)}
+                      placeholder={t('createEvent.versoObservacoesPlaceholder')}
+                      className="w-full bg-white border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -630,6 +717,37 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                     {description}
                   </p>
                 </div>
+                {hasVerso && (
+                  <div className="py-1 space-y-2">
+                    <span className="text-slate-400 font-medium block">
+                      {t('createEvent.versoTitle')}
+                    </span>
+                    {versoParcerias.trim() && (
+                      <p className="text-slate-800 bg-white p-3 rounded-lg border border-slate-200 whitespace-pre-wrap">
+                        <span className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1">
+                          {t('createEvent.versoParcerias')}
+                        </span>
+                        {versoParcerias}
+                      </p>
+                    )}
+                    {versoConteudos.trim() && (
+                      <p className="text-slate-800 bg-white p-3 rounded-lg border border-slate-200 whitespace-pre-wrap">
+                        <span className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1">
+                          {t('createEvent.versoConteudos')}
+                        </span>
+                        {versoConteudos}
+                      </p>
+                    )}
+                    {versoObservacoes.trim() && (
+                      <p className="text-slate-800 bg-white p-3 rounded-lg border border-slate-200 whitespace-pre-wrap">
+                        <span className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1">
+                          {t('createEvent.versoObservacoes')}
+                        </span>
+                        {versoObservacoes}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Step 3 Actions */}
@@ -665,13 +783,41 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
 
         {/* Right Live Preview Panel */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <span className="text-xs font-bold tracking-widest text-slate-400 uppercase">
               {t('createEvent.livePreview')}
             </span>
-            <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
-              {t('createEvent.realtimeSync')}
-            </span>
+            <div className="flex items-center gap-2">
+              <div className="inline-flex rounded-full border border-slate-200 bg-white p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setPreviewPage('frente')}
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    previewPage === 'frente'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  {t('createEvent.previewFront')}
+                </button>
+                <button
+                  type="button"
+                  disabled={!hasVerso}
+                  title={!hasVerso ? t('createEvent.previewBackDisabled') : undefined}
+                  onClick={() => setPreviewPage('verso')}
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold disabled:opacity-40 ${
+                    previewPage === 'verso'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  {t('createEvent.previewBack')}
+                </button>
+              </div>
+              <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                {t('createEvent.realtimeSync')}
+              </span>
+            </div>
           </div>
 
           {previewError ? (
@@ -681,7 +827,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
           ) : previewHtml ? (
             <CertificateHtmlViewer
               title={t('createEvent.livePreview')}
-              html={previewHtml}
+              html={certificateHtmlForPage(previewHtml, hasVerso ? previewPage : 'frente')}
             />
           ) : (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-16 text-center text-sm text-slate-500">

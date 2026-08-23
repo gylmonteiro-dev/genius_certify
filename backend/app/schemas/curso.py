@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from app.core.cpf import normalize_cpf
 from app.core.data_nascimento import validate_data_nascimento
 from app.models.certificado import CertificadoStatus
-from app.models.curso import CursoCategoria, CursoModalidade, CursoStatus
+from app.models.curso import CursoStatus
 from app.models.participante import ParticipanteStatus
 
 
@@ -17,11 +17,14 @@ class CursoCreate(BaseModel):
     instrutor: str = Field(default="", max_length=255)
     status: CursoStatus = CursoStatus.DRAFT
     data_evento: date | None = None
-    categoria: CursoCategoria | None = None
-    modalidade: CursoModalidade | None = None
+    categoria: str | None = Field(default=None, max_length=64)
+    modalidade: str | None = Field(default=None, max_length=64)
     tipo: str | None = Field(default=None, max_length=64)
     exigir_conclusao_para_emitir: bool = True
     template_id: str = "classic"
+    verso_parcerias: str | None = None
+    verso_conteudos: str | None = None
+    verso_observacoes: str | None = None
     # Obrigatório para SuperAdmin; ignorado para admin da instituição (usa o JWT)
     instituicao_id: UUID | None = None
 
@@ -33,11 +36,14 @@ class CursoUpdate(BaseModel):
     instrutor: str | None = Field(default=None, max_length=255)
     status: CursoStatus | None = None
     data_evento: date | None = None
-    categoria: CursoCategoria | None = None
-    modalidade: CursoModalidade | None = None
+    categoria: str | None = Field(default=None, max_length=64)
+    modalidade: str | None = Field(default=None, max_length=64)
     tipo: str | None = Field(default=None, max_length=64)
     exigir_conclusao_para_emitir: bool | None = None
     template_id: str | None = None
+    verso_parcerias: str | None = None
+    verso_conteudos: str | None = None
+    verso_observacoes: str | None = None
 
 
 class CursoResponse(BaseModel):
@@ -51,12 +57,15 @@ class CursoResponse(BaseModel):
     instrutor: str
     status: CursoStatus
     data_evento: date | None = None
-    categoria: CursoCategoria | None = None
-    modalidade: CursoModalidade | None = None
+    categoria: str | None = None
+    modalidade: str | None = None
     tipo: str | None = None
     exigir_conclusao_para_emitir: bool
     emissao_liberada: bool
     template_id: str
+    verso_parcerias: str | None = None
+    verso_conteudos: str | None = None
+    verso_observacoes: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -70,9 +79,12 @@ class CursoPublicResponse(BaseModel):
     status: CursoStatus
     instituicao_nome: str
     data_evento: date | None = None
-    categoria: CursoCategoria | None = None
-    modalidade: CursoModalidade | None = None
+    categoria: str | None = None
+    modalidade: str | None = None
     tipo: str | None = None
+    verso_parcerias: str | None = None
+    verso_conteudos: str | None = None
+    verso_observacoes: str | None = None
 
 
 class InscritoResponse(BaseModel):

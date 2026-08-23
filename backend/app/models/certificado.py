@@ -1,7 +1,7 @@
 import enum
 import uuid
 
-from sqlalchemy import Enum, ForeignKey, String
+from sqlalchemy import Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -55,6 +55,9 @@ class Certificado(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     carga_horaria: Mapped[int] = mapped_column(nullable=False)
     instrutor: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     template_id: Mapped[str] = mapped_column(String(64), nullable=False, default="classic")
+    verso_parcerias: Mapped[str | None] = mapped_column(Text, nullable=True)
+    verso_conteudos: Mapped[str | None] = mapped_column(Text, nullable=True)
+    verso_observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
     sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[CertificadoStatus] = mapped_column(
         Enum(

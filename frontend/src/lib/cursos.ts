@@ -4,9 +4,6 @@ import { ParticipanteApiStatus } from './participantes';
 import { CertificadoApiStatus } from './certificados';
 
 export type CursoApiStatus = 'draft' | 'upcoming' | 'completed';
-export type CursoApiCategoria = 'technology' | 'business' | 'design' | 'data_science';
-export type CursoApiModalidade = 'online' | 'presencial';
-export type CursoApiTipo = 'workshop' | 'seminar' | 'exam_prep' | 'summit' | 'conference';
 
 export interface CursoApi {
   id: string;
@@ -17,12 +14,15 @@ export interface CursoApi {
   instrutor: string;
   status: CursoApiStatus;
   data_evento: string | null;
-  categoria: CursoApiCategoria | null;
-  modalidade: CursoApiModalidade | null;
+  categoria: string | null;
+  modalidade: string | null;
   tipo: string | null;
   exigir_conclusao_para_emitir: boolean;
   emissao_liberada: boolean;
   template_id?: string;
+  verso_parcerias?: string | null;
+  verso_conteudos?: string | null;
+  verso_observacoes?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -36,9 +36,12 @@ export interface CursoPublicApi {
   status: CursoApiStatus;
   instituicao_nome: string;
   data_evento: string | null;
-  categoria: CursoApiCategoria | null;
-  modalidade: CursoApiModalidade | null;
+  categoria: string | null;
+  modalidade: string | null;
   tipo: string | null;
+  verso_parcerias?: string | null;
+  verso_conteudos?: string | null;
+  verso_observacoes?: string | null;
 }
 
 export interface CursoCreatePayload {
@@ -48,11 +51,14 @@ export interface CursoCreatePayload {
   instrutor?: string;
   status?: CursoApiStatus;
   data_evento?: string | null;
-  categoria?: CursoApiCategoria | null;
-  modalidade?: CursoApiModalidade | null;
+  categoria?: string | null;
+  modalidade?: string | null;
   tipo?: string | null;
   exigir_conclusao_para_emitir?: boolean;
   template_id?: string;
+  verso_parcerias?: string | null;
+  verso_conteudos?: string | null;
+  verso_observacoes?: string | null;
   instituicao_id?: string;
 }
 
@@ -74,46 +80,6 @@ const API_TO_UI_STATUS: Record<CursoApiStatus, EventItem['status']> = {
   draft: 'Draft',
   upcoming: 'Upcoming',
   completed: 'Completed',
-};
-
-const API_TO_UI_CATEGORY: Record<CursoApiCategoria, EventItem['category']> = {
-  technology: 'Technology',
-  business: 'Business',
-  design: 'Design',
-  data_science: 'Data Science',
-};
-
-const API_TO_UI_MODALITY: Record<CursoApiModalidade, EventItem['modality']> = {
-  online: 'Online',
-  presencial: 'In-Person',
-};
-
-const API_TO_UI_TYPE: Record<string, EventItem['type']> = {
-  workshop: 'Workshop',
-  seminar: 'Seminar',
-  exam_prep: 'Exam Prep',
-  summit: 'Summit',
-  conference: 'Conference',
-};
-
-const UI_TO_API_CATEGORY: Record<EventItem['category'], CursoApiCategoria> = {
-  Technology: 'technology',
-  Business: 'business',
-  Design: 'design',
-  'Data Science': 'data_science',
-};
-
-const UI_TO_API_MODALITY: Record<EventItem['modality'], CursoApiModalidade> = {
-  Online: 'online',
-  'In-Person': 'presencial',
-};
-
-const UI_TO_API_TYPE: Record<EventItem['type'], CursoApiTipo> = {
-  Workshop: 'workshop',
-  Seminar: 'seminar',
-  'Exam Prep': 'exam_prep',
-  Summit: 'summit',
-  Conference: 'conference',
 };
 
 function dateParts(iso: string | null | undefined): { date: string; dateMonth: string; dateDay: string } {
@@ -141,8 +107,8 @@ function mapEventFields(item: {
   instrutor: string;
   status: CursoApiStatus;
   data_evento: string | null;
-  categoria: CursoApiCategoria | null;
-  modalidade: CursoApiModalidade | null;
+  categoria: string | null;
+  modalidade: string | null;
   tipo: string | null;
   created_at?: string;
   instituicaoId: string;
@@ -150,14 +116,17 @@ function mapEventFields(item: {
   exigir_conclusao_para_emitir?: boolean;
   emissao_liberada?: boolean;
   template_id?: string;
+  verso_parcerias?: string | null;
+  verso_conteudos?: string | null;
+  verso_observacoes?: string | null;
 }): EventItem {
   const parts = dateParts(item.data_evento ?? item.created_at);
   return {
     id: item.id,
     title: item.titulo,
-    category: item.categoria ? API_TO_UI_CATEGORY[item.categoria] : 'Technology',
-    type: item.tipo && API_TO_UI_TYPE[item.tipo] ? API_TO_UI_TYPE[item.tipo] : 'Workshop',
-    modality: item.modalidade ? API_TO_UI_MODALITY[item.modalidade] : 'Online',
+    category: item.categoria ?? '',
+    type: item.tipo ?? '',
+    modality: item.modalidade ?? '',
     date: parts.date,
     dateMonth: parts.dateMonth,
     dateDay: parts.dateDay,
@@ -171,6 +140,9 @@ function mapEventFields(item: {
     exigirConclusaoParaEmitir: item.exigir_conclusao_para_emitir ?? true,
     emissaoLiberada: item.emissao_liberada ?? false,
     templateId: item.template_id ?? 'classic',
+    versoParcerias: item.verso_parcerias ?? '',
+    versoConteudos: item.verso_conteudos ?? '',
+    versoObservacoes: item.verso_observacoes ?? '',
   };
 }
 
@@ -196,18 +168,6 @@ export function mapCursoPublicToUi(item: CursoPublicApi): EventItem {
 
 export function toCursoApiStatus(status: EventItem['status']): CursoApiStatus {
   return UI_TO_API_STATUS[status];
-}
-
-export function toCursoApiCategoria(category: EventItem['category']): CursoApiCategoria {
-  return UI_TO_API_CATEGORY[category];
-}
-
-export function toCursoApiModalidade(modality: EventItem['modality']): CursoApiModalidade {
-  return UI_TO_API_MODALITY[modality];
-}
-
-export function toCursoApiTipo(type: EventItem['type']): CursoApiTipo {
-  return UI_TO_API_TYPE[type];
 }
 
 export function getEventPublicVisibility(

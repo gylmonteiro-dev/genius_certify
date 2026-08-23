@@ -5,9 +5,11 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppError, ConflictError, ForbiddenError, NotFoundError
+from app.models.catalogo_evento import CatalogoEventoKind
 from app.models.certificado import CertificadoStatus
 from app.models.curso import Curso, CursoStatus
 from app.models.usuario import Usuario, UsuarioRole
+from app.repositories.catalogo_evento_repository import CatalogoEventoRepository
 from app.repositories.certificado_repository import CertificadoRepository
 from app.repositories.curso_repository import CursoRepository
 from app.repositories.inscricao_repository import InscricaoRepository
@@ -23,6 +25,7 @@ class CursoService:
         self._instituicoes = InstituicaoRepository(session)
         self._inscricoes = InscricaoRepository(session)
         self._certificados = CertificadoRepository(session)
+        self._catalogo = CatalogoEventoRepository(session)
 
     def _tenant_id_for_queries(self, actor: Usuario) -> UUID | None:
         """Admin da instituição: sempre filtra pelo tenant. SuperAdmin: sem filtro."""
@@ -50,6 +53,31 @@ class CursoService:
 
         return actor.instituicao_id
 
+    @staticmethod
+    def _normalize_optional_text(value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+    async def _assert_catalog_value(
+        self,
+        *,
+        field: str,
+        kind: CatalogoEventoKind,
+        value: str | None,
+        current: str | None = None,
+    ) -> str | None:
+        slug = self._normalize_optional_text(value)
+        if slug is None:
+            return None
+        if current is not None and slug == current:
+            return slug
+        item = await self._catalogo.get_by_kind_slug(kind, slug)
+        if item is None or not item.ativo:
+            raise AppError(f"{field} inválido")
+        return slug
+
     async def create(self, data: CursoCreate, *, actor: Usuario) -> CursoResponse:
         instituicao_id = self._resolve_instituicao_id_for_create(actor, data.instituicao_id)
 
@@ -61,6 +89,22 @@ class CursoService:
         if not is_valid_template_id(template_id):
             raise AppError("Modelo de certificado inválido")
 
+        categoria = await self._assert_catalog_value(
+            field="categoria",
+            kind=CatalogoEventoKind.CATEGORIA,
+            value=data.categoria,
+        )
+        modalidade = await self._assert_catalog_value(
+            field="modalidade",
+            kind=CatalogoEventoKind.MODALIDADE,
+            value=data.modalidade,
+        )
+        tipo = await self._assert_catalog_value(
+            field="tipo",
+            kind=CatalogoEventoKind.TIPO,
+            value=data.tipo,
+        )
+
         curso = await self._cursos.create(
             instituicao_id=instituicao_id,
             titulo=data.titulo.strip(),
@@ -69,11 +113,14 @@ class CursoService:
             instrutor=data.instrutor.strip(),
             status=data.status,
             data_evento=data.data_evento,
-            categoria=data.categoria,
-            modalidade=data.modalidade,
-            tipo=data.tipo.strip() if data.tipo else None,
+            categoria=categoria,
+            modalidade=modalidade,
+            tipo=tipo,
             exigir_conclusao_para_emitir=data.exigir_conclusao_para_emitir,
             template_id=template_id,
+            verso_parcerias=self._normalize_optional_text(data.verso_parcerias),
+            verso_conteudos=self._normalize_optional_text(data.verso_conteudos),
+            verso_observacoes=self._normalize_optional_text(data.verso_observacoes),
         )
         await self._session.commit()
         await self._session.refresh(curso)
@@ -122,8 +169,30 @@ class CursoService:
             payload["titulo"] = payload["titulo"].strip()
         if "instrutor" in payload and payload["instrutor"] is not None:
             payload["instrutor"] = payload["instrutor"].strip()
-        if "tipo" in payload and payload["tipo"] is not None:
-            payload["tipo"] = payload["tipo"].strip() or None
+        if "categoria" in payload:
+            payload["categoria"] = await self._assert_catalog_value(
+                field="categoria",
+                kind=CatalogoEventoKind.CATEGORIA,
+                value=payload["categoria"],
+                current=curso.categoria,
+            )
+        if "modalidade" in payload:
+            payload["modalidade"] = await self._assert_catalog_value(
+                field="modalidade",
+                kind=CatalogoEventoKind.MODALIDADE,
+                value=payload["modalidade"],
+                current=curso.modalidade,
+            )
+        if "tipo" in payload:
+            payload["tipo"] = await self._assert_catalog_value(
+                field="tipo",
+                kind=CatalogoEventoKind.TIPO,
+                value=payload["tipo"],
+                current=curso.tipo,
+            )
+        for verso_field in ("verso_parcerias", "verso_conteudos", "verso_observacoes"):
+            if verso_field in payload:
+                payload[verso_field] = self._normalize_optional_text(payload[verso_field])
         if "template_id" in payload and payload["template_id"] is not None:
             template_id = resolve_template_id(payload["template_id"])
             if not is_valid_template_id(template_id):

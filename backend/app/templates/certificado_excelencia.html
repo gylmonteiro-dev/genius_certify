@@ -47,26 +47,34 @@
       }
       body {
         display: flex;
+        flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         padding: 16px;
+        gap: 16px;
       }
-      .certificate {
+      .page {
         width: 100%;
         max-width: 1100px;
+        height: auto;
+        min-height: 0;
         aspect-ratio: 11 / 8.5;
       }
     }
 
-    .certificate {
+    .page {
       position: relative;
       background: #f9f9f7;
       border: 2px solid #001b3d;
       box-shadow: inset 0 0 0 4px #f9f9f7, inset 0 0 0 5px #775a19;
       overflow: hidden;
       padding: 36px 48px 28px;
-      min-height: 210mm;
+      width: 297mm;
+      height: 210mm;
+      page-break-after: always;
+      page-break-inside: avoid;
     }
+    .page:last-child { page-break-after: auto; }
 
     .pattern {
       position: absolute;
@@ -298,10 +306,59 @@
       text-transform: uppercase;
       color: #74777f;
     }
+
+    .verso-title {
+      margin: 0;
+      font-family: "EB Garamond", "DejaVu Serif", serif;
+      font-size: 36px;
+      line-height: 1.15;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      color: #001b3d;
+    }
+
+    .verso-event {
+      margin: 0 0 20px;
+      font-size: 14px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #44474e;
+      text-align: center;
+    }
+
+    .verso-body {
+      flex: 1;
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    .verso-section {
+      margin: 0 0 18px;
+    }
+
+    .verso-section h3 {
+      margin: 0 0 6px;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #775a19;
+    }
+
+    .verso-section p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.55;
+      color: #1a1c1b;
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
-  <div class="certificate">
+  <div class="page frente">
     <div class="pattern"></div>
     <div class="glow-tl"></div>
     <div class="glow-br"></div>
@@ -371,5 +428,45 @@
       </p>
     </div>
   </div>
+  {% if verso_parcerias or verso_conteudos or verso_observacoes %}
+  <div class="page verso">
+    <div class="pattern"></div>
+    <div class="glow-tl"></div>
+    <div class="glow-br"></div>
+    <div class="content">
+      <div class="header">
+        {% if logo_data_uri %}
+        <img class="header-logo" src="{{ logo_data_uri }}" alt="{{ instituicao_nome }}" />
+        {% endif %}
+        <h1 class="verso-title">Informações do evento</h1>
+        <div class="gold-rule"></div>
+        <p class="verso-event">{{ curso_titulo }}</p>
+      </div>
+      <div class="verso-body">
+        {% if verso_parcerias %}
+        <section class="verso-section">
+          <h3>Parcerias</h3>
+          <p>{{ verso_parcerias }}</p>
+        </section>
+        {% endif %}
+        {% if verso_conteudos %}
+        <section class="verso-section">
+          <h3>Conteúdos abordados</h3>
+          <p>{{ verso_conteudos }}</p>
+        </section>
+        {% endif %}
+        {% if verso_observacoes %}
+        <section class="verso-section">
+          <h3>Observações</h3>
+          <p>{{ verso_observacoes }}</p>
+        </section>
+        {% endif %}
+      </div>
+      <p class="fine-print">
+        {{ instituicao_nome }} · Código de verificação: {{ codigo_validacao }}
+      </p>
+    </div>
+  </div>
+  {% endif %}
 </body>
 </html>

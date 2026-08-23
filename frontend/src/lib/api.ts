@@ -73,13 +73,21 @@ export async function apiRequestBlob(
 export async function apiRequestText(
   path: string,
   token?: string | null,
+  options: RequestInit = {},
 ): Promise<string> {
-  const headers = new Headers();
+  const headers = new Headers(options.headers);
+  if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_BASE}${path}`, { method: 'GET', headers });
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: options.method ?? 'GET',
+    ...options,
+    headers,
+  });
   if (!response.ok) {
     let detail = 'Falha na requisição';
     try {

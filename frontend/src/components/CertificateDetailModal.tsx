@@ -82,6 +82,7 @@ export const CertificateDetailModal: React.FC<CertificateDetailModalProps> = ({
             title={t('public.viewCertificate')}
             html={html || undefined}
             src={publicSrc}
+            layout="scroll"
           />
         ) : (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-16 text-center text-sm text-slate-500">

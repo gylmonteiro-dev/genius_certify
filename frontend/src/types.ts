@@ -10,6 +10,7 @@ export type NavTab =
   | 'event-registration'
   | 'events-directory'
   | 'participants'
+  | 'event-types'
   | 'settings';
 
 export type UserRole = 'admin' | 'public';
@@ -33,9 +34,9 @@ export interface Institution {
 export interface EventItem {
   id: string;
   title: string;
-  category: 'Technology' | 'Business' | 'Design' | 'Data Science';
-  type: 'Workshop' | 'Seminar' | 'Exam Prep' | 'Summit' | 'Conference';
-  modality: 'Online' | 'In-Person';
+  category: string;
+  type: string;
+  modality: string;
   date: string; // e.g., "2024-10-24" or "Oct 15, 2024"
   dateMonth: string; // e.g., "OCTOBER"
   dateDay: string; // e.g., "24"
@@ -53,6 +54,9 @@ export interface EventItem {
   exigirConclusaoParaEmitir: boolean;
   emissaoLiberada: boolean;
   templateId: string;
+  versoParcerias: string;
+  versoConteudos: string;
+  versoObservacoes: string;
 }
 
 export interface Certificate {

@@ -5,6 +5,7 @@ interface CertificateHtmlViewerProps {
   html?: string;
   src?: string;
   className?: string;
+  layout?: 'single' | 'scroll';
 }
 
 export const CertificateHtmlViewer: React.FC<CertificateHtmlViewerProps> = ({
@@ -12,6 +13,7 @@ export const CertificateHtmlViewer: React.FC<CertificateHtmlViewerProps> = ({
   html,
   src,
   className,
+  layout = 'single',
 }) => {
   return (
     <iframe
@@ -21,7 +23,9 @@ export const CertificateHtmlViewer: React.FC<CertificateHtmlViewerProps> = ({
       sandbox="allow-same-origin"
       className={
         className ??
-        'w-full aspect-[11/8.5] min-h-[240px] rounded-xl border border-slate-200 bg-[#f4f4f2]'
+        (layout === 'scroll'
+          ? 'w-full min-h-[320px] h-[min(80vh,920px)] rounded-xl border border-slate-200 bg-[#f4f4f2]'
+          : 'w-full aspect-[11/8.5] min-h-[240px] rounded-xl border border-slate-200 bg-[#f4f4f2]')
       }
     />
   );

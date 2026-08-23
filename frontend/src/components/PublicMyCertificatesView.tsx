@@ -256,6 +256,7 @@ export const PublicMyCertificatesView: React.FC = () => {
               <CertificateHtmlViewer
                 title={t('public.viewCertificate')}
                 src={publicCertificadoHtmlUrl(viewingItem.codigo_validacao)}
+                layout="scroll"
               />
               <div className="flex justify-end gap-2 mt-4">
                 <button

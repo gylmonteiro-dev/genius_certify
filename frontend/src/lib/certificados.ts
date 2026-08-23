@@ -200,6 +200,21 @@ export async function fetchCertificadoHtml(
   return apiRequestText(`/api/certificados/${id}/html`, token);
 }
 
+export function certificateHtmlForPage(
+  html: string,
+  page: 'frente' | 'verso' | 'all',
+): string {
+  if (page === 'all' || !html) return html;
+  const css =
+    page === 'frente'
+      ? '.page.verso{display:none!important}'
+      : '.page.frente{display:none!important}';
+  if (html.includes('</head>')) {
+    return html.replace('</head>', `<style id="page-filter">${css}</style></head>`);
+  }
+  return `<style id="page-filter">${css}</style>${html}`;
+}
+
 export async function fetchCertificadoTemplatePreview(
   token: string,
   params: {
@@ -210,21 +225,28 @@ export async function fetchCertificadoTemplatePreview(
     instituicaoId?: string;
     cargaHoraria?: number;
     instrutor?: string;
+    versoParcerias?: string;
+    versoConteudos?: string;
+    versoObservacoes?: string;
   },
 ): Promise<string> {
-  const query = new URLSearchParams({
-    participante_nome: params.participanteNome,
-    curso_titulo: params.cursoTitulo,
-    instituicao_nome: params.instituicaoNome ?? '',
-    carga_horaria: String(params.cargaHoraria ?? 0),
-    instrutor: params.instrutor ?? '',
-  });
-  if (params.instituicaoId) {
-    query.set('instituicao_id', params.instituicaoId);
-  }
   return apiRequestText(
-    `/api/certificados/templates/${encodeURIComponent(params.templateId)}/preview?${query.toString()}`,
+    `/api/certificados/templates/${encodeURIComponent(params.templateId)}/preview`,
     token,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        participante_nome: params.participanteNome,
+        curso_titulo: params.cursoTitulo,
+        instituicao_nome: params.instituicaoNome ?? '',
+        carga_horaria: params.cargaHoraria ?? 0,
+        instrutor: params.instrutor ?? '',
+        instituicao_id: params.instituicaoId || null,
+        verso_parcerias: params.versoParcerias || null,
+        verso_conteudos: params.versoConteudos || null,
+        verso_observacoes: params.versoObservacoes || null,
+      }),
+    },
   );
 }
 

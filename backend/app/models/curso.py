@@ -18,18 +18,6 @@ class CursoStatus(str, enum.Enum):
     COMPLETED = "completed"
 
 
-class CursoCategoria(str, enum.Enum):
-    TECHNOLOGY = "technology"
-    BUSINESS = "business"
-    DESIGN = "design"
-    DATA_SCIENCE = "data_science"
-
-
-class CursoModalidade(str, enum.Enum):
-    ONLINE = "online"
-    PRESENCIAL = "presencial"
-
-
 class Curso(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "cursos"
 
@@ -53,22 +41,8 @@ class Curso(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         default=CursoStatus.DRAFT,
     )
     data_evento: Mapped[date | None] = mapped_column(Date, nullable=True)
-    categoria: Mapped[CursoCategoria | None] = mapped_column(
-        Enum(
-            CursoCategoria,
-            name="curso_categoria",
-            values_callable=lambda enum_cls: [item.value for item in enum_cls],
-        ),
-        nullable=True,
-    )
-    modalidade: Mapped[CursoModalidade | None] = mapped_column(
-        Enum(
-            CursoModalidade,
-            name="curso_modalidade",
-            values_callable=lambda enum_cls: [item.value for item in enum_cls],
-        ),
-        nullable=True,
-    )
+    categoria: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    modalidade: Mapped[str | None] = mapped_column(String(64), nullable=True)
     tipo: Mapped[str | None] = mapped_column(String(64), nullable=True)
     template_id: Mapped[str] = mapped_column(String(64), nullable=False, default="classic")
     exigir_conclusao_para_emitir: Mapped[bool] = mapped_column(
@@ -81,6 +55,9 @@ class Curso(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
         default=False,
     )
+    verso_parcerias: Mapped[str | None] = mapped_column(Text, nullable=True)
+    verso_conteudos: Mapped[str | None] = mapped_column(Text, nullable=True)
+    verso_observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     instituicao: Mapped[Instituicao] = relationship(back_populates="cursos")
     certificados: Mapped[list[Certificado]] = relationship(back_populates="curso")

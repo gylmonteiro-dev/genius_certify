@@ -103,6 +103,7 @@ export const PublicValidateView: React.FC = () => {
             <CertificateHtmlViewer
               title={t('public.viewCertificate')}
               src={publicCertificadoHtmlUrl(result.codigoValidacao)}
+              layout="scroll"
             />
             <button
               type="button"

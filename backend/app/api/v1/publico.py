@@ -6,7 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
+from app.models.catalogo_evento import CatalogoEventoKind
+from app.schemas.catalogo_evento import CatalogoEventoItemResponse
 from app.schemas.curso import CursoPublicResponse, InscricaoPublicaRequest
+from app.services.catalogo_evento_service import CatalogoEventoService
 from app.schemas.participante import (
     ConsultaCertificadosRequest,
     ConsultaCertificadosResponse,
@@ -38,6 +41,14 @@ async def certificado_font(font_name: str) -> FileResponse:
         media_type="font/ttf",
         headers={"Access-Control-Allow-Origin": "*"},
     )
+
+
+@router.get("/catalogo-eventos", response_model=list[CatalogoEventoItemResponse])
+async def list_catalogo_eventos_publico(
+    kind: CatalogoEventoKind | None = Query(default=None),
+    session: AsyncSession = Depends(get_db),
+) -> list[CatalogoEventoItemResponse]:
+    return await CatalogoEventoService(session).list_publico(kind=kind)
 
 
 @router.get("/cursos", response_model=list[CursoPublicResponse])

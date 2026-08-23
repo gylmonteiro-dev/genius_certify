@@ -10,6 +10,7 @@ interface SidebarProps {
   isOpenMobile: boolean;
   onCloseMobile: () => void;
   onLogout: () => void;
+  isSuperAdmin?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -19,6 +20,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
   onLogout,
+  isSuperAdmin = false,
 }) => {
   const { t } = useT();
   const isEventsActive = 
@@ -44,6 +46,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: 'corporate_fare',
       isActive: isInstitutionsActive,
     },
+    ...(isSuperAdmin
+      ? [
+          {
+            id: 'event-types' as NavTab,
+            label: t('nav.eventTypes'),
+            icon: 'category',
+          },
+        ]
+      : []),
     {
       id: 'certificates' as NavTab,
       label: t('nav.certificates'),

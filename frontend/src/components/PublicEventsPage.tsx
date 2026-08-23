@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EventItem } from '../types';
 import { ApiError } from '../lib/api';
+import { listCatalogoEventosPublico, CatalogoEventoItem } from '../lib/catalogoEventos';
 import { listCursosPublicos, mapCursoPublicToUi } from '../lib/cursos';
 import { EventsCatalogView } from './EventsCatalogView';
 import { PublicLayout } from './PublicLayout';
@@ -11,6 +12,7 @@ export const PublicEventsPage: React.FC = () => {
   const { t } = useT();
   const navigate = useNavigate();
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [catalogItems, setCatalogItems] = useState<CatalogoEventoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,8 +22,14 @@ export const PublicEventsPage: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const items = await listCursosPublicos();
-        if (!cancelled) setEvents(items.map(mapCursoPublicToUi));
+        const [items, catalog] = await Promise.all([
+          listCursosPublicos(),
+          listCatalogoEventosPublico(),
+        ]);
+        if (!cancelled) {
+          setEvents(items.map(mapCursoPublicToUi));
+          setCatalogItems(catalog);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof ApiError ? err.message : t('public.loadEventsError'));
@@ -55,6 +63,7 @@ export const PublicEventsPage: React.FC = () => {
       ) : (
         <EventsCatalogView
           events={events}
+          catalogItems={catalogItems}
           onSelectRegister={(event) => navigate(`/eventos/${event.id}`)}
         />
       )}

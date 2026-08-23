@@ -79,6 +79,9 @@ class CertificadoService:
         curso_titulo: str,
         instituicao_nome: str,
         carga_horaria: int,
+        verso_parcerias: str | None = None,
+        verso_conteudos: str | None = None,
+        verso_observacoes: str | None = None,
     ) -> str:
         payload = "|".join(
             [
@@ -88,6 +91,9 @@ class CertificadoService:
                 curso_titulo,
                 instituicao_nome,
                 str(carga_horaria),
+                verso_parcerias or "",
+                verso_conteudos or "",
+                verso_observacoes or "",
             ]
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -148,6 +154,9 @@ class CertificadoService:
             curso_titulo=curso.titulo,
             instituicao_nome=instituicao.nome,
             carga_horaria=curso.carga_horaria,
+            verso_parcerias=curso.verso_parcerias,
+            verso_conteudos=curso.verso_conteudos,
+            verso_observacoes=curso.verso_observacoes,
         )
         return await self._certificados.create(
             codigo_validacao=codigo_validacao,
@@ -161,6 +170,9 @@ class CertificadoService:
             carga_horaria=curso.carga_horaria,
             instrutor=curso.instrutor,
             template_id=resolve_template_id(curso.template_id),
+            verso_parcerias=curso.verso_parcerias,
+            verso_conteudos=curso.verso_conteudos,
+            verso_observacoes=curso.verso_observacoes,
             sha256=sha256,
             status=CertificadoStatus.ACTIVE,
         )
@@ -368,6 +380,9 @@ class CertificadoService:
         carga_horaria: int,
         instrutor: str,
         instituicao_id: UUID | None,
+        verso_parcerias: str | None = None,
+        verso_conteudos: str | None = None,
+        verso_observacoes: str | None = None,
     ) -> str:
         if not is_valid_template_id(template_id):
             raise NotFoundError("Modelo de certificado não encontrado")
@@ -397,6 +412,9 @@ class CertificadoService:
             instrutor=instrutor.strip(),
             logo_url=logo_url,
             assinatura_url=assinatura_url,
+            verso_parcerias=verso_parcerias,
+            verso_conteudos=verso_conteudos,
+            verso_observacoes=verso_observacoes,
         )
         return self._pdf.render_certificado_html(data)
 

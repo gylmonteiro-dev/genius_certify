@@ -30,6 +30,9 @@ class CertificateRenderData:
     emitido_em: str
     logo_url: str | None = None
     assinatura_url: str | None = None
+    verso_parcerias: str | None = None
+    verso_conteudos: str | None = None
+    verso_observacoes: str | None = None
 
 
 class PdfService:
@@ -74,6 +77,9 @@ class PdfService:
             logo_data_uri=self._to_data_uri(data.logo_url),
             assinatura_data_uri=self._to_data_uri(data.assinatura_url),
             font_base=font_base,
+            verso_parcerias=data.verso_parcerias or "",
+            verso_conteudos=data.verso_conteudos or "",
+            verso_observacoes=data.verso_observacoes or "",
         )
 
     def render_certificado_html(self, data: CertificateRenderData) -> str:
@@ -103,6 +109,9 @@ class PdfService:
             emitido_em=certificado.created_at.strftime("%d/%m/%Y"),
             logo_url=logo_url,
             assinatura_url=assinatura_url,
+            verso_parcerias=certificado.verso_parcerias,
+            verso_conteudos=certificado.verso_conteudos,
+            verso_observacoes=certificado.verso_observacoes,
         )
 
     @staticmethod
@@ -116,6 +125,9 @@ class PdfService:
         instrutor: str,
         logo_url: str | None = None,
         assinatura_url: str | None = None,
+        verso_parcerias: str | None = None,
+        verso_conteudos: str | None = None,
+        verso_observacoes: str | None = None,
     ) -> CertificateRenderData:
         today = datetime.now().strftime("%d/%m/%Y")
         return CertificateRenderData(
@@ -131,4 +143,7 @@ class PdfService:
             emitido_em=today,
             logo_url=logo_url,
             assinatura_url=assinatura_url,
+            verso_parcerias=verso_parcerias,
+            verso_conteudos=verso_conteudos,
+            verso_observacoes=verso_observacoes,
         )

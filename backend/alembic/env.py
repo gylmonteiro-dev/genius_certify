@@ -8,6 +8,7 @@ from app.models import Base
 
 # Importa todos os models para o metadata do autogenerate
 from app.models import (  # noqa: F401
+    CatalogoEventoItem,
     Certificado,
     Curso,
     Inscricao,

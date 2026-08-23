@@ -11,6 +11,7 @@ from app.schemas.certificado import (
     CertificadoEmitLoteRequest,
     CertificadoEmitLoteResponse,
     CertificadoEmitRequest,
+    CertificadoPreviewRequest,
     CertificadoPublicResponse,
     CertificadoResponse,
     CertificadoTemplateItem,
@@ -28,27 +29,25 @@ async def list_certificate_templates(
     return [CertificadoTemplateItem(id=item.id) for item in list_templates()]
 
 
-@router.get("/templates/{template_id}/preview", response_class=HTMLResponse)
+@router.post("/templates/{template_id}/preview", response_class=HTMLResponse)
 async def preview_certificate_template(
     template_id: str,
-    participante_nome: str = Query(default="Nome do Participante"),
-    curso_titulo: str = Query(default="Nome do evento"),
-    instituicao_nome: str = Query(default=""),
-    carga_horaria: int = Query(default=0, ge=0),
-    instrutor: str = Query(default=""),
-    instituicao_id: UUID | None = Query(default=None),
+    body: CertificadoPreviewRequest,
     session: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(RequireInstituicaoAdmin),
 ) -> HTMLResponse:
     html = await CertificadoService(session).preview_html(
         actor=current_user,
         template_id=template_id,
-        participante_nome=participante_nome,
-        curso_titulo=curso_titulo,
-        instituicao_nome=instituicao_nome,
-        carga_horaria=carga_horaria,
-        instrutor=instrutor,
-        instituicao_id=instituicao_id,
+        participante_nome=body.participante_nome,
+        curso_titulo=body.curso_titulo,
+        instituicao_nome=body.instituicao_nome,
+        carga_horaria=body.carga_horaria,
+        instrutor=body.instrutor,
+        instituicao_id=body.instituicao_id,
+        verso_parcerias=body.verso_parcerias,
+        verso_conteudos=body.verso_conteudos,
+        verso_observacoes=body.verso_observacoes,
     )
     return HTMLResponse(content=html)
 

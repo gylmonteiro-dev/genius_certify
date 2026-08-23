@@ -20,6 +20,7 @@ import { EventIssueView } from './components/EventIssueView';
 import { CertificatesView } from './components/CertificatesView';
 import { ParticipantsView } from './components/ParticipantsView';
 import { SettingsView } from './components/SettingsView';
+import { EventTypesView } from './components/EventTypesView';
 import { IssueCertificateModal } from './components/IssueCertificateModal';
 import { CertificateDetailModal } from './components/CertificateDetailModal';
 import { Toast } from './components/Toast';
@@ -50,6 +51,15 @@ import {
   mapCursoToUi,
   updateCurso,
 } from './lib/cursos';
+import {
+  CatalogoEventoCreatePayload,
+  CatalogoEventoItem,
+  CatalogoEventoUpdatePayload,
+  createCatalogoEvento,
+  deactivateCatalogoEvento,
+  listCatalogoEventos,
+  updateCatalogoEvento,
+} from './lib/catalogoEventos';
 import { APP_NAME } from './lib/brand';
 import { useT, labelInstitutionStatus } from './i18n';
 import {
@@ -133,6 +143,10 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [importingCsv, setImportingCsv] = useState(false);
+  const [catalogItems, setCatalogItems] = useState<CatalogoEventoItem[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [catalogSubmitting, setCatalogSubmitting] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -170,10 +184,12 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       setEvents([]);
       setParticipants([]);
       setCertificates([]);
+      setCatalogItems([]);
       setInstitutionsError(null);
       setEventsError(null);
       setParticipantsError(null);
       setCertificatesError(null);
+      setCatalogError(null);
       return;
     }
 
@@ -184,17 +200,21 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       setEventsLoading(true);
       setParticipantsLoading(true);
       setCertificatesLoading(true);
+      setCatalogLoading(true);
       setInstitutionsError(null);
       setEventsError(null);
       setParticipantsError(null);
       setCertificatesError(null);
+      setCatalogError(null);
 
-      const [instResult, cursoResult, participanteResult, certResult] = await Promise.allSettled([
-        listInstituicoes(authToken),
-        listCursos(authToken),
-        listParticipantes(authToken),
-        listCertificados(authToken),
-      ]);
+      const [instResult, cursoResult, participanteResult, certResult, catalogResult] =
+        await Promise.allSettled([
+          listInstituicoes(authToken),
+          listCursos(authToken),
+          listParticipantes(authToken),
+          listCertificados(authToken),
+          listCatalogoEventos(authToken),
+        ]);
 
       if (cancelled) return;
 
@@ -232,10 +252,19 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         setCertificates([]);
       }
 
+      if (catalogResult.status === 'fulfilled') {
+        setCatalogItems(catalogResult.value);
+      } else {
+        const err = catalogResult.reason;
+        setCatalogError(err instanceof ApiError ? err.message : t('errors.loadEventTypes'));
+        setCatalogItems([]);
+      }
+
       setInstitutionsLoading(false);
       setEventsLoading(false);
       setParticipantsLoading(false);
       setCertificatesLoading(false);
+      setCatalogLoading(false);
     };
 
     void loadAll();
@@ -381,6 +410,66 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     }
   };
 
+  const upsertCatalogItem = (item: CatalogoEventoItem) => {
+    setCatalogItems((prev) => {
+      const exists = prev.some((entry) => entry.id === item.id);
+      if (exists) {
+        return prev.map((entry) => (entry.id === item.id ? item : entry));
+      }
+      return [...prev, item];
+    });
+  };
+
+  const handleCreateCatalogItem = async (payload: CatalogoEventoCreatePayload) => {
+    setCatalogSubmitting(true);
+    setCatalogError(null);
+    try {
+      const created = await createCatalogoEvento(authToken, payload);
+      upsertCatalogItem(created);
+      showToast(t('toasts.eventTypeSaved'));
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : t('errors.saveEventType');
+      setCatalogError(message);
+      throw err;
+    } finally {
+      setCatalogSubmitting(false);
+    }
+  };
+
+  const handleUpdateCatalogItem = async (
+    id: string,
+    payload: CatalogoEventoUpdatePayload,
+  ) => {
+    setCatalogSubmitting(true);
+    setCatalogError(null);
+    try {
+      const updated = await updateCatalogoEvento(authToken, id, payload);
+      upsertCatalogItem(updated);
+      showToast(t('toasts.eventTypeSaved'));
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : t('errors.saveEventType');
+      setCatalogError(message);
+      throw err;
+    } finally {
+      setCatalogSubmitting(false);
+    }
+  };
+
+  const handleDeactivateCatalogItem = async (id: string) => {
+    setCatalogSubmitting(true);
+    setCatalogError(null);
+    try {
+      const updated = await deactivateCatalogoEvento(authToken, id);
+      upsertCatalogItem(updated);
+      showToast(t('toasts.eventTypeDeactivated'));
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : t('errors.saveEventType');
+      setCatalogError(message);
+    } finally {
+      setCatalogSubmitting(false);
+    }
+  };
+
   const handleCreateEvent = async (payload: CursoCreatePayload) => {
     if (!authToken) return;
     setCreateEventLoading(true);
@@ -417,6 +506,9 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         tipo: payload.tipo,
         exigir_conclusao_para_emitir: payload.exigir_conclusao_para_emitir,
         template_id: payload.template_id,
+        verso_parcerias: payload.verso_parcerias,
+        verso_conteudos: payload.verso_conteudos,
+        verso_observacoes: payload.verso_observacoes,
       };
       const updated = await updateCurso(authToken, editingEvent.id, updatePayload);
       setEvents((prev) =>
@@ -724,6 +816,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         isOpenMobile={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
         onLogout={onLogout}
+        isSuperAdmin={isSuperAdmin}
       />
 
       <TopBar
@@ -738,6 +831,8 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
             ? editingEvent
               ? t('topbar.editEvent')
               : t('topbar.createEvent')
+            : currentTab === 'event-types'
+              ? t('nav.eventTypes')
             : currentTab === 'institutions'
               ? t('nav.institutions')
               : currentTab === 'register-institution'
@@ -792,6 +887,19 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
             defaultInstituicaoId={authUser.instituicao_id}
             isSubmitting={createEventLoading}
             errorMessage={createEventError}
+            catalogItems={catalogItems}
+          />
+        )}
+
+        {currentTab === 'event-types' && isSuperAdmin && (
+          <EventTypesView
+            items={catalogItems}
+            isLoading={catalogLoading}
+            errorMessage={catalogError}
+            isSubmitting={catalogSubmitting}
+            onCreate={handleCreateCatalogItem}
+            onUpdate={handleUpdateCatalogItem}
+            onDeactivate={handleDeactivateCatalogItem}
           />
         )}
 
@@ -878,6 +986,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         {currentTab === 'events-catalog' && (
           <EventsCatalogView
             events={events}
+            catalogItems={catalogItems}
             onSelectRegister={() => setCurrentTab('participants')}
           />
         )}

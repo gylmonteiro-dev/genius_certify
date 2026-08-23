@@ -72,3 +72,15 @@ class CertificadoPublicResponse(BaseModel):
 
 class CertificadoTemplateItem(BaseModel):
     id: str
+
+
+class CertificadoPreviewRequest(BaseModel):
+    participante_nome: str = "Nome do Participante"
+    curso_titulo: str = "Nome do evento"
+    instituicao_nome: str = ""
+    carga_horaria: int = Field(default=0, ge=0)
+    instrutor: str = ""
+    instituicao_id: UUID | None = None
+    verso_parcerias: str | None = None
+    verso_conteudos: str | None = None
+    verso_observacoes: str | None = None
