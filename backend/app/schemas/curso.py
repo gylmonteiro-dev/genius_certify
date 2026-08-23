@@ -100,6 +100,21 @@ class InscritoResponse(BaseModel):
     numero_certificado: str | None = None
 
 
+class InscricaoLoteRequest(BaseModel):
+    participante_ids: list[UUID] = Field(min_length=1, max_length=200)
+
+
+class InscricaoLoteErro(BaseModel):
+    participante_id: UUID
+    mensagem: str
+
+
+class InscricaoLoteResponse(BaseModel):
+    enrolled: int
+    already_enrolled: int
+    errors: list[InscricaoLoteErro]
+
+
 class InscricaoPublicaRequest(BaseModel):
     nome: str = Field(min_length=2, max_length=255)
     email: EmailStr

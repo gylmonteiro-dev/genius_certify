@@ -48,6 +48,7 @@ import {
   liberarEmissao,
   listCursos,
   listInscritos,
+  inscreverParticipantesLote,
   mapCursoToUi,
   updateCurso,
 } from './lib/cursos';
@@ -120,6 +121,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
   const [inscritosError, setInscritosError] = useState<string | null>(null);
   const [releasingEmissao, setReleasingEmissao] = useState(false);
   const [loteIssuing, setLoteIssuing] = useState(false);
+  const [enrollingLote, setEnrollingLote] = useState(false);
 
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [participantsLoading, setParticipantsLoading] = useState(false);
@@ -757,6 +759,38 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     }
   };
 
+  const handleEnrollLote = async (cursoId: string, participanteIds: string[]) => {
+    if (!authToken) return;
+    setEnrollingLote(true);
+    try {
+      const result = await inscreverParticipantesLote(
+        authToken,
+        cursoId,
+        participanteIds,
+      );
+      const parts = [
+        t('toasts.enrolledBatch', {
+          enrolled: result.enrolled,
+          already: result.already_enrolled,
+        }),
+      ];
+      if (result.errors.length > 0) {
+        parts.push(t('toasts.enrollBatchErrors', { count: result.errors.length }));
+      }
+      showToast(parts.join(' '));
+      if (issuingEvent?.id === cursoId) {
+        await loadInscritos(cursoId);
+      }
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : t('errors.enrollBatch');
+      showToast(message);
+      throw err;
+    } finally {
+      setEnrollingLote(false);
+    }
+  };
+
   const handleIssueSelected = async (participanteIds: string[]) => {
     if (!authToken || !issuingEvent) return;
     setLoteIssuing(true);
@@ -954,13 +988,18 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
             <EventIssueView
               event={issuingEvent}
               inscritos={inscritos}
+              participants={participantsWithCounts}
               isLoading={inscritosLoading}
               errorMessage={inscritosError}
               isReleasing={releasingEmissao}
               isIssuing={loteIssuing}
+              isEnrolling={enrollingLote}
               onBack={() => setIssuingEvent(null)}
               onRelease={handleReleaseEmissao}
               onIssueSelected={handleIssueSelected}
+              onEnrollSelected={(participanteIds) =>
+                handleEnrollLote(issuingEvent.id, participanteIds)
+              }
               onSetStatus={handleSetParticipantStatus}
             />
           ) : (
@@ -1027,6 +1066,9 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
             }
             onSetStatus={handleSetParticipantStatus}
             isImporting={importingCsv}
+            events={events}
+            isEnrolling={enrollingLote}
+            onEnrollSelected={handleEnrollLote}
           />
         )}
 

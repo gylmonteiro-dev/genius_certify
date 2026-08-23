@@ -238,6 +238,32 @@ export async function listInscritos(
   );
 }
 
+export interface InscricaoLoteErro {
+  participante_id: string;
+  mensagem: string;
+}
+
+export interface InscricaoLoteResult {
+  enrolled: number;
+  already_enrolled: number;
+  errors: InscricaoLoteErro[];
+}
+
+export async function inscreverParticipantesLote(
+  token: string,
+  cursoId: string,
+  participanteIds: string[],
+): Promise<InscricaoLoteResult> {
+  return apiRequest<InscricaoLoteResult>(
+    `/api/cursos/${cursoId}/inscrever-lote`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ participante_ids: participanteIds }),
+    },
+    token,
+  );
+}
+
 export async function liberarEmissao(
   token: string,
   cursoId: string,

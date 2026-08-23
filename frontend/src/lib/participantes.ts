@@ -91,8 +91,18 @@ export async function updateParticipante(
   );
 }
 
-export async function listParticipantes(token: string): Promise<ParticipanteApi[]> {
-  return apiRequest<ParticipanteApi[]>('/api/participantes', { method: 'GET' }, token);
+export async function listParticipantes(
+  token: string,
+  options?: { instituicaoId?: string; limit?: number },
+): Promise<ParticipanteApi[]> {
+  const params = new URLSearchParams();
+  if (options?.instituicaoId) params.set('instituicao_id', options.instituicaoId);
+  params.set('limit', String(options?.limit ?? 500));
+  return apiRequest<ParticipanteApi[]>(
+    `/api/participantes?${params.toString()}`,
+    { method: 'GET' },
+    token,
+  );
 }
 
 export async function createParticipante(

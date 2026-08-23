@@ -6,7 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.dependencies import RequireInstituicaoAdmin
 from app.models.usuario import Usuario
-from app.schemas.curso import CursoCreate, CursoResponse, CursoUpdate, InscritoResponse
+from app.schemas.curso import (
+    CursoCreate,
+    CursoResponse,
+    CursoUpdate,
+    InscricaoLoteRequest,
+    InscricaoLoteResponse,
+    InscritoResponse,
+)
 from app.services.curso_service import CursoService
 
 router = APIRouter(prefix="/cursos", tags=["cursos"])
@@ -48,6 +55,20 @@ async def list_inscritos(
     current_user: Usuario = Depends(RequireInstituicaoAdmin),
 ) -> list[InscritoResponse]:
     return await CursoService(session).list_inscritos(curso_id, actor=current_user)
+
+
+@router.post("/{curso_id}/inscrever-lote", response_model=InscricaoLoteResponse)
+async def inscrever_lote(
+    curso_id: UUID,
+    body: InscricaoLoteRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> InscricaoLoteResponse:
+    return await CursoService(session).inscrever_lote(
+        curso_id,
+        body,
+        actor=current_user,
+    )
 
 
 @router.post("/{curso_id}/liberar-emissao", response_model=CursoResponse)

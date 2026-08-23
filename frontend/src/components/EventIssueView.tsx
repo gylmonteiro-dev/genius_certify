@@ -1,20 +1,25 @@
 import React, { useMemo, useState } from 'react';
-import { EventItem } from '../types';
+import { EventItem, Participant } from '../types';
 import { InscritoApi } from '../lib/cursos';
 import { formatCpf } from '../lib/cpf';
 import { mapParticipanteStatus } from '../lib/participantes';
 import { formatDisplayDate, labelEventStatus, labelStudentStatus, useT } from '../i18n';
 
+const ENROLL_LOTE_MAX = 200;
+
 interface EventIssueViewProps {
   event: EventItem;
   inscritos: InscritoApi[];
+  participants?: Participant[];
   isLoading?: boolean;
   errorMessage?: string | null;
   isReleasing?: boolean;
   isIssuing?: boolean;
+  isEnrolling?: boolean;
   onBack: () => void;
   onRelease: () => Promise<void>;
   onIssueSelected: (participanteIds: string[]) => Promise<void>;
+  onEnrollSelected?: (participanteIds: string[]) => Promise<void>;
   onSetStatus?: (id: string, status: 'verified' | 'rejected') => Promise<void>;
 }
 
@@ -27,18 +32,25 @@ function canIssueOnEvent(event: EventItem): boolean {
 export const EventIssueView: React.FC<EventIssueViewProps> = ({
   event,
   inscritos,
+  participants = [],
   isLoading = false,
   errorMessage = null,
   isReleasing = false,
   isIssuing = false,
+  isEnrolling = false,
   onBack,
   onRelease,
   onIssueSelected,
+  onEnrollSelected,
   onSetStatus,
 }) => {
   const { t, dateLocale } = useT();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [formError, setFormError] = useState<string | null>(null);
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [pickerSelected, setPickerSelected] = useState<Set<string>>(new Set());
+  const [pickerError, setPickerError] = useState<string | null>(null);
 
   const eligible = useMemo(
     () => inscritos.filter((item) => !item.ja_emitido && item.status === 'verified'),
@@ -64,6 +76,29 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
     setSelected(new Set(eligible.map((item) => item.id)));
   };
 
+  const enrolledIds = useMemo(
+    () => new Set(inscritos.map((item) => item.id)),
+    [inscritos],
+  );
+  const availableToEnroll = useMemo(
+    () =>
+      participants.filter(
+        (item) =>
+          item.instituicaoId === event.institutionId && !enrolledIds.has(item.id),
+      ),
+    [participants, event.institutionId, enrolledIds],
+  );
+  const filteredAvailable = useMemo(() => {
+    const term = pickerSearch.trim().toLowerCase();
+    if (!term) return availableToEnroll;
+    return availableToEnroll.filter(
+      (item) =>
+        item.name.toLowerCase().includes(term) ||
+        item.email.toLowerCase().includes(term) ||
+        item.documentId.toLowerCase().includes(term),
+    );
+  }, [availableToEnroll, pickerSearch]);
+
   const handleIssue = async () => {
     setFormError(null);
     if (selected.size === 0) {
@@ -72,6 +107,45 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
     }
     await onIssueSelected([...selected]);
     setSelected(new Set());
+  };
+
+  const closeEnrollModal = () => {
+    setShowEnrollModal(false);
+    setPickerSearch('');
+    setPickerSelected(new Set());
+    setPickerError(null);
+  };
+
+  const togglePicker = (id: string) => {
+    setPickerSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllAvailable = () => {
+    if (pickerSelected.size === filteredAvailable.length) {
+      setPickerSelected(new Set());
+      return;
+    }
+    setPickerSelected(new Set(filteredAvailable.map((item) => item.id)));
+  };
+
+  const handleEnroll = async () => {
+    if (!onEnrollSelected) return;
+    setPickerError(null);
+    if (pickerSelected.size === 0) {
+      setPickerError(t('eventIssue.enrollSelect'));
+      return;
+    }
+    if (pickerSelected.size > ENROLL_LOTE_MAX) {
+      setPickerError(t('eventIssue.enrollTooMany'));
+      return;
+    }
+    await onEnrollSelected([...pickerSelected]);
+    closeEnrollModal();
   };
 
   const gateMessage = (() => {
@@ -147,16 +221,27 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
               })}
             </p>
           </div>
-          <button
-            type="button"
-            disabled={!issuanceOpen || isIssuing || selected.size === 0}
-            onClick={() => void handleIssue()}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold disabled:opacity-50"
-          >
-            {isIssuing
-              ? t('eventIssue.issuing')
-              : t('eventIssue.issueSelected', { count: selected.size })}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {onEnrollSelected && (
+              <button
+                type="button"
+                onClick={() => setShowEnrollModal(true)}
+                className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-semibold"
+              >
+                {t('eventIssue.enrollParticipants')}
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={!issuanceOpen || isIssuing || selected.size === 0}
+              onClick={() => void handleIssue()}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold disabled:opacity-50"
+            >
+              {isIssuing
+                ? t('eventIssue.issuing')
+                : t('eventIssue.issueSelected', { count: selected.size })}
+            </button>
+          </div>
         </div>
 
         {(formError || errorMessage) && (
@@ -272,6 +357,101 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
           </div>
         )}
       </div>
+
+      {showEnrollModal && onEnrollSelected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div className="p-5 border-b border-slate-200">
+              <h3 className="text-lg font-bold text-slate-900">
+                {t('eventIssue.enrollModalTitle')}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                {t('eventIssue.enrollModalHint')}
+              </p>
+              <input
+                type="text"
+                value={pickerSearch}
+                onChange={(e) => setPickerSearch(e.target.value)}
+                placeholder={t('eventIssue.enrollSearch')}
+                className="mt-3 w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm"
+              />
+            </div>
+            {pickerError && (
+              <div className="mx-5 mt-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {pickerError}
+              </div>
+            )}
+            <div className="flex-1 overflow-y-auto">
+              {availableToEnroll.length === 0 && (
+                <div className="py-12 text-center text-sm text-slate-500">
+                  {t('eventIssue.enrollEmpty')}
+                </div>
+              )}
+              {availableToEnroll.length > 0 && filteredAvailable.length === 0 && (
+                <div className="py-12 text-center text-sm text-slate-500">
+                  {t('eventIssue.enrollNoMatch')}
+                </div>
+              )}
+              {filteredAvailable.length > 0 && (
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-[11px] uppercase tracking-widest text-slate-400 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-3 text-left w-10">
+                        <input
+                          type="checkbox"
+                          checked={
+                            filteredAvailable.length > 0 &&
+                            pickerSelected.size === filteredAvailable.length
+                          }
+                          onChange={toggleAllAvailable}
+                        />
+                      </th>
+                      <th className="px-4 py-3 text-left">{t('eventIssue.colStudent')}</th>
+                      <th className="px-4 py-3 text-left">{t('common.email')}</th>
+                      <th className="px-4 py-3 text-left">{t('eventIssue.colDocument')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredAvailable.map((item) => (
+                      <tr key={item.id} className="text-slate-700">
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={pickerSelected.has(item.id)}
+                            onChange={() => togglePicker(item.id)}
+                          />
+                        </td>
+                        <td className="px-4 py-3 font-medium text-slate-900">{item.name}</td>
+                        <td className="px-4 py-3">{item.email}</td>
+                        <td className="px-4 py-3 font-mono text-xs">{formatCpf(item.documentId)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="p-4 border-t border-slate-200 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeEnrollModal}
+                className="px-4 py-2 rounded-md border border-slate-200 text-sm font-semibold"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                disabled={isEnrolling || pickerSelected.size === 0}
+                onClick={() => void handleEnroll()}
+                className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold disabled:opacity-60"
+              >
+                {isEnrolling
+                  ? t('eventIssue.enrolling')
+                  : t('eventIssue.enrollConfirm', { count: pickerSelected.size })}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

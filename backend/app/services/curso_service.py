@@ -14,7 +14,16 @@ from app.repositories.certificado_repository import CertificadoRepository
 from app.repositories.curso_repository import CursoRepository
 from app.repositories.inscricao_repository import InscricaoRepository
 from app.repositories.instituicao_repository import InstituicaoRepository
-from app.schemas.curso import CursoCreate, CursoResponse, CursoUpdate, InscritoResponse
+from app.repositories.participante_repository import ParticipanteRepository
+from app.schemas.curso import (
+    CursoCreate,
+    CursoResponse,
+    CursoUpdate,
+    InscricaoLoteErro,
+    InscricaoLoteRequest,
+    InscricaoLoteResponse,
+    InscritoResponse,
+)
 from app.services.certificate_templates import is_valid_template_id, resolve_template_id
 
 
@@ -25,6 +34,7 @@ class CursoService:
         self._instituicoes = InstituicaoRepository(session)
         self._inscricoes = InscricaoRepository(session)
         self._certificados = CertificadoRepository(session)
+        self._participantes = ParticipanteRepository(session)
         self._catalogo = CatalogoEventoRepository(session)
 
     def _tenant_id_for_queries(self, actor: Usuario) -> UUID | None:
@@ -258,6 +268,58 @@ class CursoService:
             )
         items.sort(key=lambda item: item.nome.lower())
         return items
+
+    async def inscrever_lote(
+        self,
+        curso_id: UUID,
+        data: InscricaoLoteRequest,
+        *,
+        actor: Usuario,
+    ) -> InscricaoLoteResponse:
+        curso = await self._get_or_404(curso_id, actor=actor)
+        instituicao_id = curso.instituicao_id
+        unique_ids = list(dict.fromkeys(data.participante_ids))
+
+        enrolled = 0
+        already_enrolled = 0
+        errors: list[InscricaoLoteErro] = []
+
+        for participante_id in unique_ids:
+            participante = await self._participantes.get_by_id(
+                participante_id,
+                instituicao_id=instituicao_id,
+            )
+            if participante is None:
+                errors.append(
+                    InscricaoLoteErro(
+                        participante_id=participante_id,
+                        mensagem="Participante não encontrado neste tenant",
+                    )
+                )
+                continue
+
+            existing = await self._inscricoes.get_by_participante_curso(
+                instituicao_id=instituicao_id,
+                participante_id=participante.id,
+                curso_id=curso.id,
+            )
+            if existing is not None:
+                already_enrolled += 1
+                continue
+
+            await self._inscricoes.create(
+                instituicao_id=instituicao_id,
+                participante_id=participante.id,
+                curso_id=curso.id,
+            )
+            enrolled += 1
+
+        await self._session.commit()
+        return InscricaoLoteResponse(
+            enrolled=enrolled,
+            already_enrolled=already_enrolled,
+            errors=errors,
+        )
 
     async def liberar_emissao(self, curso_id: UUID, *, actor: Usuario) -> CursoResponse:
         curso = await self._get_or_404(curso_id, actor=actor)

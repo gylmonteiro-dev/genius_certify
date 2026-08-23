@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Institution, Participant } from '../types';
+import { EventItem, Institution, Participant } from '../types';
 
 function statusBadgeClass(status: Participant['status']): string {
   if (status === 'Verified') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
@@ -31,6 +31,9 @@ interface ParticipantsViewProps {
   onLoadByCpf?: (cpf: string, instituicaoId?: string) => Promise<ParticipanteDetalheApi>;
   onSetStatus?: (id: string, status: 'verified' | 'rejected') => Promise<void>;
   isImporting?: boolean;
+  events?: EventItem[];
+  isEnrolling?: boolean;
+  onEnrollSelected?: (cursoId: string, participanteIds: string[]) => Promise<void>;
 }
 
 export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
@@ -47,6 +50,9 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
   onLoadByCpf,
   onSetStatus,
   isImporting = false,
+  events = [],
+  isEnrolling = false,
+  onEnrollSelected,
 }) => {
   const { t, dateLocale } = useT();
   const [searchTerm, setSearchTerm] = useState('');
@@ -66,6 +72,9 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailBirthDate, setDetailBirthDate] = useState('');
   const [savingBirthDate, setSavingBirthDate] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [enrollCursoId, setEnrollCursoId] = useState('');
+  const [enrollError, setEnrollError] = useState<string | null>(null);
 
   const filtered = participants.filter(
     (item) =>
@@ -73,6 +82,77 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
       item.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.documentId.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  const selectedItems = participants.filter((item) => selectedIds.has(item.id));
+  const selectedInstitutionIds = Array.from(
+    new Set(selectedItems.map((item) => item.instituicaoId)),
+  );
+  const enrollInstitutionId =
+    selectedInstitutionIds.length === 1 ? selectedInstitutionIds[0] : '';
+  const enrollableEvents =
+    selectedInstitutionIds.length > 1
+      ? []
+      : events.filter(
+          (event) => !enrollInstitutionId || event.institutionId === enrollInstitutionId,
+        );
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllFiltered = () => {
+    if (filtered.length > 0 && filtered.every((item) => selectedIds.has(item.id))) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        filtered.forEach((item) => next.delete(item.id));
+        return next;
+      });
+      return;
+    }
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      filtered.forEach((item) => next.add(item.id));
+      return next;
+    });
+  };
+
+  const handleEnrollSelected = async () => {
+    if (!onEnrollSelected) return;
+    setEnrollError(null);
+    if (selectedIds.size === 0) {
+      setEnrollError(t('students.enrollNeedSelection'));
+      return;
+    }
+    if (selectedInstitutionIds.length > 1) {
+      setEnrollError(t('students.enrollMixedInstitutions'));
+      return;
+    }
+    if (!enrollCursoId) {
+      setEnrollError(t('students.enrollNeedEvent'));
+      return;
+    }
+    const selectedEvent = events.find((event) => event.id === enrollCursoId);
+    if (
+      selectedEvent &&
+      enrollInstitutionId &&
+      selectedEvent.institutionId !== enrollInstitutionId
+    ) {
+      setEnrollError(t('students.enrollMixedInstitutions'));
+      return;
+    }
+    if (selectedIds.size > 200) {
+      setEnrollError(t('students.enrollTooMany'));
+      return;
+    }
+    await onEnrollSelected(enrollCursoId, [...selectedIds]);
+    setSelectedIds(new Set());
+    setEnrollCursoId('');
+  };
 
   const resetForm = () => {
     setNome('');
@@ -325,7 +405,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
       )}
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-        <div className="p-4 bg-slate-50/80 border-b border-slate-200">
+        <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
           <input
             type="text"
             value={searchTerm}
@@ -333,13 +413,53 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
             placeholder={t('students.searchPlaceholder')}
             className="w-full sm:w-72 bg-white border border-slate-200 rounded-md px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          {onEnrollSelected && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-xs text-slate-500">
+                {t('students.enrollBarHint', { count: selectedIds.size })}
+              </span>
+              <select
+                value={enrollCursoId}
+                onChange={(e) => setEnrollCursoId(e.target.value)}
+                className="bg-white border border-slate-200 rounded-md px-3 py-1.5 text-xs min-w-[16rem]"
+              >
+                <option value="">{t('students.enrollSelectEvent')}</option>
+                {enrollableEvents.map((event) => (
+                  <option key={event.id} value={event.id}>
+                    {event.title}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={isEnrolling || selectedIds.size === 0}
+                onClick={() => void handleEnrollSelected()}
+                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold disabled:opacity-50"
+              >
+                {isEnrolling ? t('students.enrolling') : t('students.enrollSelected')}
+              </button>
+            </div>
+          )}
         </div>
 
-        {errorMessage && (
+        {(errorMessage || enrollError) && (
           <div className="m-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {errorMessage}
+            {enrollError || errorMessage}
           </div>
         )}
+        {onEnrollSelected && selectedInstitutionIds.length > 1 && (
+          <div className="mx-4 mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {t('students.enrollMixedInstitutions')}
+          </div>
+        )}
+        {onEnrollSelected &&
+          selectedIds.size > 0 &&
+          enrollInstitutionId &&
+          enrollableEvents.length === 0 && (
+            <div className="mx-4 mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              {t('students.enrollNoEvents')}
+            </div>
+          )}
 
         {isLoading && (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-500">
@@ -363,6 +483,18 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-100/70 border-b border-slate-200 text-xs font-bold tracking-wider text-slate-500 uppercase">
+                  {onEnrollSelected && (
+                    <th className="py-3.5 px-5 w-10">
+                      <input
+                        type="checkbox"
+                        checked={
+                          filtered.length > 0 &&
+                          filtered.every((item) => selectedIds.has(item.id))
+                        }
+                        onChange={toggleAllFiltered}
+                      />
+                    </th>
+                  )}
                   <th className="py-3.5 px-5">{t('students.colName')}</th>
                   <th className="py-3.5 px-5">{t('students.colDocument')}</th>
                   <th className="py-3.5 px-5">{t('students.colInstitution')}</th>
@@ -403,6 +535,15 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
                         .finally(() => setDetailLoading(false));
                     }}
                   >
+                    {onEnrollSelected && (
+                      <td className="py-4 px-5" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(item.id)}
+                          onChange={() => toggleSelected(item.id)}
+                        />
+                      </td>
+                    )}
                     <td className="py-4 px-5 font-semibold text-slate-900">
                       {item.name}
                       <span className="block text-xs font-normal text-slate-400">{item.email}</span>
