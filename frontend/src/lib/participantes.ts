@@ -9,6 +9,7 @@ export interface ParticipanteApi {
   nome: string;
   email: string;
   documento: string;
+  data_nascimento: string | null;
   status: ParticipanteApiStatus;
   created_at: string;
   updated_at: string;
@@ -18,7 +19,12 @@ export interface ParticipanteCreatePayload {
   nome: string;
   email: string;
   documento: string;
+  data_nascimento: string;
   instituicao_id?: string;
+}
+
+export interface ParticipanteUpdatePayload {
+  data_nascimento?: string;
 }
 
 const API_TO_UI_STATUS: Record<ParticipanteApiStatus, Participant['status']> = {
@@ -43,6 +49,7 @@ export function mapParticipanteToUi(
     name: item.nome,
     email: item.email,
     documentId: item.documento,
+    birthDate: item.data_nascimento,
     institution: institution?.name ?? '—',
     certificatesCount,
     joinedDate: item.created_at.slice(0, 10),
@@ -68,6 +75,18 @@ export async function reprovarParticipante(
   return apiRequest<ParticipanteApi>(
     `/api/participantes/${id}/reprovar`,
     { method: 'POST' },
+    token,
+  );
+}
+
+export async function updateParticipante(
+  token: string,
+  id: string,
+  payload: ParticipanteUpdatePayload,
+): Promise<ParticipanteApi> {
+  return apiRequest<ParticipanteApi>(
+    `/api/participantes/${id}`,
+    { method: 'PATCH', body: JSON.stringify(payload) },
     token,
   );
 }

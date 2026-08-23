@@ -295,7 +295,7 @@ export async function getCursoPublico(id: string): Promise<CursoPublicApi> {
 
 export async function inscreverCursoPublico(
   cursoId: string,
-  payload: { nome: string; email: string; documento: string },
+  payload: { nome: string; email: string; documento: string; data_nascimento: string },
 ): Promise<void> {
   await apiRequest(`/api/publico/cursos/${cursoId}/inscrever`, {
     method: 'POST',

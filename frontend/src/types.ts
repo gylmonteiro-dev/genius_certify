@@ -76,6 +76,7 @@ export interface Participant {
   name: string;
   email: string;
   documentId: string;
+  birthDate: string | null;
   institution: string;
   certificatesCount: number;
   joinedDate: string;
@@ -86,4 +87,5 @@ export interface RegistrationFormData {
   fullName: string;
   email: string;
   documentId: string;
+  birthDate: string;
 }

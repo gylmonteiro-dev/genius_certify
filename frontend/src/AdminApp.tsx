@@ -50,6 +50,7 @@ import { APP_NAME } from './lib/brand';
 import { useT, labelInstitutionStatus } from './i18n';
 import {
   ParticipanteCreatePayload,
+  ParticipanteUpdatePayload,
   aprovarParticipante,
   createParticipante,
   getParticipantePorCpf,
@@ -57,6 +58,7 @@ import {
   listParticipantes,
   mapParticipanteToUi,
   reprovarParticipante,
+  updateParticipante,
 } from './lib/participantes';
 import {
   CertificadoEmitPayload,
@@ -444,6 +446,26 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     }
   };
 
+  const handleUpdateParticipant = async (
+    id: string,
+    payload: ParticipanteUpdatePayload,
+  ) => {
+    if (!authToken) {
+      throw new Error('Sessão expirada');
+    }
+    const updated = await updateParticipante(authToken, id, payload);
+    const mapped = mapParticipanteToUi(updated, institutions);
+    setParticipants((prev) =>
+      prev.map((item) =>
+        item.id === mapped.id
+          ? { ...item, ...mapped, certificatesCount: item.certificatesCount }
+          : item,
+      ),
+    );
+    showToast(t('toasts.participantUpdated', { name: updated.nome }));
+    return updated;
+  };
+
   const handleIssueCertificate = async (payload: CertificadoEmitPayload) => {
     if (!authToken) return;
     setIssueLoading(true);
@@ -549,6 +571,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
             nome: item.nome,
             email: item.email,
             documento: item.documento,
+            data_nascimento: null,
             status: item.status,
             created_at: item.inscrito_em,
             updated_at: item.inscrito_em,
@@ -802,6 +825,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
             isSubmitting={createParticipantLoading}
             submitError={createParticipantError}
             onCreate={handleCreateParticipant}
+            onUpdate={handleUpdateParticipant}
             onImportCsv={handleImportCsv}
             onLoadByCpf={(cpf, instituicaoId) =>
               getParticipantePorCpf(authToken, cpf, instituicaoId)

@@ -52,6 +52,7 @@ export const PublicEventRegisterPage: React.FC = () => {
         nome: form.fullName,
         email: form.email,
         documento: form.documentId.replace(/\D/g, ''),
+        data_nascimento: form.birthDate,
       });
     } catch (err) {
       const message =

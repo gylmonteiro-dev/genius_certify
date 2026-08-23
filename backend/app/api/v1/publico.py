@@ -1,11 +1,17 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.schemas.curso import CursoPublicResponse, InscricaoPublicaRequest
-from app.schemas.participante import ParticipanteResponse
+from app.schemas.participante import (
+    ConsultaCertificadosRequest,
+    ConsultaCertificadosResponse,
+    ParticipanteResponse,
+)
+from app.services.certificado_service import CertificadoService
 from app.services.publico_service import PublicoService
 
 router = APIRouter(prefix="/publico", tags=["publico"])
@@ -39,3 +45,26 @@ async def inscrever_curso_publico(
     session: AsyncSession = Depends(get_db),
 ) -> ParticipanteResponse:
     return await PublicoService(session).inscrever(curso_id, body)
+
+
+@router.post("/meus-certificados", response_model=ConsultaCertificadosResponse)
+async def consultar_meus_certificados(
+    body: ConsultaCertificadosRequest,
+    session: AsyncSession = Depends(get_db),
+) -> ConsultaCertificadosResponse:
+    return await PublicoService(session).consultar_certificados(body)
+
+
+@router.get("/certificados/{codigo_validacao}/pdf")
+async def download_certificado_publico_pdf(
+    codigo_validacao: UUID,
+    session: AsyncSession = Depends(get_db),
+) -> Response:
+    pdf_bytes, filename = await CertificadoService(session).gerar_pdf_publico(
+        codigo_validacao
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

@@ -335,7 +335,15 @@ class CertificadoService:
         certificado = await self._get_or_404(certificado_id, actor=actor)
         if certificado.status != CertificadoStatus.ACTIVE:
             raise AppError("Somente certificados ativos podem gerar PDF")
+        return await self._render_pdf(certificado)
 
+    async def gerar_pdf_publico(self, codigo: UUID) -> tuple[bytes, str]:
+        certificado = await self._certificados.get_by_codigo_validacao(codigo)
+        if certificado is None or certificado.status != CertificadoStatus.ACTIVE:
+            raise NotFoundError("Certificado não encontrado")
+        return await self._render_pdf(certificado)
+
+    async def _render_pdf(self, certificado: Certificado) -> tuple[bytes, str]:
         instituicao = await self._instituicoes.get_by_id(certificado.instituicao_id)
         pdf = self._pdf.render_certificado_pdf(
             certificado,

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import enum
 import uuid
+from datetime import date
 
-from sqlalchemy import Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Date, Enum, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,6 +27,11 @@ class Participante(Base, UUIDPrimaryKeyMixin, TimestampMixin):
             "documento",
             name="uq_participantes_instituicao_documento",
         ),
+        Index(
+            "ix_participantes_documento_data_nascimento",
+            "documento",
+            "data_nascimento",
+        ),
     )
 
     instituicao_id: Mapped[uuid.UUID] = mapped_column(
@@ -37,6 +43,7 @@ class Participante(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     nome: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     documento: Mapped[str] = mapped_column(String(64), nullable=False)
+    data_nascimento: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[ParticipanteStatus] = mapped_column(
         Enum(
             ParticipanteStatus,

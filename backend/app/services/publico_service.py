@@ -2,13 +2,20 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cpf import normalize_cpf
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.curso import Curso, CursoStatus
+from app.repositories.certificado_repository import CertificadoRepository
 from app.repositories.curso_repository import CursoRepository
 from app.repositories.inscricao_repository import InscricaoRepository
 from app.repositories.participante_repository import ParticipanteRepository
 from app.schemas.curso import CursoPublicResponse, InscricaoPublicaRequest
-from app.schemas.participante import ParticipanteResponse
+from app.schemas.participante import (
+    ConsultaCertificadoItem,
+    ConsultaCertificadosRequest,
+    ConsultaCertificadosResponse,
+    ParticipanteResponse,
+)
 from app.services.participante_service import resolve_or_create_participante
 
 
@@ -18,6 +25,7 @@ class PublicoService:
         self._cursos = CursoRepository(session)
         self._participantes = ParticipanteRepository(session)
         self._inscricoes = InscricaoRepository(session)
+        self._certificados = CertificadoRepository(session)
 
     @staticmethod
     def to_curso_public(curso: Curso) -> CursoPublicResponse:
@@ -69,6 +77,7 @@ class PublicoService:
             nome=data.nome.strip(),
             email=email,
             documento=data.documento,
+            data_nascimento=data.data_nascimento,
         )
 
         existing = await self._inscricoes.get_by_participante_curso(
@@ -87,3 +96,38 @@ class PublicoService:
         await self._session.commit()
         await self._session.refresh(participante)
         return ParticipanteResponse.model_validate(participante)
+
+    async def consultar_certificados(
+        self,
+        data: ConsultaCertificadosRequest,
+    ) -> ConsultaCertificadosResponse:
+        try:
+            cpf = normalize_cpf(data.documento)
+        except ValueError as exc:
+            raise NotFoundError("Participante não encontrado") from exc
+
+        participantes = await self._participantes.list_by_documento_and_nascimento(
+            cpf,
+            data.data_nascimento,
+        )
+        if not participantes:
+            raise NotFoundError("Participante não encontrado")
+
+        certificados = await self._certificados.list_ativos_by_participante_ids(
+            [item.id for item in participantes]
+        )
+        return ConsultaCertificadosResponse(
+            nome=participantes[0].nome,
+            certificados=[
+                ConsultaCertificadoItem(
+                    codigo_validacao=item.codigo_validacao,
+                    numero_certificado=item.numero_certificado,
+                    curso_titulo=item.curso_titulo,
+                    instituicao_nome=item.instituicao_nome,
+                    carga_horaria=item.carga_horaria,
+                    instrutor=item.instrutor,
+                    emitido_em=item.created_at,
+                )
+                for item in certificados
+            ],
+        )

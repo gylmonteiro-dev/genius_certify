@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.core.cpf import normalize_cpf
+from app.core.data_nascimento import validate_data_nascimento
 from app.models.certificado import CertificadoStatus
 from app.models.curso import CursoCategoria, CursoModalidade, CursoStatus
 from app.models.participante import ParticipanteStatus
@@ -88,8 +89,14 @@ class InscricaoPublicaRequest(BaseModel):
     nome: str = Field(min_length=2, max_length=255)
     email: EmailStr
     documento: str = Field(min_length=11, max_length=18)
+    data_nascimento: date
 
     @field_validator("documento")
     @classmethod
     def validate_documento(cls, value: str) -> str:
         return normalize_cpf(value)
+
+    @field_validator("data_nascimento")
+    @classmethod
+    def validate_nascimento(cls, value: date) -> date:
+        return validate_data_nascimento(value)

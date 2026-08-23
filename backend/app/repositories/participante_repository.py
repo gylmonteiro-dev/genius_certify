@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
@@ -69,6 +70,22 @@ class ParticipanteRepository:
         stmt = (
             select(Participante)
             .where(Participante.documento == documento)
+            .order_by(Participante.created_at.asc())
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def list_by_documento_and_nascimento(
+        self,
+        documento: str,
+        data_nascimento: date,
+    ) -> list[Participante]:
+        stmt = (
+            select(Participante)
+            .where(
+                Participante.documento == documento,
+                Participante.data_nascimento == data_nascimento,
+            )
             .order_by(Participante.created_at.asc())
         )
         result = await self._session.execute(stmt)

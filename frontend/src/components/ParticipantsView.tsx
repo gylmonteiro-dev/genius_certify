@@ -7,9 +7,11 @@ function statusBadgeClass(status: Participant['status']): string {
   return 'bg-amber-50 text-amber-700 border-amber-200';
 }
 import {
+  ParticipanteApi,
   ParticipanteCreatePayload,
   ParticipanteDetalheApi,
   ParticipanteImportResult,
+  ParticipanteUpdatePayload,
 } from '../lib/participantes';
 import { digitsOnly, formatCpf, isValidCpf } from '../lib/cpf';
 import { ApiError } from '../lib/api';
@@ -24,6 +26,7 @@ interface ParticipantsViewProps {
   isSubmitting?: boolean;
   submitError?: string | null;
   onCreate: (payload: ParticipanteCreatePayload) => Promise<void>;
+  onUpdate?: (id: string, payload: ParticipanteUpdatePayload) => Promise<ParticipanteApi>;
   onImportCsv?: (file: File, instituicaoId?: string) => Promise<ParticipanteImportResult>;
   onLoadByCpf?: (cpf: string, instituicaoId?: string) => Promise<ParticipanteDetalheApi>;
   onSetStatus?: (id: string, status: 'verified' | 'rejected') => Promise<void>;
@@ -39,6 +42,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
   isSubmitting = false,
   submitError = null,
   onCreate,
+  onUpdate,
   onImportCsv,
   onLoadByCpf,
   onSetStatus,
@@ -50,6 +54,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [documento, setDocumento] = useState('');
+  const [dataNascimento, setDataNascimento] = useState('');
   const [instituicaoId, setInstituicaoId] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [importInstituicaoId, setImportInstituicaoId] = useState('');
@@ -59,6 +64,8 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
   const [detail, setDetail] = useState<ParticipanteDetalheApi | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [detailBirthDate, setDetailBirthDate] = useState('');
+  const [savingBirthDate, setSavingBirthDate] = useState(false);
 
   const filtered = participants.filter(
     (item) =>
@@ -71,6 +78,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
     setNome('');
     setEmail('');
     setDocumento('');
+    setDataNascimento('');
     setInstituicaoId('');
     setFormError(null);
   };
@@ -78,7 +86,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-    if (!nome.trim() || !email.trim()) {
+    if (!nome.trim() || !email.trim() || !dataNascimento) {
       setFormError(t('students.fillRequired'));
       return;
     }
@@ -94,6 +102,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
       nome: nome.trim(),
       email: email.trim(),
       documento: digitsOnly(documento),
+      data_nascimento: dataNascimento,
     };
     if (isSuperAdmin) payload.instituicao_id = instituicaoId;
     try {
@@ -265,7 +274,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
                 required
               />
             </div>
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
                 {t('students.document')}
               </label>
@@ -278,6 +287,19 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
                 required
               />
               <p className="text-[11px] text-slate-500 mt-1">{t('students.documentHint')}</p>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+                {t('common.birthDate')}
+              </label>
+              <input
+                type="date"
+                value={dataNascimento}
+                onChange={(e) => setDataNascimento(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm"
+                required
+              />
+              <p className="text-[11px] text-slate-500 mt-1">{t('students.birthDateHint')}</p>
             </div>
           </div>
           <div className="flex justify-end gap-2">
@@ -363,6 +385,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
                       if (!onLoadByCpf) return;
                       setSelectedId(item.id);
                       setDetailError(null);
+                      setDetailBirthDate('');
                       setDetailLoading(true);
                       void onLoadByCpf(
                         item.documentId,
@@ -438,9 +461,59 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
             {detail && (
               <p className="text-xs text-slate-500 mt-0.5">
                 {detail.nome} · {formatCpf(detail.documento)}
+                {detail.data_nascimento
+                  ? ` · ${formatDisplayDate(detail.data_nascimento, dateLocale, detail.data_nascimento)}`
+                  : ''}
               </p>
             )}
           </div>
+          {detail && onUpdate && !detail.data_nascimento && (
+            <form
+              className="px-4 pt-4 flex flex-col sm:flex-row sm:items-end gap-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!detailBirthDate || savingBirthDate) return;
+                setSavingBirthDate(true);
+                setDetailError(null);
+                void onUpdate(detail.id, { data_nascimento: detailBirthDate })
+                  .then((updated) => {
+                    setDetail({ ...detail, data_nascimento: updated.data_nascimento });
+                    setDetailBirthDate('');
+                  })
+                  .catch((err) => {
+                    setDetailError(
+                      err instanceof ApiError
+                        ? err.message
+                        : t('errors.updateStudent'),
+                    );
+                  })
+                  .finally(() => setSavingBirthDate(false));
+              }}
+            >
+              <div className="flex-1 max-w-xs">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+                  {t('common.birthDate')}
+                </label>
+                <input
+                  type="date"
+                  value={detailBirthDate}
+                  onChange={(e) => setDetailBirthDate(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm"
+                  required
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  {t('students.birthDateMissing')}
+                </p>
+              </div>
+              <button
+                type="submit"
+                disabled={savingBirthDate || !detailBirthDate}
+                className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold disabled:opacity-60"
+              >
+                {savingBirthDate ? t('common.saving') : t('students.saveBirthDate')}
+              </button>
+            </form>
+          )}
           {detailError && (
             <div className="m-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
               {detailError}

@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import csv
 import io
+from datetime import date
 from uuid import UUID
 
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cpf import normalize_cpf
+from app.core.data_nascimento import parse_data_nascimento
 from app.core.exceptions import AppError, ConflictError, ForbiddenError, NotFoundError
 from app.models.certificado import CertificadoStatus
 from app.models.participante import Participante, ParticipanteStatus
@@ -46,6 +48,7 @@ async def resolve_or_create_participante(
     nome: str,
     email: str,
     documento: str,
+    data_nascimento: date | None = None,
     status: ParticipanteStatus = ParticipanteStatus.PENDING,
 ) -> tuple[Participante, bool]:
     """CPF é a identidade no tenant: reutiliza o cadastro existente ou cria um novo."""
@@ -54,6 +57,9 @@ async def resolve_or_create_participante(
         documento=documento,
     )
     if existing is not None:
+        if existing.data_nascimento is None and data_nascimento is not None:
+            existing.data_nascimento = data_nascimento
+            await repo.save(existing)
         return existing, False
 
     by_email = await repo.get_by_email(instituicao_id=instituicao_id, email=email)
@@ -65,6 +71,7 @@ async def resolve_or_create_participante(
         nome=nome.strip(),
         email=email,
         documento=documento,
+        data_nascimento=data_nascimento,
         status=status,
     )
     return created, True
@@ -117,6 +124,7 @@ class ParticipanteService:
             nome=data.nome.strip(),
             email=email,
             documento=data.documento,
+            data_nascimento=data.data_nascimento,
             status=data.status,
         )
         if created:
@@ -272,6 +280,11 @@ class ParticipanteService:
             if name and name.strip()
         }
         documento_key = "cpf" if "cpf" in headers else "documento"
+        nascimento_key = (
+            "data_nascimento"
+            if "data_nascimento" in headers
+            else "nascimento" if "nascimento" in headers else None
+        )
         if "nome" not in headers or "email" not in headers or documento_key not in headers:
             raise AppError("Colunas obrigatórias ausentes: nome, email, documento (ou cpf)")
 
@@ -301,12 +314,39 @@ class ParticipanteService:
                     status_raw = (raw.get(headers["status"]) or "").strip().lower()
                     if status_raw:
                         status = ParticipanteStatus(status_raw)
-                data = ParticipanteCreate(
-                    nome=(raw.get(headers["nome"]) or "").strip(),
-                    email=(raw.get(headers["email"]) or "").strip(),
-                    documento=(raw.get(headers[documento_key]) or "").strip(),
-                    status=status,
+                nascimento_raw = (
+                    (raw.get(headers[nascimento_key]) or "").strip()
+                    if nascimento_key
+                    else ""
                 )
+                documento = normalize_cpf(
+                    (raw.get(headers[documento_key]) or "").strip()
+                )
+                existing = await self._participantes.get_by_documento(
+                    instituicao_id=tenant_id,
+                    documento=documento,
+                )
+                data_nascimento = (
+                    parse_data_nascimento(nascimento_raw) if nascimento_raw else None
+                )
+                if existing is None:
+                    data = ParticipanteCreate(
+                        nome=(raw.get(headers["nome"]) or "").strip(),
+                        email=(raw.get(headers["email"]) or "").strip(),
+                        documento=documento,
+                        data_nascimento=parse_data_nascimento(
+                            nascimento_raw or ""
+                        ),
+                        status=status,
+                    )
+                    nome = data.nome.strip()
+                    email = str(data.email).lower()
+                    documento = data.documento
+                    data_nascimento = data.data_nascimento
+                    status = data.status
+                else:
+                    nome = existing.nome
+                    email = existing.email
             except (ValueError, ValidationError) as exc:
                 skipped += 1
                 errors.append(
@@ -317,15 +357,15 @@ class ParticipanteService:
                 )
                 continue
 
-            email = str(data.email).lower()
             try:
                 _, was_created = await resolve_or_create_participante(
                     self._participantes,
                     instituicao_id=tenant_id,
-                    nome=data.nome.strip(),
+                    nome=nome,
                     email=email,
-                    documento=data.documento,
-                    status=data.status,
+                    documento=documento,
+                    data_nascimento=data_nascimento,
+                    status=status,
                 )
             except ConflictError as exc:
                 skipped += 1

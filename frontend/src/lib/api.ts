@@ -48,10 +48,12 @@ export async function apiRequest<T>(
 
 export async function apiRequestBlob(
   path: string,
-  token: string,
+  token?: string | null,
 ): Promise<Blob> {
   const headers = new Headers();
-  headers.set('Authorization', `Bearer ${token}`);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
 
   const response = await fetch(`${API_BASE}${path}`, { method: 'GET', headers });
   if (!response.ok) {

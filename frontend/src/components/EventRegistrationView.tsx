@@ -22,11 +22,12 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
   const [fullName, setFullName] = useState('');
   const [workEmail, setWorkEmail] = useState('');
   const [documentId, setDocumentId] = useState('');
+  const [birthDate, setBirthDate] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName || !workEmail) {
+    if (!fullName || !workEmail || !birthDate) {
       alert(t('registration.completeFields'));
       return;
     }
@@ -40,6 +41,7 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
         fullName,
         email: workEmail,
         documentId: digitsOnly(documentId),
+        birthDate,
       });
       setIsSubmitted(true);
     } catch {
@@ -195,6 +197,23 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                     <p className="text-xs text-slate-400 mt-1">
                       {t('registration.documentHint')}
                     </p>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="birthDate"
+                      className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
+                    >
+                      {t('registration.birthDate')}
+                    </label>
+                    <input
+                      id="birthDate"
+                      type="date"
+                      required
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                      className="w-full h-11 px-4 border border-slate-200 rounded-md bg-slate-50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                    />
                   </div>
                 </form>
               </div>

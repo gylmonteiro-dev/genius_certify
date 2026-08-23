@@ -169,6 +169,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
               {t('login.validateCertificate')}
             </Link>
             <span>·</span>
+            <Link to="/meus-certificados" className="text-blue-600 hover:underline font-semibold">
+              {t('login.myCertificates')}
+            </Link>
+            <span>·</span>
             <Link to="/eventos" className="text-blue-600 hover:underline font-semibold">
               {t('login.publicEvents')}
             </Link>

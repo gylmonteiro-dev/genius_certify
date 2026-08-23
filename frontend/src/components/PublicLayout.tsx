@@ -26,6 +26,9 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
             <NavLink to="/validar" className={linkClass}>
               {t('public.validate')}
             </NavLink>
+            <NavLink to="/meus-certificados" className={linkClass}>
+              {t('public.myCertificates')}
+            </NavLink>
             <NavLink to="/eventos" className={linkClass}>
               {t('public.events')}
             </NavLink>

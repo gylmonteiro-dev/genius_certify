@@ -144,6 +144,51 @@ export async function validarCertificadoPublico(
   );
 }
 
+export interface ConsultaCertificadoItemApi {
+  codigo_validacao: string;
+  numero_certificado: string;
+  curso_titulo: string;
+  instituicao_nome: string;
+  carga_horaria: number;
+  instrutor: string;
+  emitido_em: string;
+}
+
+export interface ConsultaCertificadosApi {
+  nome: string;
+  certificados: ConsultaCertificadoItemApi[];
+}
+
+export async function consultarMeusCertificados(
+  documento: string,
+  dataNascimento: string,
+): Promise<ConsultaCertificadosApi> {
+  return apiRequest<ConsultaCertificadosApi>('/api/publico/meus-certificados', {
+    method: 'POST',
+    body: JSON.stringify({
+      documento,
+      data_nascimento: dataNascimento,
+    }),
+  });
+}
+
+export async function downloadCertificadoPublicoPdf(
+  codigoValidacao: string,
+  filename: string,
+): Promise<void> {
+  const blob = await apiRequestBlob(
+    `/api/publico/certificados/${codigoValidacao}/pdf`,
+  );
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function downloadCertificadoPdf(
   token: string,
   id: string,

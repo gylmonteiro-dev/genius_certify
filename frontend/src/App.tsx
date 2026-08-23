@@ -4,6 +4,7 @@ import { AdminApp } from './AdminApp';
 import { LoginView } from './components/LoginView';
 import { PublicEventRegisterPage } from './components/PublicEventRegisterPage';
 import { PublicEventsPage } from './components/PublicEventsPage';
+import { PublicMyCertificatesView } from './components/PublicMyCertificatesView';
 import { PublicValidateView } from './components/PublicValidateView';
 import { Toast } from './components/Toast';
 import { ApiError } from './lib/api';
@@ -120,6 +121,7 @@ export function App() {
         />
         <Route path="/validar" element={<PublicValidateView />} />
         <Route path="/validar/:codigo" element={<PublicValidateView />} />
+        <Route path="/meus-certificados" element={<PublicMyCertificatesView />} />
         <Route path="/eventos" element={<PublicEventsPage />} />
         <Route path="/eventos/:id" element={<PublicEventRegisterPage />} />
         <Route
