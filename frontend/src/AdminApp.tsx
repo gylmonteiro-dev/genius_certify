@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   NavTab,
   Institution,
   EventItem,
   Certificate,
-  Student,
+  Participant,
 } from './types';
 
 import { Sidebar } from './components/Sidebar';
@@ -15,8 +15,9 @@ import { InstitutionsView } from './components/InstitutionsView';
 import { RegisterInstitutionView } from './components/RegisterInstitutionView';
 import { EventsCatalogView } from './components/EventsCatalogView';
 import { EventsDirectoryView } from './components/EventsDirectoryView';
+import { EventIssueView } from './components/EventIssueView';
 import { CertificatesView } from './components/CertificatesView';
-import { StudentsView } from './components/StudentsView';
+import { ParticipantsView } from './components/ParticipantsView';
 import { SettingsView } from './components/SettingsView';
 import { IssueCertificateModal } from './components/IssueCertificateModal';
 import { CertificateDetailModal } from './components/CertificateDetailModal';
@@ -37,18 +38,31 @@ import {
 import {
   CursoCreatePayload,
   CursoUpdatePayload,
+  InscritoApi,
   createCurso,
+  liberarEmissao,
   listCursos,
+  listInscritos,
   mapCursoToUi,
   updateCurso,
 } from './lib/cursos';
 import { APP_NAME } from './lib/brand';
 import { useT, labelInstitutionStatus } from './i18n';
-import { AlunoCreatePayload, createAluno, importAlunosCsv, listAlunos, mapAlunoToUi } from './lib/alunos';
+import {
+  ParticipanteCreatePayload,
+  aprovarParticipante,
+  createParticipante,
+  getParticipantePorCpf,
+  importParticipantesCsv,
+  listParticipantes,
+  mapParticipanteToUi,
+  reprovarParticipante,
+} from './lib/participantes';
 import {
   CertificadoEmitPayload,
   downloadCertificadoPdf,
   emitirCertificado,
+  emitirCertificadosLote,
   listCertificados,
   mapCertificadoToUi,
   mapPublicCertificadoToUi,
@@ -80,12 +94,18 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
   const [createEventLoading, setCreateEventLoading] = useState(false);
   const [createEventError, setCreateEventError] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null);
+  const [issuingEvent, setIssuingEvent] = useState<EventItem | null>(null);
+  const [inscritos, setInscritos] = useState<InscritoApi[]>([]);
+  const [inscritosLoading, setInscritosLoading] = useState(false);
+  const [inscritosError, setInscritosError] = useState<string | null>(null);
+  const [releasingEmissao, setReleasingEmissao] = useState(false);
+  const [loteIssuing, setLoteIssuing] = useState(false);
 
-  const [students, setStudents] = useState<Student[]>([]);
-  const [studentsLoading, setStudentsLoading] = useState(false);
-  const [studentsError, setStudentsError] = useState<string | null>(null);
-  const [createStudentLoading, setCreateStudentLoading] = useState(false);
-  const [createStudentError, setCreateStudentError] = useState<string | null>(null);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [participantsError, setParticipantsError] = useState<string | null>(null);
+  const [createParticipantLoading, setCreateParticipantLoading] = useState(false);
+  const [createParticipantError, setCreateParticipantError] = useState<string | null>(null);
 
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [certificatesLoading, setCertificatesLoading] = useState(false);
@@ -117,24 +137,24 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     [institutions, events],
   );
 
-  const studentsWithCounts = useMemo(
+  const participantsWithCounts = useMemo(
     () =>
-      students.map((student) => ({
-        ...student,
-        certificatesCount: certificates.filter((cert) => cert.alunoId === student.id).length,
+      participants.map((item) => ({
+        ...item,
+        certificatesCount: certificates.filter((cert) => cert.participanteId === item.id).length,
       })),
-    [students, certificates],
+    [participants, certificates],
   );
 
   useEffect(() => {
     if (!authToken) {
       setInstitutions([]);
       setEvents([]);
-      setStudents([]);
+      setParticipants([]);
       setCertificates([]);
       setInstitutionsError(null);
       setEventsError(null);
-      setStudentsError(null);
+      setParticipantsError(null);
       setCertificatesError(null);
       return;
     }
@@ -144,17 +164,17 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     const loadAll = async () => {
       setInstitutionsLoading(true);
       setEventsLoading(true);
-      setStudentsLoading(true);
+      setParticipantsLoading(true);
       setCertificatesLoading(true);
       setInstitutionsError(null);
       setEventsError(null);
-      setStudentsError(null);
+      setParticipantsError(null);
       setCertificatesError(null);
 
-      const [instResult, cursoResult, alunoResult, certResult] = await Promise.allSettled([
+      const [instResult, cursoResult, participanteResult, certResult] = await Promise.allSettled([
         listInstituicoes(authToken),
         listCursos(authToken),
-        listAlunos(authToken),
+        listParticipantes(authToken),
         listCertificados(authToken),
       ]);
 
@@ -178,12 +198,12 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         setEvents([]);
       }
 
-      if (alunoResult.status === 'fulfilled') {
-        setStudents(alunoResult.value.map((item) => mapAlunoToUi(item, instUi)));
+      if (participanteResult.status === 'fulfilled') {
+        setParticipants(participanteResult.value.map((item) => mapParticipanteToUi(item, instUi)));
       } else {
-        const err = alunoResult.reason;
-        setStudentsError(err instanceof ApiError ? err.message : t('errors.loadStudents'));
-        setStudents([]);
+        const err = participanteResult.reason;
+        setParticipantsError(err instanceof ApiError ? err.message : t('errors.loadStudents'));
+        setParticipants([]);
       }
 
       if (certResult.status === 'fulfilled') {
@@ -196,7 +216,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
 
       setInstitutionsLoading(false);
       setEventsLoading(false);
-      setStudentsLoading(false);
+      setParticipantsLoading(false);
       setCertificatesLoading(false);
     };
 
@@ -227,10 +247,15 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
   const handleImportCsv = async (file: File, instituicaoId?: string) => {
     setImportingCsv(true);
     try {
-      const result = await importAlunosCsv(authToken, file, instituicaoId);
-      const items = await listAlunos(authToken);
-      setStudents(items.map((item) => mapAlunoToUi(item, institutions)));
-      showToast(t('toasts.importedStudents', { created: result.created }));
+      const result = await importParticipantesCsv(authToken, file, instituicaoId);
+      const items = await listParticipantes(authToken);
+      setParticipants(items.map((item) => mapParticipanteToUi(item, institutions)));
+      showToast(
+        t('toasts.importedStudents', {
+          created: result.created,
+          reused: result.reused ?? 0,
+        }),
+      );
       return result;
     } catch (err) {
       const message = err instanceof ApiError ? err.message : t('errors.importCsv');
@@ -332,6 +357,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         categoria: payload.categoria,
         modalidade: payload.modalidade,
         tipo: payload.tipo,
+        exigir_conclusao_para_emitir: payload.exigir_conclusao_para_emitir,
       };
       const updated = await updateCurso(authToken, editingEvent.id, updatePayload);
       setEvents((prev) =>
@@ -351,21 +377,70 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     }
   };
 
-  const handleCreateStudent = async (payload: AlunoCreatePayload) => {
+  const handleSetParticipantStatus = async (
+    id: string,
+    nextStatus: 'verified' | 'rejected',
+  ) => {
     if (!authToken) return;
-    setCreateStudentLoading(true);
-    setCreateStudentError(null);
     try {
-      const created = await createAluno(authToken, payload);
-      setStudents((prev) => [mapAlunoToUi(created, institutions), ...prev]);
-      showToast(t('toasts.studentRegistered', { name: created.nome }));
+      const updated =
+        nextStatus === 'verified'
+          ? await aprovarParticipante(authToken, id)
+          : await reprovarParticipante(authToken, id);
+      const mapped = mapParticipanteToUi(updated, institutions);
+      setParticipants((prev) =>
+        prev.map((item) =>
+          item.id === mapped.id ? { ...item, ...mapped, certificatesCount: item.certificatesCount } : item,
+        ),
+      );
+      setInscritos((prev) =>
+        prev.map((item) => (item.id === updated.id ? { ...item, status: updated.status } : item)),
+      );
+      showToast(
+        t(
+          nextStatus === 'verified'
+            ? 'toasts.participantApproved'
+            : 'toasts.participantRejected',
+          { name: updated.nome },
+        ),
+      );
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : t('errors.updateParticipantStatus');
+      showToast(message);
+      throw err;
+    }
+  };
+
+  const handleCreateParticipant = async (payload: ParticipanteCreatePayload) => {
+    if (!authToken) return;
+    setCreateParticipantLoading(true);
+    setCreateParticipantError(null);
+    try {
+      const created = await createParticipante(authToken, payload);
+      const mapped = mapParticipanteToUi(created, institutions);
+      setParticipants((prev) => {
+        const exists = prev.some((item) => item.id === mapped.id);
+        if (exists) {
+          return prev.map((item) => (item.id === mapped.id ? { ...item, ...mapped } : item));
+        }
+        return [mapped, ...prev];
+      });
+      showToast(
+        t(
+          participants.some((item) => item.id === created.id)
+            ? 'toasts.studentAlreadyRegistered'
+            : 'toasts.studentRegistered',
+          { name: created.nome },
+        ),
+      );
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : t('errors.registerStudent');
-      setCreateStudentError(message);
+      setCreateParticipantError(message);
       throw err;
     } finally {
-      setCreateStudentLoading(false);
+      setCreateParticipantLoading(false);
     }
   };
 
@@ -380,7 +455,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       showToast(
         t('toasts.certificateIssued', {
           number: created.numero_certificado,
-          name: created.aluno_nome,
+          name: created.participante_nome,
         }),
       );
       setIsIssueModalOpen(false);
@@ -408,7 +483,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
   };
 
   const handleDownloadPdf = async (cert: Certificate) => {
-    if (!authToken || !cert.alunoId) {
+    if (!authToken || !cert.participanteId) {
       showToast(t('errors.pdfOnlyIssued'));
       return;
     }
@@ -445,6 +520,103 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
 
   const isSuperAdmin = authUser.role === 'super_admin';
 
+  const loadInscritos = async (eventId: string) => {
+    if (!authToken) return;
+    setInscritosLoading(true);
+    setInscritosError(null);
+    try {
+      const items = await listInscritos(authToken, eventId);
+      setInscritos(items);
+    } catch (err) {
+      setInscritos([]);
+      setInscritosError(
+        err instanceof ApiError ? err.message : t('errors.loadEnrolled'),
+      );
+    } finally {
+      setInscritosLoading(false);
+    }
+  };
+
+  const handleLoadEnrolled = useCallback(
+    async (cursoId: string) => {
+      const items = await listInscritos(authToken, cursoId);
+      const event = events.find((evt) => evt.id === cursoId);
+      return items.map((item) =>
+        mapParticipanteToUi(
+          {
+            id: item.id,
+            instituicao_id: event?.institutionId ?? '',
+            nome: item.nome,
+            email: item.email,
+            documento: item.documento,
+            status: item.status,
+            created_at: item.inscrito_em,
+            updated_at: item.inscrito_em,
+          },
+          institutions,
+        ),
+      );
+    },
+    [authToken, events, institutions],
+  );
+
+  const handleOpenEvent = (event: EventItem) => {
+    setIssuingEvent(event);
+    setInscritos([]);
+    void loadInscritos(event.id);
+  };
+
+  const handleReleaseEmissao = async () => {
+    if (!authToken || !issuingEvent) return;
+    setReleasingEmissao(true);
+    setInscritosError(null);
+    try {
+      const updated = await liberarEmissao(authToken, issuingEvent.id);
+      const mapped = mapCursoToUi(updated, institutions);
+      setEvents((prev) => prev.map((evt) => (evt.id === mapped.id ? mapped : evt)));
+      setIssuingEvent(mapped);
+      showToast(t('toasts.emissionReleased'));
+    } catch (err) {
+      setInscritosError(
+        err instanceof ApiError ? err.message : t('errors.releaseEmission'),
+      );
+    } finally {
+      setReleasingEmissao(false);
+    }
+  };
+
+  const handleIssueSelected = async (participanteIds: string[]) => {
+    if (!authToken || !issuingEvent) return;
+    setLoteIssuing(true);
+    setInscritosError(null);
+    try {
+      const result = await emitirCertificadosLote(authToken, {
+        curso_id: issuingEvent.id,
+        participante_ids: participanteIds,
+        ...(isSuperAdmin ? { instituicao_id: issuingEvent.institutionId } : {}),
+      });
+      const mapped = result.emitidos.map(mapCertificadoToUi);
+      if (mapped.length > 0) {
+        setCertificates((prev) => [...mapped, ...prev]);
+      }
+      if (result.emitidos.length > 0) {
+        showToast(
+          t('toasts.certificatesIssuedBatch', { count: result.emitidos.length }),
+        );
+      }
+      if (result.erros.length > 0) {
+        setInscritosError(result.erros.map((item) => item.mensagem).join(' '));
+      }
+      await loadInscritos(issuingEvent.id);
+    } catch (err) {
+      setInscritosError(
+        err instanceof ApiError ? err.message : t('errors.issueCertificate'),
+      );
+    } finally {
+      setLoteIssuing(false);
+    }
+  };
+
   const handleSelectTab = (tab: NavTab) => {
     if (tab === 'create-event') {
       setEditingEvent(null);
@@ -452,6 +624,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     } else if (currentTab === 'create-event') {
       setEditingEvent(null);
     }
+    setIssuingEvent(null);
     setCurrentTab(tab);
   };
 
@@ -488,10 +661,16 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
                 : currentTab === 'events-catalog'
                   ? t('topbar.availableEvents')
                   : currentTab === 'events-directory'
-                    ? t('topbar.directory')
+                    ? issuingEvent
+                      ? t('eventIssue.kicker')
+                      : t('topbar.directory')
+                    : currentTab === 'events'
+                      ? issuingEvent
+                        ? t('eventIssue.kicker')
+                        : t('topbar.directory')
                     : currentTab === 'certificates'
                       ? t('nav.certificates')
-                      : currentTab === 'students'
+                      : currentTab === 'participants'
                         ? t('topbar.studentsRoster')
                         : APP_NAME
         }
@@ -553,29 +732,44 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
           />
         )}
 
-        {(currentTab === 'events' || currentTab === 'events-directory') && (
-          <EventsDirectoryView
-            events={events}
-            institutions={institutionsWithCounts}
-            isLoading={eventsLoading}
-            errorMessage={eventsError}
-            onCreateEventClick={() => {
-              setEditingEvent(null);
-              setCreateEventError(null);
-              setCurrentTab('create-event');
-            }}
-            onEditEvent={(event) => {
-              setEditingEvent(event);
-              setCreateEventError(null);
-              setCurrentTab('create-event');
-            }}
-          />
-        )}
+        {(currentTab === 'events' || currentTab === 'events-directory') &&
+          (issuingEvent ? (
+            <EventIssueView
+              event={issuingEvent}
+              inscritos={inscritos}
+              isLoading={inscritosLoading}
+              errorMessage={inscritosError}
+              isReleasing={releasingEmissao}
+              isIssuing={loteIssuing}
+              onBack={() => setIssuingEvent(null)}
+              onRelease={handleReleaseEmissao}
+              onIssueSelected={handleIssueSelected}
+              onSetStatus={handleSetParticipantStatus}
+            />
+          ) : (
+            <EventsDirectoryView
+              events={events}
+              institutions={institutionsWithCounts}
+              isLoading={eventsLoading}
+              errorMessage={eventsError}
+              onCreateEventClick={() => {
+                setEditingEvent(null);
+                setCreateEventError(null);
+                setCurrentTab('create-event');
+              }}
+              onEditEvent={(event) => {
+                setEditingEvent(event);
+                setCreateEventError(null);
+                setCurrentTab('create-event');
+              }}
+              onOpenEvent={handleOpenEvent}
+            />
+          ))}
 
         {currentTab === 'events-catalog' && (
           <EventsCatalogView
             events={events}
-            onSelectRegister={() => setCurrentTab('students')}
+            onSelectRegister={() => setCurrentTab('participants')}
           />
         )}
 
@@ -598,17 +792,21 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
           />
         )}
 
-        {currentTab === 'students' && (
-          <StudentsView
-            students={studentsWithCounts}
+        {currentTab === 'participants' && (
+          <ParticipantsView
+            participants={participantsWithCounts}
             institutions={institutionsWithCounts}
             isSuperAdmin={isSuperAdmin}
-            isLoading={studentsLoading}
-            errorMessage={studentsError}
-            isSubmitting={createStudentLoading}
-            submitError={createStudentError}
-            onCreate={handleCreateStudent}
+            isLoading={participantsLoading}
+            errorMessage={participantsError}
+            isSubmitting={createParticipantLoading}
+            submitError={createParticipantError}
+            onCreate={handleCreateParticipant}
             onImportCsv={handleImportCsv}
+            onLoadByCpf={(cpf, instituicaoId) =>
+              getParticipantePorCpf(authToken, cpf, instituicaoId)
+            }
+            onSetStatus={handleSetParticipantStatus}
             isImporting={importingCsv}
           />
         )}
@@ -628,11 +826,13 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         isOpen={isIssueModalOpen}
         onClose={() => setIsIssueModalOpen(false)}
         events={events}
-        students={studentsWithCounts}
+        participants={participantsWithCounts}
         institutions={institutionsWithCounts}
+        certificates={certificates}
         isSuperAdmin={isSuperAdmin}
         isSubmitting={issueLoading}
         errorMessage={issueError}
+        onLoadEnrolled={handleLoadEnrolled}
         onSubmit={handleIssueCertificate}
       />
 

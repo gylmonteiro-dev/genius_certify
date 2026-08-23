@@ -1,4 +1,4 @@
-import { Certificate, EventItem, Institution, Student } from '../types';
+import { Certificate, EventItem, Institution, Participant } from '../types';
 import type { TranslateFn } from './locale';
 
 export function labelInstitutionStatus(t: TranslateFn, status: Institution['status']): string {
@@ -40,12 +40,14 @@ export function labelCertificateStatus(t: TranslateFn, status: Certificate['stat
   }
 }
 
-export function labelStudentStatus(t: TranslateFn, status: Student['status']): string {
+export function labelStudentStatus(t: TranslateFn, status: Participant['status']): string {
   switch (status) {
     case 'Verified':
       return t('status.student.verified');
     case 'Pending':
       return t('status.student.pending');
+    case 'Rejected':
+      return t('status.student.rejected');
     default:
       return status;
   }

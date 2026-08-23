@@ -152,21 +152,34 @@ curl -s "http://localhost:8000/api/cursos?instituicao_id=<uuid-da-instituicao>" 
 
 Admin da instituição: `instituicao_id` vem do JWT (não precisa enviar no body).
 
-### Alunos (smoke test)
+### Participantes (smoke test)
+
+`documento` deve ser um CPF válido (11 dígitos ou `123.456.789-09`). É gravado só com os 11 dígitos.
 
 ```bash
-curl -s -X POST http://localhost:8000/api/alunos \
+curl -s -X POST http://localhost:8000/api/participantes \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{
     "nome": "João Silva",
     "email": "joao@email.com",
-    "documento": "12345678901",
+    "documento": "12345678909",
     "status": "verified",
     "instituicao_id": "<uuid-da-instituicao>"
   }'
 
-curl -s "http://localhost:8000/api/alunos?instituicao_id=<uuid-da-instituicao>" \
+curl -s "http://localhost:8000/api/participantes?instituicao_id=<uuid-da-instituicao>" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Mesmo CPF reutiliza o cadastro (não cria duplicata)
+# Consulta por CPF: todos os eventos do participante
+curl -s "http://localhost:8000/api/participantes/por-cpf?documento=12345678909&instituicao_id=<uuid-da-instituicao>" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Aprovar / reprovar (só aprovado recebe certificado)
+curl -s -X POST http://localhost:8000/api/participantes/<uuid-participante>/aprovar \
+  -H "Authorization: Bearer $TOKEN"
+curl -s -X POST http://localhost:8000/api/participantes/<uuid-participante>/reprovar \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -178,7 +191,7 @@ curl -s -X POST http://localhost:8000/api/certificados/emitir \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{
-    "aluno_id": "<uuid-aluno>",
+    "participante_id": "<uuid-participante>",
     "curso_id": "<uuid-curso>",
     "instituicao_id": "<uuid-da-instituicao>"
   }'
@@ -196,7 +209,7 @@ curl -s http://localhost:8000/api/publico/cursos
 # Inscrição pública (só cursos upcoming de instituição active)
 curl -s -X POST http://localhost:8000/api/publico/cursos/<uuid-curso>/inscrever \
   -H 'Content-Type: application/json' \
-  -d '{"nome":"Ana Lima","email":"ana@email.com","documento":"12345678901"}'
+  -d '{"nome":"Ana Lima","email":"ana@email.com","documento":"12345678909"}'
 ```
 
 Páginas públicas no frontend: `/validar`, `/validar/:codigo`, `/eventos`.
@@ -210,14 +223,14 @@ curl -s -X POST http://localhost:8000/api/auth/alterar-senha \
   -d '{"senha_atual":"changeme_superadmin","senha_nova":"novaSenha123"}'
 ```
 
-### Import CSV de alunos
+### Import CSV de participantes
 
-Cabeçalho: `nome,email,documento` (`status` opcional). SuperAdmin envia `instituicao_id` no form.
+Cabeçalho: `nome,email,documento` ou `nome,email,cpf` (`status` opcional). SuperAdmin envia `instituicao_id` no form.
 
 ```bash
-curl -s -X POST http://localhost:8000/api/alunos/importar \
+curl -s -X POST http://localhost:8000/api/participantes/importar \
   -H "Authorization: Bearer $TOKEN" \
-  -F "file=@./alunos.csv" \
+  -F "file=@./participantes.csv" \
   -F "instituicao_id=<uuid-da-instituicao>"
 ```
 
@@ -228,5 +241,6 @@ curl -s -X POST http://localhost:8000/api/alunos/importar \
 | `instituicoes` | tenant; `logo_url` / `assinatura_url` (S3) |
 | `usuarios` | `super_admin` ou `instituicao_admin` |
 | `cursos` | sempre com `instituicao_id`; `data_evento`, `categoria`, `modalidade`, `tipo` |
-| `alunos` | unique por tenant (email/documento) |
-| `certificados` | `codigo_validacao` (UUID) para validação pública |
+| `participantes` | unique por tenant (email/documento); documento = CPF; status `pending`/`verified`/`rejected` |
+| `inscricoes` | unique `participante_id` + `curso_id` |
+| `certificados` | `participante_id`, `participante_nome`; `codigo_validacao` (UUID) para validação pública |
