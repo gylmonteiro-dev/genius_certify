@@ -8,9 +8,9 @@ export interface CertificadoApi {
   codigo_validacao: string;
   instituicao_id: string;
   curso_id: string;
-  aluno_id: string;
+  participante_id: string;
   numero_certificado: string;
-  aluno_nome: string;
+  participante_nome: string;
   curso_titulo: string;
   instituicao_nome: string;
   carga_horaria: number;
@@ -25,7 +25,7 @@ export interface CertificadoPublicApi {
   valido: boolean;
   codigo_validacao: string;
   numero_certificado: string | null;
-  aluno_nome: string | null;
+  participante_nome: string | null;
   curso_titulo: string | null;
   instituicao_nome: string | null;
   carga_horaria: number | null;
@@ -36,7 +36,7 @@ export interface CertificadoPublicApi {
 }
 
 export interface CertificadoEmitPayload {
-  aluno_id: string;
+  participante_id: string;
   curso_id: string;
   instituicao_id?: string;
 }
@@ -52,11 +52,11 @@ export function mapCertificadoToUi(item: CertificadoApi): Certificate {
     id: item.id,
     codigoValidacao: item.codigo_validacao,
     certificateNumber: item.numero_certificado,
-    studentName: item.aluno_nome,
+    studentName: item.participante_nome,
     studentEmail: '—',
     eventName: item.curso_titulo,
     eventId: item.curso_id,
-    alunoId: item.aluno_id,
+    participanteId: item.participante_id,
     instituicaoId: item.instituicao_id,
     institutionName: item.instituicao_nome,
     issueDate: item.created_at.slice(0, 10),
@@ -72,11 +72,11 @@ export function mapPublicCertificadoToUi(item: CertificadoPublicApi): Certificat
     id: item.codigo_validacao,
     codigoValidacao: item.codigo_validacao,
     certificateNumber: item.numero_certificado ?? '—',
-    studentName: item.aluno_nome ?? '—',
+    studentName: item.participante_nome ?? '—',
     studentEmail: '—',
     eventName: item.curso_titulo ?? '—',
     eventId: '',
-    alunoId: '',
+    participanteId: '',
     instituicaoId: '',
     institutionName: item.instituicao_nome ?? '—',
     issueDate: item.emitido_em?.slice(0, 10) ?? '—',
@@ -97,6 +97,28 @@ export async function emitirCertificado(
 ): Promise<CertificadoApi> {
   return apiRequest<CertificadoApi>(
     '/api/certificados/emitir',
+    { method: 'POST', body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export interface CertificadoEmitLotePayload {
+  curso_id: string;
+  participante_ids: string[];
+  instituicao_id?: string;
+}
+
+export interface CertificadoEmitLoteResult {
+  emitidos: CertificadoApi[];
+  erros: { participante_id: string; mensagem: string }[];
+}
+
+export async function emitirCertificadosLote(
+  token: string,
+  payload: CertificadoEmitLotePayload,
+): Promise<CertificadoEmitLoteResult> {
+  return apiRequest<CertificadoEmitLoteResult>(
+    '/api/certificados/emitir-lote',
     { method: 'POST', body: JSON.stringify(payload) },
     token,
   );

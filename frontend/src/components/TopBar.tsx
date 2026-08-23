@@ -176,7 +176,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                 </button>
                 <button
                   onClick={() => {
-                    onSelectTab('students');
+                    onSelectTab('participants');
                     setShowAppsMenu(false);
                   }}
                   className="p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 text-left flex flex-col gap-1 transition-colors"

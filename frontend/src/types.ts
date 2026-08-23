@@ -8,7 +8,7 @@ export type NavTab =
   | 'events-catalog'
   | 'event-registration'
   | 'events-directory'
-  | 'students'
+  | 'participants'
   | 'settings';
 
 export type UserRole = 'admin' | 'public';
@@ -48,6 +48,8 @@ export interface EventItem {
   closingSoon?: boolean;
   bannerImage?: string;
   status: 'Upcoming' | 'Completed' | 'Draft';
+  exigirConclusaoParaEmitir: boolean;
+  emissaoLiberada: boolean;
 }
 
 export interface Certificate {
@@ -58,7 +60,7 @@ export interface Certificate {
   studentEmail: string;
   eventName: string;
   eventId: string;
-  alunoId: string;
+  participanteId: string;
   instituicaoId: string;
   institutionName: string;
   issueDate: string;
@@ -68,7 +70,7 @@ export interface Certificate {
   status: 'Active' | 'Revoked' | 'Expired';
 }
 
-export interface Student {
+export interface Participant {
   id: string;
   instituicaoId: string;
   name: string;
@@ -77,7 +79,7 @@ export interface Student {
   institution: string;
   certificatesCount: number;
   joinedDate: string;
-  status: 'Verified' | 'Pending';
+  status: 'Verified' | 'Pending' | 'Rejected';
 }
 
 export interface RegistrationFormData {

@@ -51,7 +51,7 @@ export const PublicEventRegisterPage: React.FC = () => {
       await inscreverCursoPublico(evt.id, {
         nome: form.fullName,
         email: form.email,
-        documento: form.documentId,
+        documento: form.documentId.replace(/\D/g, ''),
       });
     } catch (err) {
       const message =

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { EventItem, RegistrationFormData } from '../types';
+import { digitsOnly, formatCpf, isValidCpf } from '../lib/cpf';
 import { useT } from '../i18n';
 
 interface EventRegistrationViewProps {
@@ -25,8 +26,12 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName || !workEmail || !documentId) {
+    if (!fullName || !workEmail) {
       alert(t('registration.completeFields'));
+      return;
+    }
+    if (!isValidCpf(documentId)) {
+      alert(t('registration.cpfInvalid'));
       return;
     }
 
@@ -34,7 +39,7 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
       await onSuccessRegister(event, {
         fullName,
         email: workEmail,
-        documentId,
+        documentId: digitsOnly(documentId),
       });
       setIsSubmitted(true);
     } catch {
@@ -182,8 +187,9 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                       type="text"
                       required
                       value={documentId}
-                      onChange={(e) => setDocumentId(e.target.value)}
-                      placeholder="ID-XXXX-YYYY"
+                      onChange={(e) => setDocumentId(formatCpf(e.target.value))}
+                      placeholder={t('registration.documentPlaceholder')}
+                      inputMode="numeric"
                       className="w-full h-11 px-4 border border-slate-200 rounded-md bg-slate-50 text-slate-900 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                     />
                     <p className="text-xs text-slate-400 mt-1">

@@ -55,7 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       isActive: isEventsActive,
     },
     {
-      id: 'students' as NavTab,
+      id: 'participants' as NavTab,
       label: t('nav.students'),
       icon: 'group',
     },

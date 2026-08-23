@@ -49,7 +49,7 @@ class PdfService:
     ) -> bytes:
         template = self._env.get_template("certificado.html")
         html = template.render(
-            aluno_nome=certificado.aluno_nome,
+            participante_nome=certificado.participante_nome,
             curso_titulo=certificado.curso_titulo,
             instituicao_nome=certificado.instituicao_nome,
             carga_horaria=certificado.carga_horaria,

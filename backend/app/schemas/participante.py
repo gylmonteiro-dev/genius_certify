@@ -1,0 +1,75 @@
+from datetime import date, datetime
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+from app.core.cpf import normalize_cpf
+from app.models.curso import CursoStatus
+from app.models.participante import ParticipanteStatus
+
+
+class ParticipanteCreate(BaseModel):
+    nome: str = Field(min_length=2, max_length=255)
+    email: EmailStr
+    documento: str = Field(min_length=11, max_length=18)
+    status: ParticipanteStatus = ParticipanteStatus.PENDING
+    instituicao_id: UUID | None = None
+
+    @field_validator("documento")
+    @classmethod
+    def validate_documento(cls, value: str) -> str:
+        return normalize_cpf(value)
+
+
+class ParticipanteUpdate(BaseModel):
+    nome: str | None = Field(default=None, min_length=2, max_length=255)
+    email: EmailStr | None = None
+    documento: str | None = Field(default=None, min_length=11, max_length=18)
+    status: ParticipanteStatus | None = None
+
+    @field_validator("documento")
+    @classmethod
+    def validate_documento(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return normalize_cpf(value)
+
+
+class ParticipanteResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    instituicao_id: UUID
+    nome: str
+    email: EmailStr
+    documento: str
+    status: ParticipanteStatus
+    created_at: datetime
+    updated_at: datetime
+
+
+class ParticipanteEventoResponse(BaseModel):
+    curso_id: UUID
+    curso_titulo: str
+    data_evento: date | None = None
+    curso_status: CursoStatus
+    inscrito_em: datetime
+    ja_emitido: bool
+    certificado_id: UUID | None = None
+    numero_certificado: str | None = None
+
+
+class ParticipanteDetalheResponse(ParticipanteResponse):
+    eventos: list[ParticipanteEventoResponse]
+
+
+class ParticipanteImportError(BaseModel):
+    linha: int
+    mensagem: str
+
+
+class ParticipanteImportResponse(BaseModel):
+    created: int
+    skipped: int
+    reused: int = 0
+    errors: list[ParticipanteImportError]

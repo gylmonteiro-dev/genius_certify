@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.schemas.aluno import AlunoResponse
 from app.schemas.curso import CursoPublicResponse, InscricaoPublicaRequest
+from app.schemas.participante import ParticipanteResponse
 from app.services.publico_service import PublicoService
 
 router = APIRouter(prefix="/publico", tags=["publico"])
@@ -30,12 +30,12 @@ async def get_curso_publico(
 
 @router.post(
     "/cursos/{curso_id}/inscrever",
-    response_model=AlunoResponse,
+    response_model=ParticipanteResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def inscrever_curso_publico(
     curso_id: UUID,
     body: InscricaoPublicaRequest,
     session: AsyncSession = Depends(get_db),
-) -> AlunoResponse:
+) -> ParticipanteResponse:
     return await PublicoService(session).inscrever(curso_id, body)

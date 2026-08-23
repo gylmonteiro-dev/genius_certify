@@ -90,7 +90,7 @@ export const CertificateDetailModal: React.FC<CertificateDetailModalProps> = ({
           </span>
 
           <div className="flex gap-2">
-            {onDownloadPdf && certificate.alunoId && (
+            {onDownloadPdf && certificate.participanteId && (
               <button
                 onClick={() => onDownloadPdf(certificate)}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"

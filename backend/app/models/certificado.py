@@ -5,7 +5,7 @@ from sqlalchemy import Enum, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.aluno import Aluno
+from app.models.participante import Participante
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 from app.models.curso import Curso
 from app.models.instituicao import Instituicao
@@ -41,15 +41,15 @@ class Certificado(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
         index=True,
     )
-    aluno_id: Mapped[uuid.UUID] = mapped_column(
+    participante_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("alunos.id", ondelete="RESTRICT"),
+        ForeignKey("participantes.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
     )
     numero_certificado: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     # Snapshots no momento da emissão (PDF on-the-fly / auditoria)
-    aluno_nome: Mapped[str] = mapped_column(String(255), nullable=False)
+    participante_nome: Mapped[str] = mapped_column(String(255), nullable=False)
     curso_titulo: Mapped[str] = mapped_column(String(255), nullable=False)
     instituicao_nome: Mapped[str] = mapped_column(String(255), nullable=False)
     carga_horaria: Mapped[int] = mapped_column(nullable=False)
@@ -67,4 +67,4 @@ class Certificado(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     instituicao: Mapped[Instituicao] = relationship(back_populates="certificados")
     curso: Mapped[Curso] = relationship(back_populates="certificados")
-    aluno: Mapped[Aluno] = relationship(back_populates="certificados")
+    participante: Mapped[Participante] = relationship(back_populates="certificados")

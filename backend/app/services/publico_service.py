@@ -3,19 +3,21 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError
-from app.models.aluno import AlunoStatus
 from app.models.curso import Curso, CursoStatus
-from app.repositories.aluno_repository import AlunoRepository
 from app.repositories.curso_repository import CursoRepository
-from app.schemas.aluno import AlunoResponse
+from app.repositories.inscricao_repository import InscricaoRepository
+from app.repositories.participante_repository import ParticipanteRepository
 from app.schemas.curso import CursoPublicResponse, InscricaoPublicaRequest
+from app.schemas.participante import ParticipanteResponse
+from app.services.participante_service import resolve_or_create_participante
 
 
 class PublicoService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
         self._cursos = CursoRepository(session)
-        self._alunos = AlunoRepository(session)
+        self._participantes = ParticipanteRepository(session)
+        self._inscricoes = InscricaoRepository(session)
 
     @staticmethod
     def to_curso_public(curso: Curso) -> CursoPublicResponse:
@@ -55,27 +57,33 @@ class PublicoService:
         self,
         curso_id: UUID,
         data: InscricaoPublicaRequest,
-    ) -> AlunoResponse:
+    ) -> ParticipanteResponse:
         curso = await self._cursos.get_publico(curso_id)
         if curso is None or curso.status != CursoStatus.UPCOMING:
             raise NotFoundError("Curso não encontrado ou inscrições encerradas")
 
         email = str(data.email).lower()
-        conflict = await self._alunos.find_conflict(
-            instituicao_id=curso.instituicao_id,
-            email=email,
-            documento=data.documento,
-        )
-        if conflict is not None:
-            raise ConflictError("E-mail ou documento já cadastrado nesta instituição")
-
-        aluno = await self._alunos.create(
+        participante, _created = await resolve_or_create_participante(
+            self._participantes,
             instituicao_id=curso.instituicao_id,
             nome=data.nome.strip(),
             email=email,
             documento=data.documento,
-            status=AlunoStatus.PENDING,
+        )
+
+        existing = await self._inscricoes.get_by_participante_curso(
+            instituicao_id=curso.instituicao_id,
+            participante_id=participante.id,
+            curso_id=curso.id,
+        )
+        if existing is not None:
+            raise ConflictError("Já inscrito neste evento")
+
+        await self._inscricoes.create(
+            instituicao_id=curso.instituicao_id,
+            participante_id=participante.id,
+            curso_id=curso.id,
         )
         await self._session.commit()
-        await self._session.refresh(aluno)
-        return AlunoResponse.model_validate(aluno)
+        await self._session.refresh(participante)
+        return ParticipanteResponse.model_validate(participante)

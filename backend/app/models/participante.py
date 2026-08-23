@@ -11,19 +11,20 @@ from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 from app.models.instituicao import Instituicao
 
 
-class AlunoStatus(str, enum.Enum):
+class ParticipanteStatus(str, enum.Enum):
     PENDING = "pending"
     VERIFIED = "verified"
+    REJECTED = "rejected"
 
 
-class Aluno(Base, UUIDPrimaryKeyMixin, TimestampMixin):
-    __tablename__ = "alunos"
+class Participante(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "participantes"
     __table_args__ = (
-        UniqueConstraint("instituicao_id", "email", name="uq_alunos_instituicao_email"),
+        UniqueConstraint("instituicao_id", "email", name="uq_participantes_instituicao_email"),
         UniqueConstraint(
             "instituicao_id",
             "documento",
-            name="uq_alunos_instituicao_documento",
+            name="uq_participantes_instituicao_documento",
         ),
     )
 
@@ -36,15 +37,16 @@ class Aluno(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     nome: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     documento: Mapped[str] = mapped_column(String(64), nullable=False)
-    status: Mapped[AlunoStatus] = mapped_column(
+    status: Mapped[ParticipanteStatus] = mapped_column(
         Enum(
-            AlunoStatus,
+            ParticipanteStatus,
             name="aluno_status",
             values_callable=lambda enum_cls: [item.value for item in enum_cls],
         ),
         nullable=False,
-        default=AlunoStatus.PENDING,
+        default=ParticipanteStatus.PENDING,
     )
 
-    instituicao: Mapped[Instituicao] = relationship(back_populates="alunos")
-    certificados: Mapped[list[Certificado]] = relationship(back_populates="aluno")
+    instituicao: Mapped[Instituicao] = relationship(back_populates="participantes")
+    certificados: Mapped[list[Certificado]] = relationship(back_populates="participante")
+    inscricoes: Mapped[list[Inscricao]] = relationship(back_populates="participante")

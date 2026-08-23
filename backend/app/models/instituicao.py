@@ -39,5 +39,6 @@ class Instituicao(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     usuarios: Mapped[list[Usuario]] = relationship(back_populates="instituicao")
     cursos: Mapped[list[Curso]] = relationship(back_populates="instituicao")
-    alunos: Mapped[list[Aluno]] = relationship(back_populates="instituicao")
+    participantes: Mapped[list[Participante]] = relationship(back_populates="instituicao")
     certificados: Mapped[list[Certificado]] = relationship(back_populates="instituicao")
+    inscricoes: Mapped[list[Inscricao]] = relationship(back_populates="instituicao")
