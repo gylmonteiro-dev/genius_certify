@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.dependencies import RequireInstituicaoAdmin
 from app.models.usuario import Usuario
-from app.schemas.curso import CursoCreate, CursoResponse, CursoUpdate
+from app.schemas.curso import CursoCreate, CursoResponse, CursoUpdate, InscritoResponse
 from app.services.curso_service import CursoService
 
 router = APIRouter(prefix="/cursos", tags=["cursos"])
@@ -39,6 +39,24 @@ async def list_cursos(
         skip=skip,
         limit=limit,
     )
+
+
+@router.get("/{curso_id}/inscritos", response_model=list[InscritoResponse])
+async def list_inscritos(
+    curso_id: UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> list[InscritoResponse]:
+    return await CursoService(session).list_inscritos(curso_id, actor=current_user)
+
+
+@router.post("/{curso_id}/liberar-emissao", response_model=CursoResponse)
+async def liberar_emissao(
+    curso_id: UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> CursoResponse:
+    return await CursoService(session).liberar_emissao(curso_id, actor=current_user)
 
 
 @router.get("/{curso_id}", response_model=CursoResponse)

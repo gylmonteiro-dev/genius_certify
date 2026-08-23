@@ -1,13 +1,18 @@
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppError, ConflictError, ForbiddenError, NotFoundError
-from app.models.curso import Curso
+from app.models.certificado import CertificadoStatus
+from app.models.curso import Curso, CursoStatus
 from app.models.usuario import Usuario, UsuarioRole
+from app.repositories.certificado_repository import CertificadoRepository
 from app.repositories.curso_repository import CursoRepository
+from app.repositories.inscricao_repository import InscricaoRepository
 from app.repositories.instituicao_repository import InstituicaoRepository
-from app.schemas.curso import CursoCreate, CursoResponse, CursoUpdate
+from app.schemas.curso import CursoCreate, CursoResponse, CursoUpdate, InscritoResponse
 
 
 class CursoService:
@@ -15,6 +20,8 @@ class CursoService:
         self._session = session
         self._cursos = CursoRepository(session)
         self._instituicoes = InstituicaoRepository(session)
+        self._inscricoes = InscricaoRepository(session)
+        self._certificados = CertificadoRepository(session)
 
     def _tenant_id_for_queries(self, actor: Usuario) -> UUID | None:
         """Admin da instituição: sempre filtra pelo tenant. SuperAdmin: sem filtro."""
@@ -60,6 +67,7 @@ class CursoService:
             categoria=data.categoria,
             modalidade=data.modalidade,
             tipo=data.tipo.strip() if data.tipo else None,
+            exigir_conclusao_para_emitir=data.exigir_conclusao_para_emitir,
         )
         await self._session.commit()
         await self._session.refresh(curso)
@@ -129,6 +137,62 @@ class CursoService:
 
         await self._cursos.delete(curso)
         await self._session.commit()
+
+    async def list_inscritos(
+        self,
+        curso_id: UUID,
+        *,
+        actor: Usuario,
+    ) -> list[InscritoResponse]:
+        curso = await self._get_or_404(curso_id, actor=actor)
+        inscricoes = await self._inscricoes.list_by_curso(
+            instituicao_id=curso.instituicao_id,
+            curso_id=curso.id,
+        )
+        certificados = await self._certificados.list_by_curso(
+            instituicao_id=curso.instituicao_id,
+            curso_id=curso.id,
+        )
+        cert_by_participante = {item.participante_id: item for item in certificados}
+
+        items: list[InscritoResponse] = []
+        for inscricao in inscricoes:
+            participante = inscricao.participante
+            certificado = cert_by_participante.get(participante.id)
+            items.append(
+                InscritoResponse(
+                    id=participante.id,
+                    nome=participante.nome,
+                    email=participante.email,
+                    documento=participante.documento,
+                    status=participante.status,
+                    inscrito_em=inscricao.created_at,
+                    ja_emitido=certificado is not None
+                    and certificado.status == CertificadoStatus.ACTIVE,
+                    certificado_id=certificado.id if certificado else None,
+                    certificado_status=certificado.status if certificado else None,
+                    numero_certificado=(
+                        certificado.numero_certificado if certificado else None
+                    ),
+                )
+            )
+        items.sort(key=lambda item: item.nome.lower())
+        return items
+
+    async def liberar_emissao(self, curso_id: UUID, *, actor: Usuario) -> CursoResponse:
+        curso = await self._get_or_404(curso_id, actor=actor)
+        if curso.exigir_conclusao_para_emitir and curso.status != CursoStatus.COMPLETED:
+            raise AppError(
+                "Conclua o evento antes de validar e liberar a emissão"
+            )
+        if curso.emissao_liberada:
+            raise ConflictError("A emissão já está liberada para este evento")
+
+        curso.emissao_liberada = True
+        await self._cursos.save(curso)
+        await self._session.commit()
+        await self._session.refresh(curso)
+        return CursoResponse.model_validate(curso)
 
     async def _get_or_404(self, curso_id: UUID, *, actor: Usuario) -> Curso:
         tenant = self._tenant_id_for_queries(actor)

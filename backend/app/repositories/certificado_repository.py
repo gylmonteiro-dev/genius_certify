@@ -28,21 +28,47 @@ class CertificadoRepository:
         )
         return result.scalar_one_or_none()
 
-    async def get_active_by_aluno_curso(
+    async def get_active_by_participante_curso(
         self,
         *,
         instituicao_id: UUID,
-        aluno_id: UUID,
+        participante_id: UUID,
         curso_id: UUID,
     ) -> Certificado | None:
         stmt = select(Certificado).where(
             Certificado.instituicao_id == instituicao_id,
-            Certificado.aluno_id == aluno_id,
+            Certificado.participante_id == participante_id,
             Certificado.curso_id == curso_id,
             Certificado.status == CertificadoStatus.ACTIVE,
         )
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def list_by_participante(
+        self,
+        *,
+        instituicao_id: UUID,
+        participante_id: UUID,
+    ) -> list[Certificado]:
+        stmt = select(Certificado).where(
+            Certificado.instituicao_id == instituicao_id,
+            Certificado.participante_id == participante_id,
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def list_by_curso(
+        self,
+        *,
+        instituicao_id: UUID,
+        curso_id: UUID,
+    ) -> list[Certificado]:
+        stmt = select(Certificado).where(
+            Certificado.instituicao_id == instituicao_id,
+            Certificado.curso_id == curso_id,
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
 
     async def list(
         self,

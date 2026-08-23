@@ -1,17 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { EventItem, Institution, Student } from '../types';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Certificate, EventItem, Institution, Participant } from '../types';
 import { CertificadoEmitPayload } from '../lib/certificados';
-import { useT } from '../i18n';
+import { labelStudentStatus, useT } from '../i18n';
 
 interface IssueCertificateModalProps {
   isOpen: boolean;
   onClose: () => void;
   events: EventItem[];
-  students: Student[];
+  participants: Participant[];
   institutions: Institution[];
+  certificates: Certificate[];
   isSuperAdmin: boolean;
   isSubmitting?: boolean;
   errorMessage?: string | null;
+  onLoadEnrolled: (cursoId: string) => Promise<Participant[]>;
   onSubmit: (payload: CertificadoEmitPayload) => Promise<void>;
 }
 
@@ -19,41 +21,96 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
   isOpen,
   onClose,
   events,
-  students,
+  participants,
   institutions,
+  certificates,
   isSuperAdmin,
   isSubmitting = false,
   errorMessage = null,
+  onLoadEnrolled,
   onSubmit,
 }) => {
   const { t } = useT();
   const [instituicaoId, setInstituicaoId] = useState('');
-  const [alunoId, setAlunoId] = useState('');
+  const [participanteId, setParticipanteId] = useState('');
   const [cursoId, setCursoId] = useState('');
+  const [enrolledIds, setEnrolledIds] = useState<string[]>([]);
+  const [loadingEnrolled, setLoadingEnrolled] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     setFormError(null);
     setInstituicaoId(isSuperAdmin ? '' : institutions[0]?.id ?? '');
-    setAlunoId('');
+    setParticipanteId('');
     setCursoId('');
+    setEnrolledIds([]);
   }, [isOpen, isSuperAdmin, institutions]);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen || !cursoId) {
+      setEnrolledIds([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingEnrolled(true);
+    void onLoadEnrolled(cursoId)
+      .then((items) => {
+        if (!cancelled) setEnrolledIds(items.map((item) => item.id));
+      })
+      .catch(() => {
+        if (!cancelled) setEnrolledIds([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingEnrolled(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, cursoId, onLoadEnrolled]);
 
-  const scopedStudents = isSuperAdmin && instituicaoId
-    ? students.filter((s) => s.instituicaoId === instituicaoId)
-    : students;
-  const scopedEvents = isSuperAdmin && instituicaoId
-    ? events.filter((e) => e.institutionId === instituicaoId)
-    : events;
+  const scopedEvents = useMemo(() => {
+    const byInstitution = isSuperAdmin && instituicaoId
+      ? events.filter((e) => e.institutionId === instituicaoId)
+      : events;
+    return byInstitution.filter((evt) => evt.status !== 'Draft');
+  }, [events, isSuperAdmin, instituicaoId]);
+
+  const issuedIds = useMemo(
+    () =>
+      new Set(
+        certificates
+          .filter((cert) => cert.eventId === cursoId && cert.status === 'Active')
+          .map((cert) => cert.participanteId),
+      ),
+    [certificates, cursoId],
+  );
+
+  const scopedParticipants = useMemo(() => {
+    const byInstitution = isSuperAdmin && instituicaoId
+      ? participants.filter((item) => item.instituicaoId === instituicaoId)
+      : participants;
+    const available = byInstitution.filter((item) => !issuedIds.has(item.id));
+    if (enrolledIds.length === 0) return available;
+    const enrolledSet = new Set(enrolledIds);
+    return [
+      ...available.filter((item) => enrolledSet.has(item.id)),
+      ...available.filter((item) => !enrolledSet.has(item.id)),
+    ];
+  }, [participants, isSuperAdmin, instituicaoId, enrolledIds, issuedIds]);
+
+  if (!isOpen) return null;
 
   const handleIssue = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-    if (!alunoId || !cursoId) {
+    if (!participanteId || !cursoId) {
       setFormError(t('issueModal.selectStudentAndCourse'));
+      return;
+    }
+    const selected = participants.find((item) => item.id === participanteId);
+    if (selected && selected.status !== 'Verified') {
+      setFormError(t('eventIssue.notEligible'));
       return;
     }
     if (isSuperAdmin && !instituicaoId) {
@@ -61,7 +118,7 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
       return;
     }
     const payload: CertificadoEmitPayload = {
-      aluno_id: alunoId,
+      participante_id: participanteId,
       curso_id: cursoId,
     };
     if (isSuperAdmin) payload.instituicao_id = instituicaoId;
@@ -106,7 +163,7 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
                 value={instituicaoId}
                 onChange={(e) => {
                   setInstituicaoId(e.target.value);
-                  setAlunoId('');
+                  setParticipanteId('');
                   setCursoId('');
                 }}
                 className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm text-slate-800"
@@ -123,29 +180,14 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-              {t('issueModal.student')}
-            </label>
-            <select
-              value={alunoId}
-              onChange={(e) => setAlunoId(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm text-slate-800"
-            >
-              <option value="">{t('common.selectStudent')}</option>
-              {scopedStudents.map((student) => (
-                <option key={student.id} value={student.id}>
-                  {student.name} ({student.email})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
               {t('issueModal.courseEvent')}
             </label>
             <select
               value={cursoId}
-              onChange={(e) => setCursoId(e.target.value)}
+              onChange={(e) => {
+                setCursoId(e.target.value);
+                setParticipanteId('');
+              }}
               className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm text-slate-800"
             >
               <option value="">{t('common.selectCourse')}</option>
@@ -155,6 +197,36 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+              {t('issueModal.student')}
+            </label>
+            <select
+              value={participanteId}
+              onChange={(e) => setParticipanteId(e.target.value)}
+              disabled={!cursoId || loadingEnrolled}
+              className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2 text-sm text-slate-800 disabled:opacity-60"
+            >
+              <option value="">
+                {loadingEnrolled ? t('common.loading') : t('common.selectStudent')}
+              </option>
+              {scopedParticipants.map((item) => {
+                const enrolled = enrolledIds.includes(item.id);
+                const approved = item.status === 'Verified';
+                return (
+                  <option key={item.id} value={item.id} disabled={!approved}>
+                    {item.name} ({item.email})
+                    {enrolled ? ` — ${t('issueModal.enrolled')}` : ''}
+                    {!approved ? ` — ${labelStudentStatus(t, item.status)}` : ''}
+                  </option>
+                );
+              })}
+            </select>
+            {cursoId && !loadingEnrolled && enrolledIds.length === 0 && (
+              <p className="text-[11px] text-slate-500 mt-1.5">{t('issueModal.noEnrolledHint')}</p>
+            )}
           </div>
 
           <div className="pt-4 flex justify-end gap-2 border-t border-slate-200 mt-6">

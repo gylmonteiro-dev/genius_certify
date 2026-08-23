@@ -10,6 +10,7 @@ interface EventsDirectoryViewProps {
   errorMessage?: string | null;
   onCreateEventClick?: () => void;
   onEditEvent?: (event: EventItem) => void;
+  onOpenEvent?: (event: EventItem) => void;
 }
 
 function visibilityBadgeClass(visibility: EventPublicVisibility): string {
@@ -42,6 +43,7 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
   errorMessage = null,
   onCreateEventClick,
   onEditEvent,
+  onOpenEvent,
 }) => {
   const { t, dateLocale } = useT();
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -166,8 +168,18 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
                     {t(visibilityLabelKey(visibility))}
                   </span>
                 </div>
-                {onEditEvent && (
-                  <div className="flex items-start md:items-center shrink-0">
+                <div className="flex items-start md:items-center shrink-0 gap-2">
+                  {onOpenEvent && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenEvent(evt)}
+                      className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">group</span>
+                      {t('eventsDirectory.open')}
+                    </button>
+                  )}
+                  {onEditEvent && (
                     <button
                       type="button"
                       onClick={() => onEditEvent(evt)}
@@ -176,8 +188,8 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
                       <span className="material-symbols-outlined text-[16px]">edit</span>
                       {t('eventsDirectory.edit')}
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
               );
             })}

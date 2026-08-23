@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 import uuid
 from datetime import datetime, timezone
@@ -7,12 +9,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppError, ConflictError, ForbiddenError, NotFoundError
 from app.models.certificado import Certificado, CertificadoStatus
+from app.models.curso import Curso, CursoStatus
+from app.models.instituicao import Instituicao
+from app.models.participante import Participante, ParticipanteStatus
 from app.models.usuario import Usuario, UsuarioRole
-from app.repositories.aluno_repository import AlunoRepository
+from app.repositories.participante_repository import ParticipanteRepository
 from app.repositories.certificado_repository import CertificadoRepository
 from app.repositories.curso_repository import CursoRepository
+from app.repositories.inscricao_repository import InscricaoRepository
 from app.repositories.instituicao_repository import InstituicaoRepository
 from app.schemas.certificado import (
+    CertificadoEmitLoteErro,
+    CertificadoEmitLoteRequest,
+    CertificadoEmitLoteResponse,
     CertificadoEmitRequest,
     CertificadoPublicResponse,
     CertificadoResponse,
@@ -24,9 +33,10 @@ class CertificadoService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
         self._certificados = CertificadoRepository(session)
-        self._alunos = AlunoRepository(session)
+        self._participantes = ParticipanteRepository(session)
         self._cursos = CursoRepository(session)
         self._instituicoes = InstituicaoRepository(session)
+        self._inscricoes = InscricaoRepository(session)
         self._pdf = PdfService()
 
     def _tenant_id_for_queries(self, actor: Usuario) -> UUID | None:
@@ -64,7 +74,7 @@ class CertificadoService:
         *,
         codigo_validacao: UUID,
         numero: str,
-        aluno_nome: str,
+        participante_nome: str,
         curso_titulo: str,
         instituicao_nome: str,
         carga_horaria: int,
@@ -73,13 +83,85 @@ class CertificadoService:
             [
                 str(codigo_validacao),
                 numero,
-                aluno_nome,
+                participante_nome,
                 curso_titulo,
                 instituicao_nome,
                 str(carga_horaria),
             ]
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def _assert_can_emit(self, curso: Curso) -> None:
+        if curso.status == CursoStatus.DRAFT:
+            raise AppError("Não é permitido emitir certificado de evento em rascunho")
+        if not curso.exigir_conclusao_para_emitir:
+            return
+        if curso.status != CursoStatus.COMPLETED:
+            raise AppError("Conclua o evento antes de emitir certificados")
+        if not curso.emissao_liberada:
+            raise AppError(
+                "A emissão ainda não foi validada e liberada para este evento"
+            )
+
+    @staticmethod
+    def _assert_participante_apto(participante: Participante) -> None:
+        if participante.status == ParticipanteStatus.REJECTED:
+            raise AppError("Participante reprovado não pode receber certificado")
+        if participante.status != ParticipanteStatus.VERIFIED:
+            raise AppError("Aprove o participante antes de emitir o certificado")
+
+    async def _ensure_inscricao(
+        self,
+        *,
+        instituicao_id: UUID,
+        participante_id: UUID,
+        curso_id: UUID,
+    ) -> None:
+        existing = await self._inscricoes.get_by_participante_curso(
+            instituicao_id=instituicao_id,
+            participante_id=participante_id,
+            curso_id=curso_id,
+        )
+        if existing is not None:
+            return
+        await self._inscricoes.create(
+            instituicao_id=instituicao_id,
+            participante_id=participante_id,
+            curso_id=curso_id,
+        )
+
+    async def _create_certificado(
+        self,
+        *,
+        instituicao: Instituicao,
+        curso: Curso,
+        participante_id: UUID,
+        participante_nome: str,
+    ) -> Certificado:
+        codigo_validacao = uuid.uuid4()
+        numero = self._build_numero(codigo_validacao)
+        sha256 = self._compute_sha256(
+            codigo_validacao=codigo_validacao,
+            numero=numero,
+            participante_nome=participante_nome,
+            curso_titulo=curso.titulo,
+            instituicao_nome=instituicao.nome,
+            carga_horaria=curso.carga_horaria,
+        )
+        return await self._certificados.create(
+            codigo_validacao=codigo_validacao,
+            instituicao_id=instituicao.id,
+            curso_id=curso.id,
+            participante_id=participante_id,
+            numero_certificado=numero,
+            participante_nome=participante_nome,
+            curso_titulo=curso.titulo,
+            instituicao_nome=instituicao.nome,
+            carga_horaria=curso.carga_horaria,
+            instrutor=curso.instrutor,
+            sha256=sha256,
+            status=CertificadoStatus.ACTIVE,
+        )
 
     async def emitir(
         self,
@@ -93,50 +175,122 @@ class CertificadoService:
         if instituicao is None:
             raise NotFoundError("Instituição não encontrada")
 
-        aluno = await self._alunos.get_by_id(data.aluno_id, instituicao_id=instituicao_id)
-        if aluno is None:
-            raise NotFoundError("Aluno não encontrado neste tenant")
+        participante = await self._participantes.get_by_id(
+            data.participante_id,
+            instituicao_id=instituicao_id,
+        )
+        if participante is None:
+            raise NotFoundError("Participante não encontrado neste tenant")
+        self._assert_participante_apto(participante)
 
         curso = await self._cursos.get_by_id(data.curso_id, instituicao_id=instituicao_id)
         if curso is None:
             raise NotFoundError("Curso não encontrado neste tenant")
 
-        existing = await self._certificados.get_active_by_aluno_curso(
+        self._assert_can_emit(curso)
+        await self._ensure_inscricao(
             instituicao_id=instituicao_id,
-            aluno_id=aluno.id,
+            participante_id=participante.id,
+            curso_id=curso.id,
+        )
+
+        existing = await self._certificados.get_active_by_participante_curso(
+            instituicao_id=instituicao_id,
+            participante_id=participante.id,
             curso_id=curso.id,
         )
         if existing is not None:
-            raise ConflictError("Já existe certificado ativo para este aluno e curso")
+            raise ConflictError(
+                "Já existe certificado ativo para este participante e curso"
+            )
 
-        codigo_validacao = uuid.uuid4()
-        numero = self._build_numero(codigo_validacao)
-        sha256 = self._compute_sha256(
-            codigo_validacao=codigo_validacao,
-            numero=numero,
-            aluno_nome=aluno.nome,
-            curso_titulo=curso.titulo,
-            instituicao_nome=instituicao.nome,
-            carga_horaria=curso.carga_horaria,
-        )
-
-        certificado = await self._certificados.create(
-            codigo_validacao=codigo_validacao,
-            instituicao_id=instituicao_id,
-            curso_id=curso.id,
-            aluno_id=aluno.id,
-            numero_certificado=numero,
-            aluno_nome=aluno.nome,
-            curso_titulo=curso.titulo,
-            instituicao_nome=instituicao.nome,
-            carga_horaria=curso.carga_horaria,
-            instrutor=curso.instrutor,
-            sha256=sha256,
-            status=CertificadoStatus.ACTIVE,
+        certificado = await self._create_certificado(
+            instituicao=instituicao,
+            curso=curso,
+            participante_id=participante.id,
+            participante_nome=participante.nome,
         )
         await self._session.commit()
         await self._session.refresh(certificado)
         return CertificadoResponse.model_validate(certificado)
+
+    async def emitir_lote(
+        self,
+        data: CertificadoEmitLoteRequest,
+        *,
+        actor: Usuario,
+    ) -> CertificadoEmitLoteResponse:
+        instituicao_id = self._resolve_instituicao_id(actor, data.instituicao_id)
+
+        instituicao = await self._instituicoes.get_by_id(instituicao_id)
+        if instituicao is None:
+            raise NotFoundError("Instituição não encontrada")
+
+        curso = await self._cursos.get_by_id(data.curso_id, instituicao_id=instituicao_id)
+        if curso is None:
+            raise NotFoundError("Curso não encontrado neste tenant")
+
+        self._assert_can_emit(curso)
+
+        unique_ids = list(dict.fromkeys(data.participante_ids))
+        emitidos: list[CertificadoResponse] = []
+        erros: list[CertificadoEmitLoteErro] = []
+
+        for participante_id in unique_ids:
+            participante = await self._participantes.get_by_id(
+                participante_id,
+                instituicao_id=instituicao_id,
+            )
+            if participante is None:
+                erros.append(
+                    CertificadoEmitLoteErro(
+                        participante_id=participante_id,
+                        mensagem="Participante não encontrado neste tenant",
+                    )
+                )
+                continue
+
+            try:
+                self._assert_participante_apto(participante)
+            except AppError as exc:
+                erros.append(
+                    CertificadoEmitLoteErro(
+                        participante_id=participante.id,
+                        mensagem=exc.message,
+                    )
+                )
+                continue
+
+            await self._ensure_inscricao(
+                instituicao_id=instituicao_id,
+                participante_id=participante.id,
+                curso_id=curso.id,
+            )
+
+            existing = await self._certificados.get_active_by_participante_curso(
+                instituicao_id=instituicao_id,
+                participante_id=participante.id,
+                curso_id=curso.id,
+            )
+            if existing is not None:
+                erros.append(
+                    CertificadoEmitLoteErro(
+                        participante_id=participante.id,
+                        mensagem="Já existe certificado ativo para este participante e curso",
+                    )
+                )
+                continue
+
+            certificado = await self._create_certificado(
+                instituicao=instituicao,
+                curso=curso,
+                participante_id=participante.id,
+                participante_nome=participante.nome,
+            )
+            emitidos.append(CertificadoResponse.model_validate(certificado))
+
+        await self._session.commit()
+        return CertificadoEmitLoteResponse(emitidos=emitidos, erros=erros)
 
     async def list(
         self,
@@ -205,7 +359,7 @@ class CertificadoService:
                 valido=False,
                 codigo_validacao=codigo,
                 numero_certificado=certificado.numero_certificado,
-                aluno_nome=certificado.aluno_nome,
+                participante_nome=certificado.participante_nome,
                 curso_titulo=certificado.curso_titulo,
                 instituicao_nome=certificado.instituicao_nome,
                 carga_horaria=certificado.carga_horaria,
@@ -219,7 +373,7 @@ class CertificadoService:
             valido=True,
             codigo_validacao=codigo,
             numero_certificado=certificado.numero_certificado,
-            aluno_nome=certificado.aluno_nome,
+            participante_nome=certificado.participante_nome,
             curso_titulo=certificado.curso_titulo,
             instituicao_nome=certificado.instituicao_nome,
             carga_horaria=certificado.carga_horaria,

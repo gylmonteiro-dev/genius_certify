@@ -8,6 +8,8 @@ from app.core.database import get_db
 from app.core.dependencies import RequireInstituicaoAdmin
 from app.models.usuario import Usuario
 from app.schemas.certificado import (
+    CertificadoEmitLoteRequest,
+    CertificadoEmitLoteResponse,
     CertificadoEmitRequest,
     CertificadoPublicResponse,
     CertificadoResponse,
@@ -28,6 +30,19 @@ async def emitir_certificado(
     current_user: Usuario = Depends(RequireInstituicaoAdmin),
 ) -> CertificadoResponse:
     return await CertificadoService(session).emitir(body, actor=current_user)
+
+
+@router.post(
+    "/emitir-lote",
+    response_model=CertificadoEmitLoteResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def emitir_certificados_lote(
+    body: CertificadoEmitLoteRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> CertificadoEmitLoteResponse:
+    return await CertificadoService(session).emitir_lote(body, actor=current_user)
 
 
 @router.get("", response_model=list[CertificadoResponse])

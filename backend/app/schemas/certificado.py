@@ -7,10 +7,21 @@ from app.models.certificado import CertificadoStatus
 
 
 class CertificadoEmitRequest(BaseModel):
-    aluno_id: UUID
+    participante_id: UUID
     curso_id: UUID
     # Obrigatório para SuperAdmin; admin da instituição usa o JWT
     instituicao_id: UUID | None = None
+
+
+class CertificadoEmitLoteRequest(BaseModel):
+    curso_id: UUID
+    participante_ids: list[UUID] = Field(min_length=1, max_length=200)
+    instituicao_id: UUID | None = None
+
+
+class CertificadoEmitLoteErro(BaseModel):
+    participante_id: UUID
+    mensagem: str
 
 
 class CertificadoRevokeRequest(BaseModel):
@@ -24,9 +35,9 @@ class CertificadoResponse(BaseModel):
     codigo_validacao: UUID
     instituicao_id: UUID
     curso_id: UUID
-    aluno_id: UUID
+    participante_id: UUID
     numero_certificado: str
-    aluno_nome: str
+    participante_nome: str
     curso_titulo: str
     instituicao_nome: str
     carga_horaria: int
@@ -37,13 +48,18 @@ class CertificadoResponse(BaseModel):
     updated_at: datetime
 
 
+class CertificadoEmitLoteResponse(BaseModel):
+    emitidos: list[CertificadoResponse]
+    erros: list[CertificadoEmitLoteErro]
+
+
 class CertificadoPublicResponse(BaseModel):
     """Dados seguros para validação pública (sem IDs internos sensíveis demais)."""
 
     valido: bool
     codigo_validacao: UUID
     numero_certificado: str | None = None
-    aluno_nome: str | None = None
+    participante_nome: str | None = None
     curso_titulo: str | None = None
     instituicao_nome: str | None = None
     carga_horaria: int | None = None

@@ -80,6 +80,9 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   const [instituicaoId, setInstituicaoId] = useState(
     initialEvent?.institutionId || defaultInstituicaoId || '',
   );
+  const [exigirConclusao, setExigirConclusao] = useState(
+    initialEvent?.exigirConclusaoParaEmitir ?? true,
+  );
   const [sampleStudent, setSampleStudent] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -120,6 +123,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       categoria,
       modalidade,
       tipo,
+      exigir_conclusao_para_emitir: exigirConclusao,
     };
     if (!isEdit && isSuperAdmin) {
       payload.instituicao_id = instituicaoId;
@@ -349,6 +353,23 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                     <option value="completed">{t('status.event.completed')}</option>
                   </select>
                 </div>
+
+                <label className="flex items-start gap-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={exigirConclusao}
+                    onChange={(e) => setExigirConclusao(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-800">
+                      {t('createEvent.requireCompletion')}
+                    </span>
+                    <span className="block text-xs text-slate-500 mt-0.5">
+                      {t('createEvent.requireCompletionHint')}
+                    </span>
+                  </span>
+                </label>
 
                 {visibilityBanner}
 

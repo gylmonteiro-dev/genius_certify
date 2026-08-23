@@ -3,8 +3,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.core.cpf import normalize_cpf
+from app.models.certificado import CertificadoStatus
 from app.models.curso import CursoCategoria, CursoModalidade, CursoStatus
-from app.schemas.aluno import _normalize_documento
+from app.models.participante import ParticipanteStatus
 
 
 class CursoCreate(BaseModel):
@@ -17,6 +19,7 @@ class CursoCreate(BaseModel):
     categoria: CursoCategoria | None = None
     modalidade: CursoModalidade | None = None
     tipo: str | None = Field(default=None, max_length=64)
+    exigir_conclusao_para_emitir: bool = True
     # Obrigatório para SuperAdmin; ignorado para admin da instituição (usa o JWT)
     instituicao_id: UUID | None = None
 
@@ -31,6 +34,7 @@ class CursoUpdate(BaseModel):
     categoria: CursoCategoria | None = None
     modalidade: CursoModalidade | None = None
     tipo: str | None = Field(default=None, max_length=64)
+    exigir_conclusao_para_emitir: bool | None = None
 
 
 class CursoResponse(BaseModel):
@@ -47,6 +51,8 @@ class CursoResponse(BaseModel):
     categoria: CursoCategoria | None = None
     modalidade: CursoModalidade | None = None
     tipo: str | None = None
+    exigir_conclusao_para_emitir: bool
+    emissao_liberada: bool
     created_at: datetime
     updated_at: datetime
 
@@ -65,12 +71,25 @@ class CursoPublicResponse(BaseModel):
     tipo: str | None = None
 
 
+class InscritoResponse(BaseModel):
+    id: UUID
+    nome: str
+    email: EmailStr
+    documento: str
+    status: ParticipanteStatus
+    inscrito_em: datetime
+    ja_emitido: bool
+    certificado_id: UUID | None = None
+    certificado_status: CertificadoStatus | None = None
+    numero_certificado: str | None = None
+
+
 class InscricaoPublicaRequest(BaseModel):
     nome: str = Field(min_length=2, max_length=255)
     email: EmailStr
-    documento: str = Field(min_length=5, max_length=64)
+    documento: str = Field(min_length=11, max_length=18)
 
     @field_validator("documento")
     @classmethod
     def validate_documento(cls, value: str) -> str:
-        return _normalize_documento(value)
+        return normalize_cpf(value)

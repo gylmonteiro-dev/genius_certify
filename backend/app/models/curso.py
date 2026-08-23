@@ -4,7 +4,7 @@ import enum
 import uuid
 from datetime import date
 
-from sqlalchemy import Date, Enum, ForeignKey, String, Text
+from sqlalchemy import Boolean, Date, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -70,6 +70,17 @@ class Curso(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=True,
     )
     tipo: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    exigir_conclusao_para_emitir: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+    )
+    emissao_liberada: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
 
     instituicao: Mapped[Instituicao] = relationship(back_populates="cursos")
     certificados: Mapped[list[Certificado]] = relationship(back_populates="curso")
+    inscricoes: Mapped[list[Inscricao]] = relationship(back_populates="curso")

@@ -1,5 +1,7 @@
 import { EventItem, Institution } from '../types';
 import { apiRequest } from './api';
+import { ParticipanteApiStatus } from './participantes';
+import { CertificadoApiStatus } from './certificados';
 
 export type CursoApiStatus = 'draft' | 'upcoming' | 'completed';
 export type CursoApiCategoria = 'technology' | 'business' | 'design' | 'data_science';
@@ -18,6 +20,8 @@ export interface CursoApi {
   categoria: CursoApiCategoria | null;
   modalidade: CursoApiModalidade | null;
   tipo: string | null;
+  exigir_conclusao_para_emitir: boolean;
+  emissao_liberada: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -46,6 +50,7 @@ export interface CursoCreatePayload {
   categoria?: CursoApiCategoria | null;
   modalidade?: CursoApiModalidade | null;
   tipo?: string | null;
+  exigir_conclusao_para_emitir?: boolean;
   instituicao_id?: string;
 }
 
@@ -140,6 +145,8 @@ function mapEventFields(item: {
   created_at?: string;
   instituicaoId: string;
   institutionName: string;
+  exigir_conclusao_para_emitir?: boolean;
+  emissao_liberada?: boolean;
 }): EventItem {
   const parts = dateParts(item.data_evento ?? item.created_at);
   return {
@@ -158,6 +165,8 @@ function mapEventFields(item: {
     institutionName: item.institutionName,
     description: item.descricao || '—',
     status: API_TO_UI_STATUS[item.status],
+    exigirConclusaoParaEmitir: item.exigir_conclusao_para_emitir ?? true,
+    emissaoLiberada: item.emissao_liberada ?? false,
   };
 }
 
@@ -237,6 +246,41 @@ export async function updateCurso(
   return apiRequest<CursoApi>(
     `/api/cursos/${cursoId}`,
     { method: 'PATCH', body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export interface InscritoApi {
+  id: string;
+  nome: string;
+  email: string;
+  documento: string;
+  status: ParticipanteApiStatus;
+  inscrito_em: string;
+  ja_emitido: boolean;
+  certificado_id: string | null;
+  certificado_status: CertificadoApiStatus | null;
+  numero_certificado: string | null;
+}
+
+export async function listInscritos(
+  token: string,
+  cursoId: string,
+): Promise<InscritoApi[]> {
+  return apiRequest<InscritoApi[]>(
+    `/api/cursos/${cursoId}/inscritos`,
+    { method: 'GET' },
+    token,
+  );
+}
+
+export async function liberarEmissao(
+  token: string,
+  cursoId: string,
+): Promise<CursoApi> {
+  return apiRequest<CursoApi>(
+    `/api/cursos/${cursoId}/liberar-emissao`,
+    { method: 'POST' },
     token,
   );
 }
