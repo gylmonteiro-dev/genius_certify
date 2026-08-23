@@ -29,7 +29,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const isInstitutionsActive = 
     currentTab === 'institutions' || 
-    currentTab === 'register-institution';
+    currentTab === 'register-institution' ||
+    currentTab === 'edit-institution';
 
   const navItems = [
     {

@@ -32,12 +32,22 @@ class InstituicaoRepository:
         self,
         *,
         instituicao_id: UUID | None = None,
+        q: str | None = None,
         skip: int = 0,
         limit: int = 50,
     ) -> list[Instituicao]:
         stmt = select(Instituicao).order_by(Instituicao.nome.asc())
         if instituicao_id is not None:
             stmt = stmt.where(Instituicao.id == instituicao_id)
+        term = (q or "").strip()
+        if term:
+            pattern = f"%{term}%"
+            stmt = stmt.where(
+                or_(
+                    Instituicao.nome.ilike(pattern),
+                    Instituicao.codigo.ilike(pattern),
+                )
+            )
         stmt = stmt.offset(skip).limit(limit)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
@@ -57,13 +67,14 @@ class InstituicaoRepository:
     async def exists_codigo_or_cnpj(
         self,
         *,
-        codigo: str,
+        codigo: str | None,
         cnpj: str,
         exclude_id: UUID | None = None,
     ) -> Instituicao | None:
-        stmt = select(Instituicao).where(
-            or_(Instituicao.codigo == codigo.upper(), Instituicao.cnpj == cnpj)
-        )
+        conditions = [Instituicao.cnpj == cnpj]
+        if codigo:
+            conditions.append(Instituicao.codigo == codigo.upper())
+        stmt = select(Instituicao).where(or_(*conditions))
         if exclude_id is not None:
             stmt = stmt.where(Instituicao.id != exclude_id)
         result = await self._session.execute(stmt)

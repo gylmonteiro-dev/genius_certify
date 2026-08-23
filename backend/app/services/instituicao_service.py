@@ -1,3 +1,5 @@
+import secrets
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import UploadFile
@@ -43,12 +45,23 @@ class InstituicaoService:
         if user.instituicao_id != instituicao_id:
             raise ForbiddenError("Instituição fora do seu tenant")
 
+    async def _generate_unique_codigo(self) -> str:
+        year = datetime.now(timezone.utc).year
+        for _ in range(8):
+            codigo = f"INST-{year}-{secrets.token_hex(2).upper()}"
+            existing = await self._instituicoes.get_by_codigo(codigo)
+            if existing is None:
+                return codigo
+        raise AppError("Não foi possível gerar um código único")
+
     async def create(self, data: InstituicaoCreate, *, actor: Usuario) -> InstituicaoResponse:
         if actor.role != UsuarioRole.SUPER_ADMIN:
             raise ForbiddenError("Apenas SuperAdmin pode criar instituições")
 
+        codigo = data.codigo or await self._generate_unique_codigo()
+
         conflict = await self._instituicoes.exists_codigo_or_cnpj(
-            codigo=data.codigo,
+            codigo=codigo,
             cnpj=data.cnpj,
         )
         if conflict is not None:
@@ -67,7 +80,7 @@ class InstituicaoService:
 
         instituicao = await self._instituicoes.create(
             nome=data.nome,
-            codigo=data.codigo,
+            codigo=codigo,
             cnpj=data.cnpj,
             endereco=data.endereco,
             responsavel=data.responsavel,
@@ -95,6 +108,7 @@ class InstituicaoService:
         actor: Usuario,
         skip: int = 0,
         limit: int = 50,
+        q: str | None = None,
     ) -> list[InstituicaoResponse]:
         instituicao_id: UUID | None = None
         if actor.role != UsuarioRole.SUPER_ADMIN:
@@ -104,6 +118,7 @@ class InstituicaoService:
 
         items = await self._instituicoes.list(
             instituicao_id=instituicao_id,
+            q=q,
             skip=skip,
             limit=limit,
         )
@@ -125,6 +140,8 @@ class InstituicaoService:
         instituicao = await self._get_or_404(instituicao_id)
 
         payload = data.model_dump(exclude_unset=True)
+        if payload.get("codigo") is None:
+            payload.pop("codigo", None)
 
         # Apenas SuperAdmin altera status
         if "status" in payload and actor.role != UsuarioRole.SUPER_ADMIN:

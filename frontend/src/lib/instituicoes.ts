@@ -21,7 +21,7 @@ export interface InstituicaoApi {
 
 export interface InstituicaoCreatePayload {
   nome: string;
-  codigo: string;
+  codigo?: string;
   cnpj: string;
   responsavel: string;
   email: string;
@@ -31,6 +31,19 @@ export interface InstituicaoCreatePayload {
   admin_email?: string;
   admin_password?: string;
 }
+
+export interface InstituicaoUpdatePayload {
+  nome?: string;
+  codigo?: string;
+  cnpj?: string;
+  responsavel?: string;
+  email?: string;
+  endereco?: string;
+  telefone?: string;
+}
+
+export const MAX_INSTITUICAO_LOGO_BYTES = 2 * 1024 * 1024;
+export const INSTITUICAO_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
 
 const AVATAR_COLORS = [
   'bg-[#dae2fd] text-[#131b2e]',
@@ -82,15 +95,40 @@ export function mapInstituicaoToUi(item: InstituicaoApi): Institution {
     status: API_TO_UI_STATUS[item.status],
     logoLetter: logoLetter(item.nome),
     bgColor: avatarColor(item.nome),
+    logoUrl: item.logo_url,
   };
+}
+
+export function suggestInstituicaoCodigo(): string {
+  const year = new Date().getFullYear();
+  const bytes = new Uint8Array(2);
+  crypto.getRandomValues(bytes);
+  const suffix = Array.from(bytes, (b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
+  return `INST-${year}-${suffix}`;
+}
+
+export function formatInstitutionOption(inst: Institution): string {
+  return inst.code ? `${inst.name} (${inst.code})` : inst.name;
 }
 
 export function toApiStatus(status: Institution['status']): InstituicaoApiStatus {
   return UI_TO_API_STATUS[status];
 }
 
-export async function listInstituicoes(token: string): Promise<InstituicaoApi[]> {
-  return apiRequest<InstituicaoApi[]>('/api/instituicoes', { method: 'GET' }, token);
+export async function listInstituicoes(
+  token: string,
+  q?: string,
+): Promise<InstituicaoApi[]> {
+  const params = new URLSearchParams();
+  if (q?.trim()) params.set('q', q.trim());
+  const query = params.toString();
+  return apiRequest<InstituicaoApi[]>(
+    `/api/instituicoes${query ? `?${query}` : ''}`,
+    { method: 'GET' },
+    token,
+  );
 }
 
 export async function createInstituicao(
@@ -104,6 +142,18 @@ export async function createInstituicao(
   );
 }
 
+export async function updateInstituicao(
+  token: string,
+  id: string,
+  payload: InstituicaoUpdatePayload,
+): Promise<InstituicaoApi> {
+  return apiRequest<InstituicaoApi>(
+    `/api/instituicoes/${id}`,
+    { method: 'PATCH', body: JSON.stringify(payload) },
+    token,
+  );
+}
+
 export async function updateInstituicaoStatus(
   token: string,
   id: string,
@@ -112,6 +162,21 @@ export async function updateInstituicaoStatus(
   return apiRequest<InstituicaoApi>(
     `/api/instituicoes/${id}`,
     { method: 'PATCH', body: JSON.stringify({ status: toApiStatus(status) }) },
+    token,
+  );
+}
+
+export async function uploadInstituicaoAsset(
+  token: string,
+  id: string,
+  assetType: 'logo' | 'assinatura',
+  file: File,
+): Promise<InstituicaoApi> {
+  const body = new FormData();
+  body.append('file', file);
+  return apiRequest<InstituicaoApi>(
+    `/api/instituicoes/${id}/assets/${assetType}`,
+    { method: 'POST', body },
     token,
   );
 }

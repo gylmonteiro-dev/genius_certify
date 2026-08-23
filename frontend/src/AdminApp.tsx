@@ -13,6 +13,7 @@ import { DashboardView } from './components/DashboardView';
 import { CreateEventView } from './components/CreateEventView';
 import { InstitutionsView } from './components/InstitutionsView';
 import { RegisterInstitutionView } from './components/RegisterInstitutionView';
+import { EditInstitutionView } from './components/EditInstitutionView';
 import { EventsCatalogView } from './components/EventsCatalogView';
 import { EventsDirectoryView } from './components/EventsDirectoryView';
 import { EventIssueView } from './components/EventIssueView';
@@ -29,11 +30,14 @@ import {
 } from './lib/auth';
 import {
   InstituicaoCreatePayload,
+  InstituicaoUpdatePayload,
   createInstituicao,
   deleteInstituicao,
   listInstituicoes,
   mapInstituicaoToUi,
+  updateInstituicao,
   updateInstituicaoStatus,
+  uploadInstituicaoAsset,
 } from './lib/instituicoes';
 import {
   CursoCreatePayload,
@@ -89,6 +93,10 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
   const [institutionsError, setInstitutionsError] = useState<string | null>(null);
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
+  const [editingInstitutionId, setEditingInstitutionId] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   const [events, setEvents] = useState<EventItem[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
@@ -137,6 +145,14 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         eventsCount: events.filter((evt) => evt.institutionId === inst.id).length,
       })),
     [institutions, events],
+  );
+
+  const editingInstitution = useMemo(
+    () =>
+      editingInstitutionId
+        ? institutionsWithCounts.find((item) => item.id === editingInstitutionId) ?? null
+        : null,
+    [editingInstitutionId, institutionsWithCounts],
   );
 
   const participantsWithCounts = useMemo(
@@ -285,6 +301,46 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       setRegisterError(message);
     } finally {
       setRegisterLoading(false);
+    }
+  };
+
+  const handleUpdateInstitution = async (payload: InstituicaoUpdatePayload) => {
+    if (!authToken || !editingInstitutionId) return;
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      const updated = await updateInstituicao(authToken, editingInstitutionId, payload);
+      setInstitutions((prev) =>
+        prev.map((i) => (i.id === updated.id ? mapInstituicaoToUi(updated) : i)),
+      );
+      showToast(t('toasts.institutionUpdated', { name: updated.nome }));
+      setEditingInstitutionId(null);
+      setCurrentTab('institutions');
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : t('errors.updateInstitution');
+      setEditError(message);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleUploadInstitutionLogo = async (file: File) => {
+    if (!authToken || !editingInstitutionId) return;
+    setLogoUploading(true);
+    try {
+      const updated = await uploadInstituicaoAsset(
+        authToken,
+        editingInstitutionId,
+        'logo',
+        file,
+      );
+      setInstitutions((prev) =>
+        prev.map((i) => (i.id === updated.id ? mapInstituicaoToUi(updated) : i)),
+      );
+      showToast(t('toasts.institutionLogoUploaded'));
+    } finally {
+      setLogoUploading(false);
     }
   };
 
@@ -647,6 +703,10 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     } else if (currentTab === 'create-event') {
       setEditingEvent(null);
     }
+    if (tab !== 'edit-institution') {
+      setEditingInstitutionId(null);
+      setEditError(null);
+    }
     setIssuingEvent(null);
     setCurrentTab(tab);
   };
@@ -681,6 +741,8 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
               ? t('nav.institutions')
               : currentTab === 'register-institution'
                 ? t('topbar.registerInstitution')
+                : currentTab === 'edit-institution'
+                  ? t('topbar.editInstitution')
                 : currentTab === 'events-catalog'
                   ? t('topbar.availableEvents')
                   : currentTab === 'events-directory'
@@ -741,6 +803,11 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
               setRegisterError(null);
               setCurrentTab('register-institution');
             }}
+            onEditInstitution={(institution) => {
+              setEditingInstitutionId(institution.id);
+              setEditError(null);
+              setCurrentTab('edit-institution');
+            }}
             onUpdateStatus={handleUpdateInstitutionStatus}
             onDeleteInstitution={handleDeleteInstitution}
           />
@@ -752,6 +819,23 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
             onCancel={() => setCurrentTab('institutions')}
             isSubmitting={registerLoading}
             errorMessage={registerError}
+          />
+        )}
+
+        {currentTab === 'edit-institution' && editingInstitution && (
+          <EditInstitutionView
+            key={editingInstitution.id}
+            institution={editingInstitution}
+            onSubmit={handleUpdateInstitution}
+            onUploadLogo={handleUploadInstitutionLogo}
+            onCancel={() => {
+              setEditingInstitutionId(null);
+              setEditError(null);
+              setCurrentTab('institutions');
+            }}
+            isSubmitting={editLoading}
+            isUploadingLogo={logoUploading}
+            errorMessage={editError}
           />
         )}
 

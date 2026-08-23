@@ -171,7 +171,7 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
                 <option value="">{t('common.selectInstitution')}</option>
                 {institutions.map((inst) => (
                   <option key={inst.id} value={inst.id}>
-                    {inst.name}
+                    {inst.code ? `${inst.name} (${inst.code})` : inst.name}
                   </option>
                 ))}
               </select>

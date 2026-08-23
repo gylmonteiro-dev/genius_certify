@@ -2,6 +2,7 @@ export type NavTab =
   | 'dashboard'
   | 'institutions'
   | 'register-institution'
+  | 'edit-institution'
   | 'certificates'
   | 'events'
   | 'create-event'
@@ -26,6 +27,7 @@ export interface Institution {
   status: 'Active' | 'Pending Review' | 'Suspended';
   logoLetter: string;
   bgColor: string;
+  logoUrl: string | null;
 }
 
 export interface EventItem {

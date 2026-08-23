@@ -274,7 +274,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                         )}
                       {institutions.map((inst) => (
                         <option key={inst.id} value={inst.id}>
-                          {inst.name}
+                          {inst.code ? `${inst.name} (${inst.code})` : inst.name}
                         </option>
                       ))}
                     </select>

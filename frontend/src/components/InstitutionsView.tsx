@@ -8,6 +8,7 @@ interface InstitutionsViewProps {
   errorMessage?: string | null;
   canManage?: boolean;
   onAddInstitutionClick: () => void;
+  onEditInstitution: (institution: Institution) => void;
   onUpdateStatus: (id: string, newStatus: Institution['status']) => void;
   onDeleteInstitution: (id: string) => void;
 }
@@ -18,13 +19,13 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
   errorMessage = null,
   canManage = false,
   onAddInstitutionClick,
+  onEditInstitution,
   onUpdateStatus,
   onDeleteInstitution,
 }) => {
   const { t } = useT();
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [selectedInstId, setSelectedInstId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const filtered = institutions.filter((inst) => {
@@ -36,11 +37,6 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
       filterStatus === 'All' || inst.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
-
-  const selectedInst =
-    selectedInstId != null
-      ? institutions.find((item) => item.id === selectedInstId) ?? null
-      : null;
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -79,7 +75,6 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
         onClick={() => {
           onDeleteInstitution(inst.id);
           setOpenMenuId(null);
-          setSelectedInstId(null);
         }}
         className="w-full text-left px-2.5 py-1.5 hover:bg-slate-100 text-slate-700 rounded-md transition-colors"
       >
@@ -188,13 +183,21 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
                     >
                       <td className="py-4 px-5">
                         <div className="flex items-center gap-3">
-                          <div
-                            className={`w-9 h-9 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 ${
-                              inst.bgColor || 'bg-slate-100 text-slate-700'
-                            }`}
-                          >
-                            {inst.logoLetter || inst.name.substring(0, 2).toUpperCase()}
-                          </div>
+                          {inst.logoUrl ? (
+                            <img
+                              src={inst.logoUrl}
+                              alt=""
+                              className="w-9 h-9 rounded-lg object-contain border border-slate-200 bg-slate-50 p-0.5 shrink-0"
+                            />
+                          ) : (
+                            <div
+                              className={`w-9 h-9 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 ${
+                                inst.bgColor || 'bg-slate-100 text-slate-700'
+                              }`}
+                            >
+                              {inst.logoLetter || inst.name.substring(0, 2).toUpperCase()}
+                            </div>
+                          )}
                           <div>
                             <div
                               className={`font-semibold text-slate-800 ${
@@ -240,8 +243,8 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
                         <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
-                            onClick={() => setSelectedInstId(inst.id)}
-                            title={t('institutions.viewDetails')}
+                            onClick={() => onEditInstitution(inst)}
+                            title={t('institutions.edit')}
                             className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-slate-100 transition-colors"
                           >
                             <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -288,66 +291,6 @@ export const InstitutionsView: React.FC<InstitutionsViewProps> = ({
             : t('institutions.loadedFromApiPlural', { count: institutions.length })}
         </div>
       </div>
-
-      {selectedInst && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-2xl border border-gray-200 relative">
-            <button
-              type="button"
-              onClick={() => setSelectedInstId(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-            >
-              <span className="material-symbols-outlined">close</span>
-            </button>
-
-            <h3 className="text-lg font-bold text-[#0b1c30] mb-4">
-              {t('institutions.detailsTitle', { name: selectedInst.name })}
-            </h3>
-
-            <div className="space-y-3 text-xs text-gray-700 mb-6">
-              <p><strong>{t('institutions.codeId')}:</strong> {selectedInst.code}</p>
-              <p><strong>{t('institutions.cnpj')}:</strong> {selectedInst.cnpjTaxId}</p>
-              <p><strong>{t('institutions.address')}:</strong> {selectedInst.address}</p>
-              <p><strong>{t('institutions.responsibleUser')}:</strong> {selectedInst.responsiblePerson}</p>
-              <p><strong>{t('institutions.contactEmail')}:</strong> {selectedInst.email}</p>
-              <p><strong>{t('institutions.phone')}:</strong> {selectedInst.phone}</p>
-              <p><strong>{t('institutions.eventsHosted')}:</strong> {selectedInst.eventsCount}</p>
-              <p>
-                <strong>{t('institutions.currentStatus')}:</strong>{' '}
-                <span className="font-bold">{labelInstitutionStatus(t, selectedInst.status)}</span>
-              </p>
-            </div>
-
-            <div className="flex flex-wrap justify-end gap-2">
-              {canManage && selectedInst.status !== 'Active' && (
-                <button
-                  type="button"
-                  onClick={() => handleStatus(selectedInst.id, 'Active')}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold"
-                >
-                  {t('institutions.setActive')}
-                </button>
-              )}
-              {canManage && selectedInst.status !== 'Suspended' && (
-                <button
-                  type="button"
-                  onClick={() => handleStatus(selectedInst.id, 'Suspended')}
-                  className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded text-xs font-semibold"
-                >
-                  {t('institutions.suspend')}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setSelectedInstId(null)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded text-xs font-semibold"
-              >
-                {t('common.close')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

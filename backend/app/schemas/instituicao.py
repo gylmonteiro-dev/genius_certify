@@ -13,9 +13,22 @@ def _normalize_cnpj(value: str) -> str:
     return digits
 
 
+def _normalize_codigo(value: object) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("Código deve ser texto")
+    stripped = value.strip().upper()
+    if not stripped:
+        return None
+    if len(stripped) < 2 or len(stripped) > 64:
+        raise ValueError("Código deve ter entre 2 e 64 caracteres")
+    return stripped
+
+
 class InstituicaoCreate(BaseModel):
     nome: str = Field(min_length=2, max_length=255)
-    codigo: str = Field(min_length=2, max_length=64)
+    codigo: str | None = Field(default=None, max_length=64)
     cnpj: str = Field(min_length=14, max_length=18)
     responsavel: str = Field(min_length=2, max_length=255)
     email: EmailStr
@@ -32,10 +45,10 @@ class InstituicaoCreate(BaseModel):
     def validate_cnpj(cls, value: str) -> str:
         return _normalize_cnpj(value)
 
-    @field_validator("codigo")
+    @field_validator("codigo", mode="before")
     @classmethod
-    def validate_codigo(cls, value: str) -> str:
-        return value.strip().upper()
+    def validate_codigo(cls, value: object) -> str | None:
+        return _normalize_codigo(value)
 
 
 class InstituicaoUpdate(BaseModel):
@@ -57,12 +70,10 @@ class InstituicaoUpdate(BaseModel):
             return None
         return _normalize_cnpj(value)
 
-    @field_validator("codigo")
+    @field_validator("codigo", mode="before")
     @classmethod
-    def validate_codigo(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        return value.strip().upper()
+    def validate_codigo(cls, value: object) -> str | None:
+        return _normalize_codigo(value)
 
 
 class InstituicaoResponse(BaseModel):

@@ -187,7 +187,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
             <option value="">{t('common.selectInstitution')}</option>
             {institutions.map((inst) => (
               <option key={inst.id} value={inst.id}>
-                {inst.name}
+                {inst.code ? `${inst.name} (${inst.code})` : inst.name}
               </option>
             ))}
           </select>
@@ -244,7 +244,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
                 <option value="">{t('common.selectInstitution')}</option>
                 {institutions.map((inst) => (
                   <option key={inst.id} value={inst.id}>
-                    {inst.name}
+                    {inst.code ? `${inst.name} (${inst.code})` : inst.name}
                   </option>
                 ))}
               </select>

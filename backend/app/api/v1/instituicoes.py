@@ -33,6 +33,7 @@ async def create_instituicao(
 async def list_instituicoes(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
+    q: str | None = Query(default=None, max_length=128),
     session: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(RequireInstituicaoAdmin),
 ) -> list[InstituicaoResponse]:
@@ -40,6 +41,7 @@ async def list_instituicoes(
         actor=current_user,
         skip=skip,
         limit=limit,
+        q=q,
     )
 
 
