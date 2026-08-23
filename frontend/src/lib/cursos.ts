@@ -49,6 +49,14 @@ export interface CursoCreatePayload {
   instituicao_id?: string;
 }
 
+export type CursoUpdatePayload = Omit<CursoCreatePayload, 'instituicao_id'>;
+
+export type EventPublicVisibility =
+  | 'open'
+  | 'hidden_draft'
+  | 'hidden_completed'
+  | 'hidden_institution';
+
 const UI_TO_API_STATUS: Record<EventItem['status'], CursoApiStatus> = {
   Draft: 'draft',
   Upcoming: 'upcoming',
@@ -79,6 +87,26 @@ const API_TO_UI_TYPE: Record<string, EventItem['type']> = {
   exam_prep: 'Exam Prep',
   summit: 'Summit',
   conference: 'Conference',
+};
+
+const UI_TO_API_CATEGORY: Record<EventItem['category'], CursoApiCategoria> = {
+  Technology: 'technology',
+  Business: 'business',
+  Design: 'design',
+  'Data Science': 'data_science',
+};
+
+const UI_TO_API_MODALITY: Record<EventItem['modality'], CursoApiModalidade> = {
+  Online: 'online',
+  'In-Person': 'presencial',
+};
+
+const UI_TO_API_TYPE: Record<EventItem['type'], CursoApiTipo> = {
+  Workshop: 'workshop',
+  Seminar: 'seminar',
+  'Exam Prep': 'exam_prep',
+  Summit: 'summit',
+  Conference: 'conference',
 };
 
 function dateParts(iso: string | null | undefined): { date: string; dateMonth: string; dateDay: string } {
@@ -157,6 +185,35 @@ export function toCursoApiStatus(status: EventItem['status']): CursoApiStatus {
   return UI_TO_API_STATUS[status];
 }
 
+export function toCursoApiCategoria(category: EventItem['category']): CursoApiCategoria {
+  return UI_TO_API_CATEGORY[category];
+}
+
+export function toCursoApiModalidade(modality: EventItem['modality']): CursoApiModalidade {
+  return UI_TO_API_MODALITY[modality];
+}
+
+export function toCursoApiTipo(type: EventItem['type']): CursoApiTipo {
+  return UI_TO_API_TYPE[type];
+}
+
+export function getEventPublicVisibility(
+  status: CursoApiStatus | EventItem['status'],
+  institutionStatus: Institution['status'] | undefined,
+): EventPublicVisibility {
+  const apiStatus =
+    status === 'Draft' || status === 'draft'
+      ? 'draft'
+      : status === 'Completed' || status === 'completed'
+        ? 'completed'
+        : 'upcoming';
+
+  if (apiStatus === 'draft') return 'hidden_draft';
+  if (institutionStatus !== 'Active') return 'hidden_institution';
+  if (apiStatus === 'completed') return 'hidden_completed';
+  return 'open';
+}
+
 export async function listCursos(token: string): Promise<CursoApi[]> {
   return apiRequest<CursoApi[]>('/api/cursos', { method: 'GET' }, token);
 }
@@ -168,6 +225,18 @@ export async function createCurso(
   return apiRequest<CursoApi>(
     '/api/cursos',
     { method: 'POST', body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export async function updateCurso(
+  token: string,
+  cursoId: string,
+  payload: CursoUpdatePayload,
+): Promise<CursoApi> {
+  return apiRequest<CursoApi>(
+    `/api/cursos/${cursoId}`,
+    { method: 'PATCH', body: JSON.stringify(payload) },
     token,
   );
 }

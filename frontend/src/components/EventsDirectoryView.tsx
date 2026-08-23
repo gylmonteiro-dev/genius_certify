@@ -1,19 +1,47 @@
 import React, { useState } from 'react';
-import { EventItem } from '../types';
+import { EventItem, Institution } from '../types';
+import { EventPublicVisibility, getEventPublicVisibility } from '../lib/cursos';
 import { formatMonthLabel, labelEventStatus, useT } from '../i18n';
 
 interface EventsDirectoryViewProps {
   events: EventItem[];
+  institutions?: Institution[];
   isLoading?: boolean;
   errorMessage?: string | null;
   onCreateEventClick?: () => void;
+  onEditEvent?: (event: EventItem) => void;
+}
+
+function visibilityBadgeClass(visibility: EventPublicVisibility): string {
+  if (visibility === 'open') {
+    return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  }
+  if (visibility === 'hidden_institution') {
+    return 'bg-amber-50 text-amber-800 border-amber-200';
+  }
+  return 'bg-slate-100 text-slate-600 border-slate-200';
+}
+
+function visibilityLabelKey(
+  visibility: EventPublicVisibility,
+):
+  | 'eventsDirectory.visibilityOpen'
+  | 'eventsDirectory.visibilityDraft'
+  | 'eventsDirectory.visibilityCompleted'
+  | 'eventsDirectory.visibilityInstitution' {
+  if (visibility === 'open') return 'eventsDirectory.visibilityOpen';
+  if (visibility === 'hidden_draft') return 'eventsDirectory.visibilityDraft';
+  if (visibility === 'hidden_completed') return 'eventsDirectory.visibilityCompleted';
+  return 'eventsDirectory.visibilityInstitution';
 }
 
 export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
   events,
+  institutions = [],
   isLoading = false,
   errorMessage = null,
   onCreateEventClick,
+  onEditEvent,
 }) => {
   const { t, dateLocale } = useT();
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -101,7 +129,10 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
 
         {!isLoading && filtered.length > 0 && (
           <div className="divide-y divide-slate-100">
-            {filtered.map((evt) => (
+            {filtered.map((evt) => {
+              const institution = institutions.find((inst) => inst.id === evt.institutionId);
+              const visibility = getEventPublicVisibility(evt.status, institution?.status);
+              return (
               <div key={evt.id} className="p-5 flex flex-col md:flex-row gap-4">
                 <div className="md:w-36 shrink-0 flex flex-col items-center justify-center bg-slate-50 rounded-lg p-4 border border-slate-200 text-center">
                   <span className="text-xs font-bold tracking-widest text-blue-600 uppercase mb-1">
@@ -129,9 +160,27 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
                       {evt.durationHours}h
                     </span>
                   </div>
+                  <span
+                    className={`inline-flex mt-3 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${visibilityBadgeClass(visibility)}`}
+                  >
+                    {t(visibilityLabelKey(visibility))}
+                  </span>
                 </div>
+                {onEditEvent && (
+                  <div className="flex items-start md:items-center shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => onEditEvent(evt)}
+                      className="px-3 py-1.5 rounded-md border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 flex items-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">edit</span>
+                      {t('eventsDirectory.edit')}
+                    </button>
+                  </div>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

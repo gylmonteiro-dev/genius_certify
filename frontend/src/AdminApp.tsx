@@ -34,7 +34,14 @@ import {
   mapInstituicaoToUi,
   updateInstituicaoStatus,
 } from './lib/instituicoes';
-import { CursoCreatePayload, createCurso, listCursos, mapCursoToUi } from './lib/cursos';
+import {
+  CursoCreatePayload,
+  CursoUpdatePayload,
+  createCurso,
+  listCursos,
+  mapCursoToUi,
+  updateCurso,
+} from './lib/cursos';
 import { APP_NAME } from './lib/brand';
 import { useT, labelInstitutionStatus } from './i18n';
 import { AlunoCreatePayload, createAluno, importAlunosCsv, listAlunos, mapAlunoToUi } from './lib/alunos';
@@ -72,6 +79,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [createEventLoading, setCreateEventLoading] = useState(false);
   const [createEventError, setCreateEventError] = useState<string | null>(null);
+  const [editingEvent, setEditingEvent] = useState<EventItem | null>(null);
 
   const [students, setStudents] = useState<Student[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
@@ -298,10 +306,45 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       const created = await createCurso(authToken, payload);
       setEvents((prev) => [mapCursoToUi(created, institutions), ...prev]);
       showToast(t('toasts.eventPublished', { title: created.titulo }));
+      setEditingEvent(null);
       setCurrentTab('events');
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : t('errors.createEvent');
+      setCreateEventError(message);
+    } finally {
+      setCreateEventLoading(false);
+    }
+  };
+
+  const handleUpdateEvent = async (payload: CursoCreatePayload) => {
+    if (!authToken || !editingEvent) return;
+    setCreateEventLoading(true);
+    setCreateEventError(null);
+    try {
+      const updatePayload: CursoUpdatePayload = {
+        titulo: payload.titulo,
+        descricao: payload.descricao,
+        carga_horaria: payload.carga_horaria,
+        instrutor: payload.instrutor,
+        status: payload.status,
+        data_evento: payload.data_evento,
+        categoria: payload.categoria,
+        modalidade: payload.modalidade,
+        tipo: payload.tipo,
+      };
+      const updated = await updateCurso(authToken, editingEvent.id, updatePayload);
+      setEvents((prev) =>
+        prev.map((evt) =>
+          evt.id === updated.id ? mapCursoToUi(updated, institutions) : evt,
+        ),
+      );
+      showToast(t('toasts.eventUpdated', { title: updated.titulo }));
+      setEditingEvent(null);
+      setCurrentTab('events');
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : t('errors.updateEvent');
       setCreateEventError(message);
     } finally {
       setCreateEventLoading(false);
@@ -402,11 +445,21 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
 
   const isSuperAdmin = authUser.role === 'super_admin';
 
+  const handleSelectTab = (tab: NavTab) => {
+    if (tab === 'create-event') {
+      setEditingEvent(null);
+      setCreateEventError(null);
+    } else if (currentTab === 'create-event') {
+      setEditingEvent(null);
+    }
+    setCurrentTab(tab);
+  };
+
   return (
     <div className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex flex-col font-sans">
       <Sidebar
         currentTab={currentTab}
-        onSelectTab={setCurrentTab}
+        onSelectTab={handleSelectTab}
         onOpenIssueModal={() => {
           setIssueError(null);
           setIsIssueModalOpen(true);
@@ -420,12 +473,14 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onToggleMobileSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-        onSelectTab={setCurrentTab}
+        onSelectTab={handleSelectTab}
         authUser={authUser}
         onLogout={onLogout}
         titleOverride={
           currentTab === 'create-event'
-            ? t('topbar.createEvent')
+            ? editingEvent
+              ? t('topbar.editEvent')
+              : t('topbar.createEvent')
             : currentTab === 'institutions'
               ? t('nav.institutions')
               : currentTab === 'register-institution'
@@ -448,7 +503,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
             institutions={institutionsWithCounts}
             events={events}
             certificates={certificates}
-            onSelectTab={setCurrentTab}
+            onSelectTab={handleSelectTab}
             onOpenIssueModal={() => {
               setIssueError(null);
               setIsIssueModalOpen(true);
@@ -458,8 +513,14 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
 
         {currentTab === 'create-event' && (
           <CreateEventView
-            onSubmit={handleCreateEvent}
-            onCancel={() => setCurrentTab('events')}
+            key={editingEvent?.id ?? 'new'}
+            mode={editingEvent ? 'edit' : 'create'}
+            initialEvent={editingEvent}
+            onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent}
+            onCancel={() => {
+              setEditingEvent(null);
+              setCurrentTab('events');
+            }}
             institutions={institutionsWithCounts}
             isSuperAdmin={isSuperAdmin}
             defaultInstituicaoId={authUser.instituicao_id}
@@ -495,9 +556,16 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         {(currentTab === 'events' || currentTab === 'events-directory') && (
           <EventsDirectoryView
             events={events}
+            institutions={institutionsWithCounts}
             isLoading={eventsLoading}
             errorMessage={eventsError}
             onCreateEventClick={() => {
+              setEditingEvent(null);
+              setCreateEventError(null);
+              setCurrentTab('create-event');
+            }}
+            onEditEvent={(event) => {
+              setEditingEvent(event);
               setCreateEventError(null);
               setCurrentTab('create-event');
             }}

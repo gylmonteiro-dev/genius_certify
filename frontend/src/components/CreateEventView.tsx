@@ -1,6 +1,17 @@
-import React, { useState } from 'react';
-import { Institution } from '../types';
-import { CursoApiCategoria, CursoApiModalidade, CursoApiTipo, CursoCreatePayload } from '../lib/cursos';
+import React, { useMemo, useState } from 'react';
+import { EventItem, Institution } from '../types';
+import {
+  CursoApiCategoria,
+  CursoApiModalidade,
+  CursoApiTipo,
+  CursoCreatePayload,
+  EventPublicVisibility,
+  getEventPublicVisibility,
+  toCursoApiCategoria,
+  toCursoApiModalidade,
+  toCursoApiStatus,
+  toCursoApiTipo,
+} from '../lib/cursos';
 import { formatDisplayDate, labelEventStatus, useT } from '../i18n';
 
 interface CreateEventViewProps {
@@ -11,6 +22,21 @@ interface CreateEventViewProps {
   defaultInstituicaoId?: string | null;
   isSubmitting?: boolean;
   errorMessage?: string | null;
+  mode?: 'create' | 'edit';
+  initialEvent?: EventItem | null;
+}
+
+function visibilityMessageKey(
+  visibility: EventPublicVisibility,
+):
+  | 'createEvent.visibilityOpen'
+  | 'createEvent.visibilityDraft'
+  | 'createEvent.visibilityCompleted'
+  | 'createEvent.visibilityInstitution' {
+  if (visibility === 'open') return 'createEvent.visibilityOpen';
+  if (visibility === 'hidden_draft') return 'createEvent.visibilityDraft';
+  if (visibility === 'hidden_completed') return 'createEvent.visibilityCompleted';
+  return 'createEvent.visibilityInstitution';
 }
 
 export const CreateEventView: React.FC<CreateEventViewProps> = ({
@@ -21,22 +47,47 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   defaultInstituicaoId = null,
   isSubmitting = false,
   errorMessage = null,
+  mode = 'create',
+  initialEvent = null,
 }) => {
   const { t, dateLocale } = useT();
+  const isEdit = mode === 'edit';
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
-  const [eventName, setEventName] = useState('');
-  const [eventDate, setEventDate] = useState('');
-  const [durationHours, setDurationHours] = useState<number>(8);
-  const [instructor, setInstructor] = useState('');
-  const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<'draft' | 'upcoming' | 'completed'>('upcoming');
-  const [categoria, setCategoria] = useState<CursoApiCategoria>('technology');
-  const [modalidade, setModalidade] = useState<CursoApiModalidade>('online');
-  const [tipo, setTipo] = useState<CursoApiTipo>('workshop');
-  const [instituicaoId, setInstituicaoId] = useState(defaultInstituicaoId ?? '');
+  const [eventName, setEventName] = useState(initialEvent?.title ?? '');
+  const [eventDate, setEventDate] = useState(
+    initialEvent?.date && /^\d{4}-\d{2}-\d{2}$/.test(initialEvent.date)
+      ? initialEvent.date
+      : '',
+  );
+  const [durationHours, setDurationHours] = useState<number>(initialEvent?.durationHours ?? 8);
+  const [instructor, setInstructor] = useState(initialEvent?.instructor ?? '');
+  const [description, setDescription] = useState(
+    initialEvent && initialEvent.description !== '—' ? initialEvent.description : '',
+  );
+  const [status, setStatus] = useState<'draft' | 'upcoming' | 'completed'>(
+    initialEvent ? toCursoApiStatus(initialEvent.status) : 'upcoming',
+  );
+  const [categoria, setCategoria] = useState<CursoApiCategoria>(
+    initialEvent ? toCursoApiCategoria(initialEvent.category) : 'technology',
+  );
+  const [modalidade, setModalidade] = useState<CursoApiModalidade>(
+    initialEvent ? toCursoApiModalidade(initialEvent.modality) : 'online',
+  );
+  const [tipo, setTipo] = useState<CursoApiTipo>(
+    initialEvent ? toCursoApiTipo(initialEvent.type) : 'workshop',
+  );
+  const [instituicaoId, setInstituicaoId] = useState(
+    initialEvent?.institutionId || defaultInstituicaoId || '',
+  );
   const [sampleStudent, setSampleStudent] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+
+  const selectedInstitution = useMemo(
+    () => institutions.find((inst) => inst.id === instituicaoId),
+    [institutions, instituicaoId],
+  );
+  const visibility = getEventPublicVisibility(status, selectedInstitution?.status);
 
   const [templateTheme, setTemplateTheme] = useState<'Classic' | 'Modern Navy' | 'Gold Minimal'>('Modern Navy');
   const [badgeIcon, setBadgeIcon] = useState<'verified' | 'workspace_premium' | 'shield' | 'school'>('shield');
@@ -53,7 +104,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       setCurrentStep(1);
       return;
     }
-    if (isSuperAdmin && !instituicaoId) {
+    if (!isEdit && isSuperAdmin && !instituicaoId) {
       setFormError(t('createEvent.selectInstitution'));
       setCurrentStep(1);
       return;
@@ -70,19 +121,35 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       modalidade,
       tipo,
     };
-    if (isSuperAdmin) {
+    if (!isEdit && isSuperAdmin) {
       payload.instituicao_id = instituicaoId;
     }
     await onSubmit(payload);
   };
 
+  const visibilityBanner = (
+    <div
+      className={`rounded-md border px-4 py-3 text-sm ${
+        visibility === 'open'
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+          : visibility === 'hidden_institution'
+            ? 'border-amber-200 bg-amber-50 text-amber-800'
+            : 'border-slate-200 bg-slate-50 text-slate-600'
+      }`}
+    >
+      {t(visibilityMessageKey(visibility))}
+    </div>
+  );
+
   return (
     <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
       {/* Title Header */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">{t('createEvent.title')}</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+          {isEdit ? t('createEvent.editTitle') : t('createEvent.title')}
+        </h1>
         <p className="text-sm text-slate-500 mt-1">
-          {t('createEvent.subtitle')}
+          {isEdit ? t('createEvent.editSubtitle') : t('createEvent.subtitle')}
         </p>
       </div>
 
@@ -182,7 +249,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
               )}
 
               <div className="space-y-5">
-                {isSuperAdmin && (
+                {(isSuperAdmin || isEdit) && (
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
                       {t('common.institution')}
@@ -190,9 +257,17 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                     <select
                       value={instituicaoId}
                       onChange={(e) => setInstituicaoId(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={isEdit}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                       <option value="">{t('common.selectInstitution')}</option>
+                      {isEdit &&
+                        instituicaoId &&
+                        !institutions.some((inst) => inst.id === instituicaoId) && (
+                          <option value={instituicaoId}>
+                            {initialEvent?.institutionName || instituicaoId}
+                          </option>
+                        )}
                       {institutions.map((inst) => (
                         <option key={inst.id} value={inst.id}>
                           {inst.name}
@@ -274,6 +349,8 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                     <option value="completed">{t('status.event.completed')}</option>
                   </select>
                 </div>
+
+                {visibilityBanner}
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
@@ -459,10 +536,10 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
           {currentStep === 3 && (
             <div>
               <h2 className="text-xl font-bold text-slate-800 mb-2">
-                {t('createEvent.reviewTitle')}
+                {isEdit ? t('createEvent.reviewTitleEdit') : t('createEvent.reviewTitle')}
               </h2>
               <p className="text-xs text-slate-500 mb-6">
-                {t('createEvent.reviewHint')}
+                {isEdit ? t('createEvent.reviewHintEdit') : t('createEvent.reviewHint')}
               </p>
 
               {(formError || errorMessage) && (
@@ -470,6 +547,8 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                   {formError || errorMessage}
                 </div>
               )}
+
+              <div className="mb-4">{visibilityBanner}</div>
 
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3 text-xs">
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
@@ -535,9 +614,15 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                   className="px-6 py-2.5 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shadow-md flex items-center gap-2 transition-colors disabled:opacity-60"
                 >
                   <span className="material-symbols-outlined text-[18px]">
-                    {isSubmitting ? 'progress_activity' : 'publish'}
+                    {isSubmitting ? 'progress_activity' : isEdit ? 'save' : 'publish'}
                   </span>
-                  {isSubmitting ? t('createEvent.publishing') : t('createEvent.publish')}
+                  {isSubmitting
+                    ? isEdit
+                      ? t('createEvent.saving')
+                      : t('createEvent.publishing')
+                    : isEdit
+                      ? t('createEvent.save')
+                      : t('createEvent.publish')}
                 </button>
               </div>
             </div>
