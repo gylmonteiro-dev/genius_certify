@@ -22,6 +22,7 @@ export interface CursoApi {
   tipo: string | null;
   exigir_conclusao_para_emitir: boolean;
   emissao_liberada: boolean;
+  template_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +52,7 @@ export interface CursoCreatePayload {
   modalidade?: CursoApiModalidade | null;
   tipo?: string | null;
   exigir_conclusao_para_emitir?: boolean;
+  template_id?: string;
   instituicao_id?: string;
 }
 
@@ -147,6 +149,7 @@ function mapEventFields(item: {
   institutionName: string;
   exigir_conclusao_para_emitir?: boolean;
   emissao_liberada?: boolean;
+  template_id?: string;
 }): EventItem {
   const parts = dateParts(item.data_evento ?? item.created_at);
   return {
@@ -167,6 +170,7 @@ function mapEventFields(item: {
     status: API_TO_UI_STATUS[item.status],
     exigirConclusaoParaEmitir: item.exigir_conclusao_para_emitir ?? true,
     emissaoLiberada: item.emissao_liberada ?? false,
+    templateId: item.template_id ?? 'classic',
   };
 }
 

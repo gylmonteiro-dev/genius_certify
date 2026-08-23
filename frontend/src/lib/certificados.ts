@@ -1,5 +1,5 @@
 import { Certificate } from '../types';
-import { apiRequest, apiRequestBlob } from './api';
+import { API_BASE, apiRequest, apiRequestBlob, apiRequestText } from './api';
 
 export type CertificadoApiStatus = 'active' | 'revoked' | 'expired';
 
@@ -187,6 +187,45 @@ export async function downloadCertificadoPublicoPdf(
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+export function publicCertificadoHtmlUrl(codigoValidacao: string): string {
+  return `${API_BASE}/api/publico/certificados/${codigoValidacao}/html`;
+}
+
+export async function fetchCertificadoHtml(
+  token: string,
+  id: string,
+): Promise<string> {
+  return apiRequestText(`/api/certificados/${id}/html`, token);
+}
+
+export async function fetchCertificadoTemplatePreview(
+  token: string,
+  params: {
+    templateId: string;
+    participanteNome: string;
+    cursoTitulo: string;
+    instituicaoNome?: string;
+    instituicaoId?: string;
+    cargaHoraria?: number;
+    instrutor?: string;
+  },
+): Promise<string> {
+  const query = new URLSearchParams({
+    participante_nome: params.participanteNome,
+    curso_titulo: params.cursoTitulo,
+    instituicao_nome: params.instituicaoNome ?? '',
+    carga_horaria: String(params.cargaHoraria ?? 0),
+    instrutor: params.instrutor ?? '',
+  });
+  if (params.instituicaoId) {
+    query.set('instituicao_id', params.instituicaoId);
+  }
+  return apiRequestText(
+    `/api/certificados/templates/${encodeURIComponent(params.templateId)}/preview?${query.toString()}`,
+    token,
+  );
 }
 
 export async function downloadCertificadoPdf(

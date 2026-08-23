@@ -26,7 +26,8 @@ from app.schemas.certificado import (
     CertificadoPublicResponse,
     CertificadoResponse,
 )
-from app.services.pdf_service import PdfService
+from app.services.certificate_templates import is_valid_template_id, resolve_template_id
+from app.services.pdf_service import CertificateRenderData, PdfService
 
 
 class CertificadoService:
@@ -159,6 +160,7 @@ class CertificadoService:
             instituicao_nome=instituicao.nome,
             carga_horaria=curso.carga_horaria,
             instrutor=curso.instrutor,
+            template_id=resolve_template_id(curso.template_id),
             sha256=sha256,
             status=CertificadoStatus.ACTIVE,
         )
@@ -331,6 +333,18 @@ class CertificadoService:
         await self._session.refresh(certificado)
         return CertificadoResponse.model_validate(certificado)
 
+    async def gerar_html(self, certificado_id: UUID, *, actor: Usuario) -> str:
+        certificado = await self._get_or_404(certificado_id, actor=actor)
+        if certificado.status != CertificadoStatus.ACTIVE:
+            raise AppError("Somente certificados ativos podem ser visualizados")
+        return await self._render_html(certificado)
+
+    async def gerar_html_publico(self, codigo: UUID) -> str:
+        certificado = await self._certificados.get_by_codigo_validacao(codigo)
+        if certificado is None or certificado.status != CertificadoStatus.ACTIVE:
+            raise NotFoundError("Certificado não encontrado")
+        return await self._render_html(certificado)
+
     async def gerar_pdf(self, certificado_id: UUID, *, actor: Usuario) -> tuple[bytes, str]:
         certificado = await self._get_or_404(certificado_id, actor=actor)
         if certificado.status != CertificadoStatus.ACTIVE:
@@ -343,13 +357,62 @@ class CertificadoService:
             raise NotFoundError("Certificado não encontrado")
         return await self._render_pdf(certificado)
 
-    async def _render_pdf(self, certificado: Certificado) -> tuple[bytes, str]:
+    async def preview_html(
+        self,
+        *,
+        actor: Usuario,
+        template_id: str,
+        participante_nome: str,
+        curso_titulo: str,
+        instituicao_nome: str,
+        carga_horaria: int,
+        instrutor: str,
+        instituicao_id: UUID | None,
+    ) -> str:
+        if not is_valid_template_id(template_id):
+            raise NotFoundError("Modelo de certificado não encontrado")
+
+        logo_url: str | None = None
+        assinatura_url: str | None = None
+        resolved_nome = instituicao_nome.strip()
+
+        if instituicao_id is not None:
+            tenant = self._tenant_id_for_queries(actor)
+            if tenant is not None and instituicao_id != tenant:
+                raise ForbiddenError("Não é permitido pré-visualizar outro tenant")
+            instituicao = await self._instituicoes.get_by_id(instituicao_id)
+            if instituicao is None:
+                raise NotFoundError("Instituição não encontrada")
+            logo_url = instituicao.logo_url
+            assinatura_url = instituicao.assinatura_url
+            if not resolved_nome:
+                resolved_nome = instituicao.nome
+
+        data = PdfService.preview_data(
+            template_id=template_id,
+            participante_nome=participante_nome.strip() or "Nome do Participante",
+            curso_titulo=curso_titulo.strip() or "Nome do evento",
+            instituicao_nome=resolved_nome or "Instituição",
+            carga_horaria=carga_horaria,
+            instrutor=instrutor.strip(),
+            logo_url=logo_url,
+            assinatura_url=assinatura_url,
+        )
+        return self._pdf.render_certificado_html(data)
+
+    async def _render_context(self, certificado: Certificado) -> CertificateRenderData:
         instituicao = await self._instituicoes.get_by_id(certificado.instituicao_id)
-        pdf = self._pdf.render_certificado_pdf(
+        return self._pdf.data_from_certificado(
             certificado,
             logo_url=instituicao.logo_url if instituicao else None,
             assinatura_url=instituicao.assinatura_url if instituicao else None,
         )
+
+    async def _render_html(self, certificado: Certificado) -> str:
+        return self._pdf.render_certificado_html(await self._render_context(certificado))
+
+    async def _render_pdf(self, certificado: Certificado) -> tuple[bytes, str]:
+        pdf = self._pdf.render_certificado_pdf(await self._render_context(certificado))
         filename = f"{certificado.numero_certificado}.pdf"
         return pdf, filename
 

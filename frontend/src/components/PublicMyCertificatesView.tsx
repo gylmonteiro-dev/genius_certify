@@ -6,7 +6,9 @@ import {
   ConsultaCertificadosApi,
   consultarMeusCertificados,
   downloadCertificadoPublicoPdf,
+  publicCertificadoHtmlUrl,
 } from '../lib/certificados';
+import { CertificateHtmlViewer } from './CertificateHtmlViewer';
 import { digitsOnly, formatCpf, isValidCpf } from '../lib/cpf';
 import { formatDisplayDate, useT } from '../i18n';
 import { PublicLayout } from './PublicLayout';
@@ -20,6 +22,7 @@ export const PublicMyCertificatesView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [downloadingCodigo, setDownloadingCodigo] = useState<string | null>(null);
+  const [viewingItem, setViewingItem] = useState<ConsultaCertificadoItemApi | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +75,7 @@ export const PublicMyCertificatesView: React.FC = () => {
     setResult(null);
     setError(null);
     setDownloadError(null);
+    setViewingItem(null);
   };
 
   return (
@@ -199,6 +203,13 @@ export const PublicMyCertificatesView: React.FC = () => {
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
+                            onClick={() => setViewingItem(item)}
+                            className="px-2.5 py-1 rounded-md border border-blue-200 bg-blue-50 text-blue-700 text-[11px] font-semibold hover:bg-blue-100"
+                          >
+                            {t('public.viewCertificate')}
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => void handleDownload(item)}
                             disabled={downloadingCodigo === item.codigo_validacao}
                             className="px-2.5 py-1 rounded-md border border-slate-200 bg-white text-slate-700 text-[11px] font-semibold hover:bg-slate-50 disabled:opacity-60"
@@ -219,6 +230,50 @@ export const PublicMyCertificatesView: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+        {viewingItem && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-5xl w-full p-6 shadow-2xl border border-slate-200 my-8">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">
+                    {t('public.viewCertificate')}
+                  </h2>
+                  <p className="text-xs font-mono text-slate-400 mt-1">
+                    {viewingItem.numero_certificado}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewingItem(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+              <CertificateHtmlViewer
+                title={t('public.viewCertificate')}
+                src={publicCertificadoHtmlUrl(viewingItem.codigo_validacao)}
+              />
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => void handleDownload(viewingItem)}
+                  disabled={downloadingCodigo === viewingItem.codigo_validacao}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold disabled:opacity-60"
+                >
+                  {t('public.downloadPdf')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewingItem(null)}
+                  className="px-4 py-2 border border-slate-200 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  {t('common.close')}
+                </button>
+              </div>
             </div>
           </div>
         )}

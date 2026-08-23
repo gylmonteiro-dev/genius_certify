@@ -416,6 +416,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         modalidade: payload.modalidade,
         tipo: payload.tipo,
         exigir_conclusao_para_emitir: payload.exigir_conclusao_para_emitir,
+        template_id: payload.template_id,
       };
       const updated = await updateCurso(authToken, editingEvent.id, updatePayload);
       setEvents((prev) =>
@@ -780,6 +781,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
             key={editingEvent?.id ?? 'new'}
             mode={editingEvent ? 'edit' : 'create'}
             initialEvent={editingEvent}
+            authToken={authToken}
             onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent}
             onCancel={() => {
               setEditingEvent(null);
@@ -946,6 +948,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
 
       <CertificateDetailModal
         certificate={selectedCertDetail}
+        authToken={authToken}
         onClose={() => setSelectedCertDetail(null)}
         onDownloadPdf={(cert) => void handleDownloadPdf(cert)}
       />

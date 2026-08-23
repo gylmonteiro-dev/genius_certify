@@ -1,0 +1,2 @@
+EB Garamond and Hanken Grotesk are licensed under the SIL Open Font License.
+Sources: https://github.com/google/fonts (ofl/ebgaramond, ofl/hankengrotesk)

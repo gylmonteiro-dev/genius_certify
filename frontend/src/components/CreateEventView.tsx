@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { EventItem, Institution } from '../types';
 import {
   CursoApiCategoria,
@@ -12,13 +12,21 @@ import {
   toCursoApiStatus,
   toCursoApiTipo,
 } from '../lib/cursos';
+import { fetchCertificadoTemplatePreview } from '../lib/certificados';
 import { formatDisplayDate, labelEventStatus, useT } from '../i18n';
+import { CertificateHtmlViewer } from './CertificateHtmlViewer';
+
+const CERTIFICATE_TEMPLATES = [
+  { id: 'excelencia', nameKey: 'createEvent.templateExcelencia', hintKey: 'createEvent.templateExcelenciaHint' },
+  { id: 'classic', nameKey: 'createEvent.templateClassic', hintKey: 'createEvent.templateClassicHint' },
+] as const;
 
 interface CreateEventViewProps {
   onSubmit: (payload: CursoCreatePayload) => Promise<void>;
   onCancel: () => void;
   institutions: Institution[];
   isSuperAdmin: boolean;
+  authToken: string;
   defaultInstituicaoId?: string | null;
   isSubmitting?: boolean;
   errorMessage?: string | null;
@@ -44,6 +52,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   onCancel,
   institutions,
   isSuperAdmin,
+  authToken,
   defaultInstituicaoId = null,
   isSubmitting = false,
   errorMessage = null,
@@ -92,8 +101,48 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   );
   const visibility = getEventPublicVisibility(status, selectedInstitution?.status);
 
-  const [templateTheme, setTemplateTheme] = useState<'Classic' | 'Modern Navy' | 'Gold Minimal'>('Modern Navy');
-  const [badgeIcon, setBadgeIcon] = useState<'verified' | 'workspace_premium' | 'shield' | 'school'>('shield');
+  const [templateId, setTemplateId] = useState(
+    initialEvent?.templateId ?? 'excelencia',
+  );
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const selectedTemplate = CERTIFICATE_TEMPLATES.find((item) => item.id === templateId)
+    ?? CERTIFICATE_TEMPLATES[0];
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const html = await fetchCertificadoTemplatePreview(authToken, {
+            templateId,
+            participanteNome: sampleStudent.trim() || t('createEvent.sampleStudentDefault'),
+            cursoTitulo: eventName.trim() || t('createEvent.eventNamePlaceholder'),
+            instituicaoNome: selectedInstitution?.name ?? '',
+            instituicaoId: instituicaoId || undefined,
+            cargaHoraria: Number(durationHours) || 0,
+            instrutor: instructor,
+          });
+          setPreviewHtml(html);
+          setPreviewError(null);
+        } catch {
+          setPreviewHtml('');
+          setPreviewError(t('createEvent.previewError'));
+        }
+      })();
+    }, 350);
+    return () => window.clearTimeout(handle);
+  }, [
+    authToken,
+    templateId,
+    sampleStudent,
+    eventName,
+    selectedInstitution?.name,
+    instituicaoId,
+    durationHours,
+    instructor,
+    t,
+  ]);
 
   const formattedDateDisplay = React.useMemo(() => {
     if (!eventDate) return t('createEvent.dateFallback');
@@ -124,6 +173,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       modalidade,
       tipo,
       exigir_conclusao_para_emitir: exigirConclusao,
+      template_id: templateId,
     };
     if (!isEdit && isSuperAdmin) {
       payload.instituicao_id = instituicaoId;
@@ -468,53 +518,24 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
               <div className="space-y-6">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
-                    {t('createEvent.themeStyle')}
+                    {t('createEvent.templateStyle')}
                   </label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {(['Modern Navy', 'Classic', 'Gold Minimal'] as const).map((theme) => (
+                  <div className="grid grid-cols-2 gap-3">
+                    {CERTIFICATE_TEMPLATES.map((item) => (
                       <button
-                        key={theme}
+                        key={item.id}
                         type="button"
-                        onClick={() => setTemplateTheme(theme)}
-                        className={`p-3 rounded-lg border text-center text-xs font-semibold transition-all ${
-                          templateTheme === theme
+                        onClick={() => setTemplateId(item.id)}
+                        className={`p-3 rounded-lg border text-left transition-all ${
+                          templateId === item.id
                             ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-500/20'
                             : 'border-slate-200 text-slate-700 hover:bg-slate-50'
                         }`}
                       >
-                        {theme === 'Modern Navy'
-                          ? t('createEvent.themeModernNavy')
-                          : theme === 'Classic'
-                            ? t('createEvent.themeClassic')
-                            : t('createEvent.themeGoldMinimal')}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
-                    {t('createEvent.badgeSeal')}
-                  </label>
-                  <div className="grid grid-cols-4 gap-3">
-                    {[
-                      { id: 'shield', label: t('createEvent.badgeShield'), icon: 'shield' },
-                      { id: 'verified', label: t('createEvent.badgeVerified'), icon: 'verified' },
-                      { id: 'workspace_premium', label: t('createEvent.badgePremium'), icon: 'workspace_premium' },
-                      { id: 'school', label: t('createEvent.badgeAcademic'), icon: 'school' },
-                    ].map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setBadgeIcon(item.id as any)}
-                        className={`p-3 rounded-lg border flex flex-col items-center gap-1 transition-all ${
-                          badgeIcon === item.id
-                            ? 'border-blue-600 bg-blue-50 text-blue-700'
-                            : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-[24px]">{item.icon}</span>
-                        <span className="text-[11px] font-medium">{item.label}</span>
+                        <span className="block text-xs font-semibold">{t(item.nameKey)}</span>
+                        <span className="block text-[11px] font-normal text-slate-500 mt-1">
+                          {t(item.hintKey)}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -600,15 +621,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
                   <span className="text-slate-400 font-medium">{t('createEvent.stepTemplate')}:</span>
                   <span className="font-bold text-blue-600">
-                    {t('createEvent.selectedTemplate', {
-                      theme:
-                        templateTheme === 'Modern Navy'
-                          ? t('createEvent.themeModernNavy')
-                          : templateTheme === 'Classic'
-                            ? t('createEvent.themeClassic')
-                            : t('createEvent.themeGoldMinimal'),
-                      badge: badgeIcon,
-                    })}
+                    {t('createEvent.selectedTemplate', { name: t(selectedTemplate.nameKey) })}
                   </span>
                 </div>
                 <div className="py-1">
@@ -661,56 +674,20 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
             </span>
           </div>
 
-          {/* Certificate Card Mockup */}
-          <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-sm text-center relative overflow-hidden transition-all">
-            {/* Top Shield/Badge Icon */}
-            <div className="w-14 h-14 mx-auto mb-5 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600">
-              <span className="material-symbols-outlined text-[32px]">{badgeIcon}</span>
+          {previewError ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-8 text-center text-sm text-rose-700">
+              {previewError}
             </div>
-
-            {/* Subtitle */}
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
-              {t('createEvent.certificateOfCompletion')}
-            </p>
-
-            {/* Student Name */}
-            <h3 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">
-              {sampleStudent || t('createEvent.sampleStudentDefault')}
-            </h3>
-
-            <p className="text-xs text-slate-500 mb-4">
-              {t('createEvent.hasCompleted')}
-            </p>
-
-            {/* Event Name Box */}
-            <div className="bg-slate-900 text-white font-bold text-sm py-3 px-4 rounded-lg border border-slate-800 max-w-xs mx-auto mb-6 shadow-sm">
-              {eventName || t('createEvent.eventNamePlaceholder')}
+          ) : previewHtml ? (
+            <CertificateHtmlViewer
+              title={t('createEvent.livePreview')}
+              html={previewHtml}
+            />
+          ) : (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-16 text-center text-sm text-slate-500">
+              {t('common.loading')}
             </div>
-
-            <div className="border-t border-slate-100 pt-4 flex justify-between items-end text-left text-xs">
-              <div>
-                <span className="text-[10px] font-bold uppercase text-slate-400 block">
-                  {t('common.date')}
-                </span>
-                <span className="font-semibold text-slate-800">
-                  {formattedDateDisplay}
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-bold uppercase text-slate-400 block">
-                  {t('createEvent.issuer')}
-                </span>
-                <span className="font-semibold text-slate-800">
-                  {instructor || 'Dr. Sarah Jenkins'}
-                </span>
-              </div>
-            </div>
-
-            {/* Cryptographic SHA256 Hash Line */}
-            <div className="mt-4 pt-3 border-t border-slate-100 font-mono text-[10px] text-slate-400 truncate">
-              SHA256: e3b0c44298fc1c149afbf4c8996fb92427ae4...
-            </div>
-          </div>
+          )}
 
           {/* Info callout below card */}
           <div className="bg-blue-50/60 border border-blue-200/60 rounded-xl p-4 flex items-start gap-3 text-xs text-slate-700">

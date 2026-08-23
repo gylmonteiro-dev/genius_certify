@@ -42,6 +42,7 @@ class CertificadoResponse(BaseModel):
     instituicao_nome: str
     carga_horaria: int
     instrutor: str
+    template_id: str
     sha256: str | None
     status: CertificadoStatus
     created_at: datetime
@@ -67,3 +68,7 @@ class CertificadoPublicResponse(BaseModel):
     status: CertificadoStatus | None = None
     emitido_em: datetime | None = None
     mensagem: str
+
+
+class CertificadoTemplateItem(BaseModel):
+    id: str

@@ -13,6 +13,7 @@ from app.repositories.curso_repository import CursoRepository
 from app.repositories.inscricao_repository import InscricaoRepository
 from app.repositories.instituicao_repository import InstituicaoRepository
 from app.schemas.curso import CursoCreate, CursoResponse, CursoUpdate, InscritoResponse
+from app.services.certificate_templates import is_valid_template_id, resolve_template_id
 
 
 class CursoService:
@@ -56,6 +57,10 @@ class CursoService:
         if instituicao is None:
             raise NotFoundError("Instituição não encontrada")
 
+        template_id = resolve_template_id(data.template_id)
+        if not is_valid_template_id(template_id):
+            raise AppError("Modelo de certificado inválido")
+
         curso = await self._cursos.create(
             instituicao_id=instituicao_id,
             titulo=data.titulo.strip(),
@@ -68,6 +73,7 @@ class CursoService:
             modalidade=data.modalidade,
             tipo=data.tipo.strip() if data.tipo else None,
             exigir_conclusao_para_emitir=data.exigir_conclusao_para_emitir,
+            template_id=template_id,
         )
         await self._session.commit()
         await self._session.refresh(curso)
@@ -118,6 +124,11 @@ class CursoService:
             payload["instrutor"] = payload["instrutor"].strip()
         if "tipo" in payload and payload["tipo"] is not None:
             payload["tipo"] = payload["tipo"].strip() or None
+        if "template_id" in payload and payload["template_id"] is not None:
+            template_id = resolve_template_id(payload["template_id"])
+            if not is_valid_template_id(template_id):
+                raise AppError("Modelo de certificado inválido")
+            payload["template_id"] = template_id
 
         for field, value in payload.items():
             setattr(curso, field, value)

@@ -70,6 +70,7 @@ class Curso(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=True,
     )
     tipo: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    template_id: Mapped[str] = mapped_column(String(64), nullable=False, default="classic")
     exigir_conclusao_para_emitir: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

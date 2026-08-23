@@ -3,9 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Certificate } from '../types';
 import { ApiError } from '../lib/api';
 import {
+  downloadCertificadoPublicoPdf,
   mapPublicCertificadoToUi,
+  publicCertificadoHtmlUrl,
   validarCertificadoPublico,
 } from '../lib/certificados';
+import { CertificateHtmlViewer } from './CertificateHtmlViewer';
 import { PublicLayout } from './PublicLayout';
 import { useT } from '../i18n';
 
@@ -57,7 +60,7 @@ export const PublicValidateView: React.FC = () => {
 
   return (
     <PublicLayout>
-      <div className="max-w-xl mx-auto p-6 md:p-10 space-y-6">
+      <div className="max-w-4xl mx-auto p-6 md:p-10 space-y-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
             {t('public.validateTitle')}
@@ -88,13 +91,31 @@ export const PublicValidateView: React.FC = () => {
         </form>
 
         {result && result !== 'NOT_FOUND' && result !== 'INVALID' && (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-sm text-emerald-900 space-y-1">
-            <p className="font-bold text-emerald-800">{t('public.validCertificate')}</p>
-            <p>{result.studentName}</p>
-            <p>{result.eventName}</p>
-            <p className="text-emerald-700">{result.institutionName}</p>
-            <p className="text-xs text-emerald-700/80">{result.certificateNumber}</p>
-            {message && <p className="text-xs mt-2">{message}</p>}
+          <div className="space-y-4">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-sm text-emerald-900 space-y-1">
+              <p className="font-bold text-emerald-800">{t('public.validCertificate')}</p>
+              <p>{result.studentName}</p>
+              <p>{result.eventName}</p>
+              <p className="text-emerald-700">{result.institutionName}</p>
+              <p className="text-xs text-emerald-700/80">{result.certificateNumber}</p>
+              {message && <p className="text-xs mt-2">{message}</p>}
+            </div>
+            <CertificateHtmlViewer
+              title={t('public.viewCertificate')}
+              src={publicCertificadoHtmlUrl(result.codigoValidacao)}
+            />
+            <button
+              type="button"
+              onClick={() =>
+                void downloadCertificadoPublicoPdf(
+                  result.codigoValidacao,
+                  `${result.certificateNumber}.pdf`,
+                )
+              }
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm py-2.5 rounded-md"
+            >
+              {t('public.downloadPdf')}
+            </button>
           </div>
         )}
 

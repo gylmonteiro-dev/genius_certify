@@ -21,6 +21,7 @@ class CursoCreate(BaseModel):
     modalidade: CursoModalidade | None = None
     tipo: str | None = Field(default=None, max_length=64)
     exigir_conclusao_para_emitir: bool = True
+    template_id: str = "classic"
     # Obrigatório para SuperAdmin; ignorado para admin da instituição (usa o JWT)
     instituicao_id: UUID | None = None
 
@@ -36,6 +37,7 @@ class CursoUpdate(BaseModel):
     modalidade: CursoModalidade | None = None
     tipo: str | None = Field(default=None, max_length=64)
     exigir_conclusao_para_emitir: bool | None = None
+    template_id: str | None = None
 
 
 class CursoResponse(BaseModel):
@@ -54,6 +56,7 @@ class CursoResponse(BaseModel):
     tipo: str | None = None
     exigir_conclusao_para_emitir: bool
     emissao_liberada: bool
+    template_id: str
     created_at: datetime
     updated_at: datetime
 

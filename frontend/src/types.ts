@@ -52,6 +52,7 @@ export interface EventItem {
   status: 'Upcoming' | 'Completed' | 'Draft';
   exigirConclusaoParaEmitir: boolean;
   emissaoLiberada: boolean;
+  templateId: string;
 }
 
 export interface Certificate {

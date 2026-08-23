@@ -1,10 +1,11 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.exceptions import NotFoundError
 from app.schemas.curso import CursoPublicResponse, InscricaoPublicaRequest
 from app.schemas.participante import (
     ConsultaCertificadosRequest,
@@ -12,9 +13,31 @@ from app.schemas.participante import (
     ParticipanteResponse,
 )
 from app.services.certificado_service import CertificadoService
+from app.services.pdf_service import TEMPLATES_DIR
 from app.services.publico_service import PublicoService
 
 router = APIRouter(prefix="/publico", tags=["publico"])
+
+_ALLOWED_CERT_FONTS = {
+    "EBGaramond-Regular.ttf",
+    "EBGaramond-Italic.ttf",
+    "HankenGrotesk-Regular.ttf",
+    "HankenGrotesk-Italic.ttf",
+}
+
+
+@router.get("/certificado-fonts/{font_name}")
+async def certificado_font(font_name: str) -> FileResponse:
+    if font_name not in _ALLOWED_CERT_FONTS:
+        raise NotFoundError("Fonte não encontrada")
+    path = TEMPLATES_DIR / "fonts" / font_name
+    if not path.is_file():
+        raise NotFoundError("Fonte não encontrada")
+    return FileResponse(
+        path,
+        media_type="font/ttf",
+        headers={"Access-Control-Allow-Origin": "*"},
+    )
 
 
 @router.get("/cursos", response_model=list[CursoPublicResponse])
@@ -53,6 +76,15 @@ async def consultar_meus_certificados(
     session: AsyncSession = Depends(get_db),
 ) -> ConsultaCertificadosResponse:
     return await PublicoService(session).consultar_certificados(body)
+
+
+@router.get("/certificados/{codigo_validacao}/html", response_class=HTMLResponse)
+async def view_certificado_publico_html(
+    codigo_validacao: UUID,
+    session: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    html = await CertificadoService(session).gerar_html_publico(codigo_validacao)
+    return HTMLResponse(content=html)
 
 
 @router.get("/certificados/{codigo_validacao}/pdf")

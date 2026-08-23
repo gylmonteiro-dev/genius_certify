@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
 export class ApiError extends Error {
   status: number;
@@ -68,6 +68,30 @@ export async function apiRequestBlob(
     throw new ApiError(detail, response.status);
   }
   return response.blob();
+}
+
+export async function apiRequestText(
+  path: string,
+  token?: string | null,
+): Promise<string> {
+  const headers = new Headers();
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, { method: 'GET', headers });
+  if (!response.ok) {
+    let detail = 'Falha na requisição';
+    try {
+      const data: unknown = await response.json();
+      const parsed = extractApiDetail(data);
+      if (parsed) detail = parsed;
+    } catch {
+      // ignore parse errors
+    }
+    throw new ApiError(detail, response.status);
+  }
+  return response.text();
 }
 
 function extractApiDetail(data: unknown): string | null {

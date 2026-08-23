@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
-from fastapi.responses import Response
+from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -13,10 +13,44 @@ from app.schemas.certificado import (
     CertificadoEmitRequest,
     CertificadoPublicResponse,
     CertificadoResponse,
+    CertificadoTemplateItem,
 )
+from app.services.certificate_templates import list_templates
 from app.services.certificado_service import CertificadoService
 
 router = APIRouter(prefix="/certificados", tags=["certificados"])
+
+
+@router.get("/templates", response_model=list[CertificadoTemplateItem])
+async def list_certificate_templates(
+    _current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> list[CertificadoTemplateItem]:
+    return [CertificadoTemplateItem(id=item.id) for item in list_templates()]
+
+
+@router.get("/templates/{template_id}/preview", response_class=HTMLResponse)
+async def preview_certificate_template(
+    template_id: str,
+    participante_nome: str = Query(default="Nome do Participante"),
+    curso_titulo: str = Query(default="Nome do evento"),
+    instituicao_nome: str = Query(default=""),
+    carga_horaria: int = Query(default=0, ge=0),
+    instrutor: str = Query(default=""),
+    instituicao_id: UUID | None = Query(default=None),
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> HTMLResponse:
+    html = await CertificadoService(session).preview_html(
+        actor=current_user,
+        template_id=template_id,
+        participante_nome=participante_nome,
+        curso_titulo=curso_titulo,
+        instituicao_nome=instituicao_nome,
+        carga_horaria=carga_horaria,
+        instrutor=instrutor,
+        instituicao_id=instituicao_id,
+    )
+    return HTMLResponse(content=html)
 
 
 @router.post(
@@ -81,6 +115,19 @@ async def get_certificado(
     current_user: Usuario = Depends(RequireInstituicaoAdmin),
 ) -> CertificadoResponse:
     return await CertificadoService(session).get(certificado_id, actor=current_user)
+
+
+@router.get("/{certificado_id}/html", response_class=HTMLResponse)
+async def view_certificado_html(
+    certificado_id: UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> HTMLResponse:
+    html = await CertificadoService(session).gerar_html(
+        certificado_id,
+        actor=current_user,
+    )
+    return HTMLResponse(content=html)
 
 
 @router.get("/{certificado_id}/pdf")

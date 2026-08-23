@@ -54,6 +54,7 @@ class Certificado(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     instituicao_nome: Mapped[str] = mapped_column(String(255), nullable=False)
     carga_horaria: Mapped[int] = mapped_column(nullable=False)
     instrutor: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    template_id: Mapped[str] = mapped_column(String(64), nullable=False, default="classic")
     sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[CertificadoStatus] = mapped_column(
         Enum(
