@@ -143,6 +143,18 @@ export const en: Messages = {
     events: 'Events',
     myCertificates: 'My certificates',
     adminLogin: 'Admin login',
+    adminAccess: 'Administrative access',
+    backHome: 'Back to home',
+    homeTitle: 'Look up events, certificates and authenticity',
+    homeSubtitle: 'Public access, no account required. Choose what you want to look up.',
+    homeEventsTitle: 'Events',
+    homeEventsHint: 'See upcoming events and register.',
+    homeCertificatesTitle: 'My certificates',
+    homeCertificatesHint:
+      'Look up certificates issued in your name with your CPF and date of birth.',
+    homeValidateTitle: 'Validate a certificate',
+    homeValidateHint: 'Confirm a certificate is authentic using its validation code.',
+    homeAccess: 'Open',
     myCertificatesTitle: 'Look up my certificates',
     myCertificatesHint:
       'Enter your CPF and date of birth to see every certificate issued in your name.',

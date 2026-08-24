@@ -141,6 +141,20 @@ export const ptBR = {
     events: 'Eventos',
     myCertificates: 'Meus certificados',
     adminLogin: 'Acesso admin',
+    adminAccess: 'Acesso administrativo',
+    backHome: 'Voltar ao início',
+    homeTitle: 'Consulte eventos, certificados e validade',
+    homeSubtitle:
+      'Acesso público, sem necessidade de conta. Escolha o que deseja consultar.',
+    homeEventsTitle: 'Eventos',
+    homeEventsHint: 'Veja os eventos abertos e faça sua inscrição.',
+    homeCertificatesTitle: 'Meus certificados',
+    homeCertificatesHint:
+      'Consulte os certificados emitidos em seu nome com CPF e data de nascimento.',
+    homeValidateTitle: 'Validar certificado',
+    homeValidateHint:
+      'Confirme a autenticidade de um certificado pelo código de validação.',
+    homeAccess: 'Acessar',
     myCertificatesTitle: 'Consultar meus certificados',
     myCertificatesHint:
       'Informe seu CPF e data de nascimento para ver todos os certificados emitidos em seu nome.',

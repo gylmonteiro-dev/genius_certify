@@ -4,6 +4,7 @@ import { AdminApp } from './AdminApp';
 import { LoginView } from './components/LoginView';
 import { PublicEventRegisterPage } from './components/PublicEventRegisterPage';
 import { PublicEventsPage } from './components/PublicEventsPage';
+import { PublicHomeView } from './components/PublicHomeView';
 import { PublicMyCertificatesView } from './components/PublicMyCertificatesView';
 import { PublicValidateView } from './components/PublicValidateView';
 import { Toast } from './components/Toast';
@@ -105,8 +106,9 @@ export function App() {
   return (
     <>
       <Routes>
+        <Route path="/" element={<PublicHomeView />} />
         <Route
-          path="/"
+          path="/entrar"
           element={
             isAuthenticated ? (
               <Navigate to="/app" replace />
@@ -134,7 +136,7 @@ export function App() {
                 onLogout={handleLogout}
               />
             ) : (
-              <Navigate to="/" replace />
+              <Navigate to="/entrar" replace />
             )
           }
         />

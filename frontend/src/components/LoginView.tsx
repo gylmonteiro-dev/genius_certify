@@ -165,6 +165,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
           </div>
 
           <p className="text-center text-[11px] text-slate-400 mt-6 space-x-3">
+            <Link to="/" className="text-slate-500 hover:underline font-semibold">
+              {t('public.backHome')}
+            </Link>
+            <span>·</span>
             <Link to="/validar" className="text-blue-600 hover:underline font-semibold">
               {t('login.validateCertificate')}
             </Link>

@@ -34,7 +34,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
             </NavLink>
             <LanguageSwitch />
             <Link
-              to="/"
+              to="/entrar"
               className="text-sm font-semibold px-3 py-1.5 rounded-md bg-slate-900 text-white hover:bg-slate-800"
             >
               {t('public.adminLogin')}
