@@ -47,3 +47,37 @@ class UsuarioRepository:
         await self._session.flush()
         await self._session.refresh(usuario)
         return usuario
+
+    async def get_instituicao_admin(self, instituicao_id: UUID) -> Usuario | None:
+        stmt = (
+            select(Usuario)
+            .where(
+                Usuario.instituicao_id == instituicao_id,
+                Usuario.role == UsuarioRole.INSTITUICAO_ADMIN,
+            )
+            .order_by(Usuario.created_at.asc())
+            .limit(1)
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def map_instituicao_admins(
+        self,
+        instituicao_ids: list[UUID],
+    ) -> dict[UUID, Usuario]:
+        if not instituicao_ids:
+            return {}
+        stmt = (
+            select(Usuario)
+            .where(
+                Usuario.instituicao_id.in_(instituicao_ids),
+                Usuario.role == UsuarioRole.INSTITUICAO_ADMIN,
+            )
+            .order_by(Usuario.created_at.asc())
+        )
+        result = await self._session.execute(stmt)
+        mapping: dict[UUID, Usuario] = {}
+        for user in result.scalars().all():
+            if user.instituicao_id is not None and user.instituicao_id not in mapping:
+                mapping[user.instituicao_id] = user
+        return mapping

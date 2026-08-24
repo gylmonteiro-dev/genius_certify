@@ -29,6 +29,8 @@ export interface Institution {
   logoLetter: string;
   bgColor: string;
   logoUrl: string | null;
+  adminNome?: string | null;
+  adminEmail?: string | null;
 }
 
 export interface EventItem {

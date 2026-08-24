@@ -62,6 +62,9 @@ class InstituicaoUpdate(BaseModel):
     logo_url: str | None = Field(default=None, max_length=512)
     assinatura_url: str | None = Field(default=None, max_length=512)
     status: InstituicaoStatus | None = None
+    admin_nome: str | None = Field(default=None, min_length=2, max_length=255)
+    admin_email: EmailStr | None = None
+    admin_password: str | None = Field(default=None, min_length=8, max_length=128)
 
     @field_validator("cnpj")
     @classmethod
@@ -92,3 +95,5 @@ class InstituicaoResponse(BaseModel):
     status: InstituicaoStatus
     created_at: datetime
     updated_at: datetime
+    admin_nome: str | None = None
+    admin_email: EmailStr | None = None

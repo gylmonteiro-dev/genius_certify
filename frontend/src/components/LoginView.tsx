@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useT } from '../i18n';
 import { APP_NAME } from '../lib/brand';
 import { BrandLogo } from './BrandLogo';
@@ -17,6 +17,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
   errorMessage = null,
 }) => {
   const { t } = useT();
+  const location = useLocation();
+  const passwordReset = Boolean(
+    (location.state as { passwordReset?: boolean } | null)?.passwordReset,
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -137,6 +141,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 </div>
               </div>
 
+              {passwordReset && (
+                <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs text-emerald-800">
+                  <span className="material-symbols-outlined text-[16px] mt-0.5">check_circle</span>
+                  <span>{t('login.resetSuccess')}</span>
+                </div>
+              )}
+
               {errorMessage && (
                 <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700">
                   <span className="material-symbols-outlined text-[16px] mt-0.5">error</span>
@@ -162,6 +173,14 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 )}
               </button>
             </form>
+            <p className="text-center mt-4">
+              <Link
+                to="/entrar/recuperar"
+                className="text-sm font-semibold text-blue-600 hover:underline"
+              >
+                {t('login.forgotPassword')}
+              </Link>
+            </p>
           </div>
 
           <p className="text-center text-[11px] text-slate-400 mt-6 space-x-3">

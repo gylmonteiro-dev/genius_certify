@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminApp } from './AdminApp';
 import { LoginView } from './components/LoginView';
+import { RecoverPasswordView } from './components/RecoverPasswordView';
+import { ResetPasswordView } from './components/ResetPasswordView';
 import { PublicEventRegisterPage } from './components/PublicEventRegisterPage';
 import { PublicEventsPage } from './components/PublicEventsPage';
 import { PublicHomeView } from './components/PublicHomeView';
@@ -121,6 +123,8 @@ export function App() {
             )
           }
         />
+        <Route path="/entrar/recuperar" element={<RecoverPasswordView />} />
+        <Route path="/entrar/redefinir" element={<ResetPasswordView />} />
         <Route path="/validar" element={<PublicValidateView />} />
         <Route path="/validar/:codigo" element={<PublicValidateView />} />
         <Route path="/meus-certificados" element={<PublicMyCertificatesView />} />

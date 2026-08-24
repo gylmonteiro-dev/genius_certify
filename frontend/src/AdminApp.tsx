@@ -970,6 +970,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
           <EditInstitutionView
             key={editingInstitution.id}
             institution={editingInstitution}
+            canChangeAdmin={isSuperAdmin}
             onSubmit={handleUpdateInstitution}
             onUploadLogo={handleUploadInstitutionLogo}
             onCancel={() => {

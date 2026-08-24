@@ -41,6 +41,23 @@ export async function fetchCurrentUser(token: string): Promise<AuthUser> {
   return apiRequest<AuthUser>('/api/auth/me', { method: 'GET' }, token);
 }
 
+export async function requestPasswordReset(email: string): Promise<void> {
+  await apiRequest('/api/auth/recuperar-senha', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function confirmPasswordReset(
+  token: string,
+  senhaNova: string,
+): Promise<void> {
+  await apiRequest('/api/auth/redefinir-senha', {
+    method: 'POST',
+    body: JSON.stringify({ token, senha_nova: senhaNova }),
+  });
+}
+
 export async function alterarSenhaRequest(
   token: string,
   senhaAtual: string,

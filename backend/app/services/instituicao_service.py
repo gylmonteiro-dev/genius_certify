@@ -45,6 +45,59 @@ class InstituicaoService:
         if user.instituicao_id != instituicao_id:
             raise ForbiddenError("Instituição fora do seu tenant")
 
+    @staticmethod
+    def _to_response(
+        instituicao: Instituicao,
+        admin: Usuario | None = None,
+    ) -> InstituicaoResponse:
+        payload = InstituicaoResponse.model_validate(instituicao)
+        if admin is None:
+            return payload
+        return payload.model_copy(
+            update={"admin_nome": admin.nome, "admin_email": admin.email}
+        )
+
+    async def _apply_admin_access(
+        self,
+        instituicao: Instituicao,
+        *,
+        admin_nome: str | None,
+        admin_email: str | None,
+        admin_password: str | None,
+    ) -> None:
+        existing = await self._usuarios.get_instituicao_admin(instituicao.id)
+        if existing is None:
+            if not admin_nome or not admin_email or not admin_password:
+                raise AppError(
+                    "Para criar o admin da instituição informe admin_nome, admin_email e admin_password"
+                )
+            conflict = await self._usuarios.get_by_email(str(admin_email))
+            if conflict is not None:
+                raise ConflictError("E-mail do admin já está em uso")
+            await self._usuarios.create(
+                nome=admin_nome,
+                email=str(admin_email),
+                hashed_password=hash_password(admin_password),
+                role=UsuarioRole.INSTITUICAO_ADMIN,
+                instituicao_id=instituicao.id,
+            )
+            instituicao.responsavel = admin_nome
+            return
+
+        if admin_email:
+            email = str(admin_email).lower()
+            other = await self._usuarios.get_by_email(email)
+            if other is not None and other.id != existing.id:
+                raise ConflictError("E-mail do admin já está em uso")
+            existing.email = email
+        if admin_nome:
+            existing.nome = admin_nome
+            instituicao.responsavel = admin_nome
+        if admin_password:
+            existing.hashed_password = hash_password(admin_password)
+        existing.is_active = True
+        await self._usuarios.save(existing)
+
     async def _generate_unique_codigo(self) -> str:
         year = datetime.now(timezone.utc).year
         for _ in range(8):
@@ -89,8 +142,9 @@ class InstituicaoService:
             status=data.status,
         )
 
+        admin: Usuario | None = None
         if data.admin_email and data.admin_nome and data.admin_password:
-            await self._usuarios.create(
+            admin = await self._usuarios.create(
                 nome=data.admin_nome,
                 email=str(data.admin_email),
                 hashed_password=hash_password(data.admin_password),
@@ -100,7 +154,7 @@ class InstituicaoService:
 
         await self._session.commit()
         await self._session.refresh(instituicao)
-        return InstituicaoResponse.model_validate(instituicao)
+        return self._to_response(instituicao, admin)
 
     async def list(
         self,
@@ -122,12 +176,14 @@ class InstituicaoService:
             skip=skip,
             limit=limit,
         )
-        return [InstituicaoResponse.model_validate(item) for item in items]
+        admins = await self._usuarios.map_instituicao_admins([item.id for item in items])
+        return [self._to_response(item, admins.get(item.id)) for item in items]
 
     async def get(self, instituicao_id: UUID, *, actor: Usuario) -> InstituicaoResponse:
         self._assert_access(actor, instituicao_id)
         instituicao = await self._get_or_404(instituicao_id)
-        return InstituicaoResponse.model_validate(instituicao)
+        admin = await self._usuarios.get_instituicao_admin(instituicao.id)
+        return self._to_response(instituicao, admin)
 
     async def update(
         self,
@@ -142,6 +198,22 @@ class InstituicaoService:
         payload = data.model_dump(exclude_unset=True)
         if payload.get("codigo") is None:
             payload.pop("codigo", None)
+
+        admin_nome = payload.pop("admin_nome", None)
+        admin_email = payload.pop("admin_email", None)
+        admin_password = payload.pop("admin_password", None)
+        wants_admin = any(
+            value is not None for value in (admin_nome, admin_email, admin_password)
+        )
+        if wants_admin:
+            if actor.role != UsuarioRole.SUPER_ADMIN:
+                raise ForbiddenError("Apenas SuperAdmin pode alterar o admin da instituição")
+            await self._apply_admin_access(
+                instituicao,
+                admin_nome=admin_nome,
+                admin_email=admin_email,
+                admin_password=admin_password,
+            )
 
         # Apenas SuperAdmin altera status
         if "status" in payload and actor.role != UsuarioRole.SUPER_ADMIN:
@@ -164,10 +236,14 @@ class InstituicaoService:
         for field, value in payload.items():
             setattr(instituicao, field, value)
 
+        if admin_nome:
+            instituicao.responsavel = admin_nome
+
         await self._instituicoes.save(instituicao)
         await self._session.commit()
         await self._session.refresh(instituicao)
-        return InstituicaoResponse.model_validate(instituicao)
+        admin = await self._usuarios.get_instituicao_admin(instituicao.id)
+        return self._to_response(instituicao, admin)
 
     async def delete(self, instituicao_id: UUID, *, actor: Usuario) -> InstituicaoResponse:
         if actor.role != UsuarioRole.SUPER_ADMIN:
@@ -177,7 +253,8 @@ class InstituicaoService:
         await self._instituicoes.soft_delete(instituicao)
         await self._session.commit()
         await self._session.refresh(instituicao)
-        return InstituicaoResponse.model_validate(instituicao)
+        admin = await self._usuarios.get_instituicao_admin(instituicao.id)
+        return self._to_response(instituicao, admin)
 
     async def upload_asset(
         self,
@@ -216,7 +293,8 @@ class InstituicaoService:
         await self._instituicoes.save(instituicao)
         await self._session.commit()
         await self._session.refresh(instituicao)
-        return InstituicaoResponse.model_validate(instituicao)
+        admin = await self._usuarios.get_instituicao_admin(instituicao.id)
+        return self._to_response(instituicao, admin)
 
     async def _get_or_404(self, instituicao_id: UUID) -> Instituicao:
         instituicao = await self._instituicoes.get_by_id(instituicao_id)

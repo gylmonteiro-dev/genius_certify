@@ -13,6 +13,7 @@ interface EditInstitutionViewProps {
   onSubmit: (payload: InstituicaoUpdatePayload) => Promise<void>;
   onUploadLogo: (file: File) => Promise<void>;
   onCancel: () => void;
+  canChangeAdmin?: boolean;
   isSubmitting?: boolean;
   isUploadingLogo?: boolean;
   errorMessage?: string | null;
@@ -23,6 +24,7 @@ export const EditInstitutionView: React.FC<EditInstitutionViewProps> = ({
   onSubmit,
   onUploadLogo,
   onCancel,
+  canChangeAdmin = false,
   isSubmitting = false,
   isUploadingLogo = false,
   errorMessage = null,
@@ -39,6 +41,11 @@ export const EditInstitutionView: React.FC<EditInstitutionViewProps> = ({
   const [phone, setPhone] = useState(
     institution.phone === '—' ? '' : institution.phone,
   );
+  const [adminNome, setAdminNome] = useState(
+    institution.adminNome || institution.responsiblePerson,
+  );
+  const [adminEmail, setAdminEmail] = useState(institution.adminEmail || '');
+  const [adminPassword, setAdminPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
 
@@ -58,7 +65,7 @@ export const EditInstitutionView: React.FC<EditInstitutionViewProps> = ({
       return;
     }
 
-    await onSubmit({
+    const payload: InstituicaoUpdatePayload = {
       nome: instName.trim(),
       codigo: codigo.trim(),
       cnpj: cnpjDigits,
@@ -66,7 +73,31 @@ export const EditInstitutionView: React.FC<EditInstitutionViewProps> = ({
       email: email.trim(),
       endereco: address.trim(),
       telefone: phone.trim(),
-    });
+    };
+
+    if (canChangeAdmin) {
+      const nextAdminNome = adminNome.trim();
+      const nextAdminEmail = adminEmail.trim();
+      if (!nextAdminNome || !nextAdminEmail) {
+        setFormError(t('editInstitution.adminRequired'));
+        return;
+      }
+      if (adminPassword && adminPassword.length < 8) {
+        setFormError(t('editInstitution.adminPasswordMin'));
+        return;
+      }
+      if (!institution.adminEmail && !adminPassword) {
+        setFormError(t('editInstitution.adminPasswordMin'));
+        return;
+      }
+      payload.admin_nome = nextAdminNome;
+      payload.admin_email = nextAdminEmail;
+      if (adminPassword) {
+        payload.admin_password = adminPassword;
+      }
+    }
+
+    await onSubmit(payload);
   };
 
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -314,6 +345,83 @@ export const EditInstitutionView: React.FC<EditInstitutionViewProps> = ({
               </div>
             </div>
           </div>
+
+          {canChangeAdmin && (
+            <div>
+              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <span className="material-symbols-outlined text-blue-600">
+                  admin_panel_settings
+                </span>
+                <h2 className="text-lg font-bold text-slate-900">
+                  {t('editInstitution.adminAccess')}
+                </h2>
+              </div>
+              <p className="text-sm text-slate-500 mb-4">
+                {t('editInstitution.adminAccessHint')}
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label
+                    htmlFor="edit_admin_nome"
+                    className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
+                  >
+                    {t('editInstitution.adminName')}
+                  </label>
+                  <input
+                    id="edit_admin_nome"
+                    type="text"
+                    required
+                    disabled={busy}
+                    value={adminNome}
+                    onChange={(e) => setAdminNome(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all disabled:opacity-60"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="edit_admin_email"
+                    className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
+                  >
+                    {t('editInstitution.adminEmail')}
+                  </label>
+                  <input
+                    id="edit_admin_email"
+                    type="email"
+                    required
+                    disabled={busy}
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all disabled:opacity-60"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="edit_admin_password"
+                    className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
+                  >
+                    {t('editInstitution.adminPassword')}
+                  </label>
+                  <input
+                    id="edit_admin_password"
+                    type="password"
+                    minLength={8}
+                    disabled={busy}
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    placeholder={t('registerInstitution.passwordPlaceholder')}
+                    autoComplete="new-password"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all disabled:opacity-60"
+                  />
+                  <p className="mt-1 text-xs text-slate-400">
+                    {t('editInstitution.adminPasswordHint')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-6 border-t border-slate-200 mt-8">
             <button

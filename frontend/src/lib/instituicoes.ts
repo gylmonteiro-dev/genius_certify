@@ -17,6 +17,8 @@ export interface InstituicaoApi {
   status: InstituicaoApiStatus;
   created_at: string;
   updated_at: string;
+  admin_nome?: string | null;
+  admin_email?: string | null;
 }
 
 export interface InstituicaoCreatePayload {
@@ -40,6 +42,9 @@ export interface InstituicaoUpdatePayload {
   email?: string;
   endereco?: string;
   telefone?: string;
+  admin_nome?: string;
+  admin_email?: string;
+  admin_password?: string;
 }
 
 export const MAX_INSTITUICAO_LOGO_BYTES = 2 * 1024 * 1024;
@@ -96,6 +101,8 @@ export function mapInstituicaoToUi(item: InstituicaoApi): Institution {
     logoLetter: logoLetter(item.nome),
     bgColor: avatarColor(item.nome),
     logoUrl: item.logo_url,
+    adminNome: item.admin_nome ?? null,
+    adminEmail: item.admin_email ?? null,
   };
 }
 

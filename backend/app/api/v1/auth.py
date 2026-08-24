@@ -7,6 +7,8 @@ from app.models.usuario import Usuario
 from app.schemas.auth import (
     AlterarSenhaRequest,
     LoginRequest,
+    RecuperarSenhaRequest,
+    RedefinirSenhaRequest,
     TokenResponse,
     UsuarioResponse,
 )
@@ -39,4 +41,22 @@ async def alterar_senha(
         senha_atual=body.senha_atual,
         senha_nova=body.senha_nova,
     )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/recuperar-senha", status_code=status.HTTP_204_NO_CONTENT)
+async def recuperar_senha(
+    body: RecuperarSenhaRequest,
+    session: AsyncSession = Depends(get_db),
+) -> Response:
+    await AuthService(session).solicitar_recuperacao(str(body.email))
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/redefinir-senha", status_code=status.HTTP_204_NO_CONTENT)
+async def redefinir_senha(
+    body: RedefinirSenhaRequest,
+    session: AsyncSession = Depends(get_db),
+) -> Response:
+    await AuthService(session).redefinir_senha(body.token, body.senha_nova)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

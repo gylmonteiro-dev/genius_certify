@@ -28,7 +28,20 @@ class Settings(BaseSettings):
     s3_bucket: str = "nexus-certify"
     s3_region: str = "us-east-1"
 
+    public_app_url: str = "http://localhost:3000"
+
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    smtp_starttls: bool = True
+
     environment: str = "development"
+
+    @property
+    def smtp_configured(self) -> bool:
+        return bool(self.smtp_host and self.smtp_from)
 
     @property
     def is_production(self) -> bool:
