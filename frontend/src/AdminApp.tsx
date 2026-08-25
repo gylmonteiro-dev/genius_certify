@@ -50,6 +50,7 @@ import {
   listInscritos,
   inscreverParticipantesLote,
   mapCursoToUi,
+  removerInscrito,
   updateCurso,
 } from './lib/cursos';
 import {
@@ -791,6 +792,32 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     }
   };
 
+  const handleRemoveInscrito = async (
+    participanteId: string,
+    revogarCertificado: boolean,
+  ) => {
+    if (!authToken || !issuingEvent) return;
+    try {
+      await removerInscrito(
+        authToken,
+        issuingEvent.id,
+        participanteId,
+        revogarCertificado,
+      );
+      showToast(
+        revogarCertificado
+          ? t('toasts.enrollmentRemovedRevoked')
+          : t('toasts.enrollmentRemoved'),
+      );
+      await loadInscritos(issuingEvent.id);
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : t('errors.removeEnrollment');
+      showToast(message);
+      throw err;
+    }
+  };
+
   const handleIssueSelected = async (participanteIds: string[]) => {
     if (!authToken || !issuingEvent) return;
     setLoteIssuing(true);
@@ -1002,6 +1029,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
                 handleEnrollLote(issuingEvent.id, participanteIds)
               }
               onSetStatus={handleSetParticipantStatus}
+              onRemoveInscrito={handleRemoveInscrito}
             />
           ) : (
             <EventsDirectoryView

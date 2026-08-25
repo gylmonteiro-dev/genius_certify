@@ -23,6 +23,7 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
   const [workEmail, setWorkEmail] = useState('');
   const [documentId, setDocumentId] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [password, setPassword] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,6 +43,7 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
         email: workEmail,
         documentId: digitsOnly(documentId),
         birthDate,
+        password: password.trim() || undefined,
       });
       setIsSubmitted(true);
     } catch {
@@ -215,6 +217,27 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                       className="w-full h-11 px-4 border border-slate-200 rounded-md bg-slate-50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                     />
                   </div>
+
+                  <div>
+                    <label
+                      htmlFor="accessPassword"
+                      className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
+                    >
+                      {t('registration.passwordOptional')}
+                    </label>
+                    <input
+                      id="accessPassword"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      minLength={8}
+                      autoComplete="new-password"
+                      className="w-full h-11 px-4 border border-slate-200 rounded-md bg-slate-50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">
+                      {t('registration.passwordHint')}
+                    </p>
+                  </div>
                 </form>
               </div>
 
@@ -247,6 +270,11 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
             <p className="text-sm text-slate-500 mb-6">
               {t('registration.confirmedBody', { name: fullName, title: event.title })}
             </p>
+            {password.trim() && (
+              <p className="text-sm text-slate-600 mb-6">
+                {t('registration.confirmedAccessHint')}
+              </p>
+            )}
 
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs text-left space-y-2 mb-6 font-mono">
               <p><span className="text-slate-400">{t('registration.ticketRef')}</span> TKT-2024-8849</p>

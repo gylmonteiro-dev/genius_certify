@@ -18,12 +18,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
+PARTICIPANTE_TOKEN_TYP = "participante"
+
+
 def create_access_token(
     *,
     subject: UUID,
     email: str,
     role: str,
     instituicao_id: UUID | None,
+    typ: str | None = None,
 ) -> str:
     settings = get_settings()
     expire = datetime.now(timezone.utc) + timedelta(
@@ -36,7 +40,19 @@ def create_access_token(
         "instituicao_id": str(instituicao_id) if instituicao_id else None,
         "exp": expire,
     }
+    if typ is not None:
+        payload["typ"] = typ
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+
+def create_participante_access_token(*, subject: UUID, email: str) -> str:
+    return create_access_token(
+        subject=subject,
+        email=email,
+        role="participante",
+        instituicao_id=None,
+        typ=PARTICIPANTE_TOKEN_TYP,
+    )
 
 
 def decode_access_token(token: str) -> dict[str, Any]:

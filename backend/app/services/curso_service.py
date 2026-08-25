@@ -23,8 +23,10 @@ from app.schemas.curso import (
     InscricaoLoteRequest,
     InscricaoLoteResponse,
     InscritoResponse,
+    RemoverInscritoRequest,
 )
 from app.services.certificate_templates import is_valid_template_id, resolve_template_id
+from app.services.certificado_service import CertificadoService
 
 
 class CursoService:
@@ -320,6 +322,41 @@ class CursoService:
             already_enrolled=already_enrolled,
             errors=errors,
         )
+
+    async def remover_inscrito(
+        self,
+        curso_id: UUID,
+        participante_id: UUID,
+        data: RemoverInscritoRequest,
+        *,
+        actor: Usuario,
+    ) -> None:
+        curso = await self._get_or_404(curso_id, actor=actor)
+        inscricao = await self._inscricoes.get_by_participante_curso(
+            instituicao_id=curso.instituicao_id,
+            participante_id=participante_id,
+            curso_id=curso.id,
+        )
+        if inscricao is None:
+            raise NotFoundError("Inscrição não encontrada")
+
+        certificado = await self._certificados.get_active_by_participante_curso(
+            instituicao_id=curso.instituicao_id,
+            participante_id=participante_id,
+            curso_id=curso.id,
+        )
+        if certificado is not None and data.revogar_certificado:
+            await CertificadoService(self._session).revogar(certificado.id, actor=actor)
+            inscricao = await self._inscricoes.get_by_participante_curso(
+                instituicao_id=curso.instituicao_id,
+                participante_id=participante_id,
+                curso_id=curso.id,
+            )
+            if inscricao is None:
+                return
+
+        await self._inscricoes.delete(inscricao)
+        await self._session.commit()
 
     async def liberar_emissao(self, curso_id: UUID, *, actor: Usuario) -> CursoResponse:
         curso = await self._get_or_404(curso_id, actor=actor)

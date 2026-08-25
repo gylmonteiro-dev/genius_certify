@@ -21,6 +21,7 @@ interface EventIssueViewProps {
   onIssueSelected: (participanteIds: string[]) => Promise<void>;
   onEnrollSelected?: (participanteIds: string[]) => Promise<void>;
   onSetStatus?: (id: string, status: 'verified' | 'rejected') => Promise<void>;
+  onRemoveInscrito?: (participanteId: string, revogarCertificado: boolean) => Promise<void>;
 }
 
 function canIssueOnEvent(event: EventItem): boolean {
@@ -43,11 +44,14 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
   onIssueSelected,
   onEnrollSelected,
   onSetStatus,
+  onRemoveInscrito,
 }) => {
   const { t, dateLocale } = useT();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [formError, setFormError] = useState<string | null>(null);
   const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<InscritoApi | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerSelected, setPickerSelected] = useState<Set<string>>(new Set());
   const [pickerError, setPickerError] = useState<string | null>(null);
@@ -146,6 +150,27 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
     }
     await onEnrollSelected([...pickerSelected]);
     closeEnrollModal();
+  };
+
+  const showActions = Boolean(onSetStatus || onRemoveInscrito);
+
+  const handleConfirmRemove = async (revogarCertificado: boolean) => {
+    if (!onRemoveInscrito || !confirmTarget) return;
+    setFormError(null);
+    setRemovingId(confirmTarget.id);
+    try {
+      await onRemoveInscrito(confirmTarget.id, revogarCertificado);
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(confirmTarget.id);
+        return next;
+      });
+      setConfirmTarget(null);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : t('errors.removeEnrollment'));
+    } finally {
+      setRemovingId(null);
+    }
   };
 
   const gateMessage = (() => {
@@ -283,7 +308,7 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                   <th className="px-4 py-3 text-left">{t('eventIssue.colDocument')}</th>
                   <th className="px-4 py-3 text-left">{t('common.status')}</th>
                   <th className="px-4 py-3 text-left">{t('eventIssue.colCertificate')}</th>
-                  {onSetStatus && (
+                  {showActions && (
                     <th className="px-4 py-3 text-left">{t('common.actions')}</th>
                   )}
                 </tr>
@@ -318,10 +343,10 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                         <span className="text-xs text-slate-400">{t('eventIssue.pendingIssue')}</span>
                       )}
                     </td>
-                    {onSetStatus && (
+                    {showActions && (
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1.5">
-                          {item.status !== 'verified' && (
+                          {onSetStatus && item.status !== 'verified' && (
                             <button
                               type="button"
                               onClick={() => void onSetStatus(item.id, 'verified')}
@@ -330,7 +355,7 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                               {t('students.approve')}
                             </button>
                           )}
-                          {item.status !== 'rejected' && (
+                          {onSetStatus && item.status !== 'rejected' && (
                             <button
                               type="button"
                               onClick={() => {
@@ -346,6 +371,18 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                               {t('students.reject')}
                             </button>
                           )}
+                          {onRemoveInscrito && (
+                            <button
+                              type="button"
+                              disabled={removingId === item.id}
+                              onClick={() => setConfirmTarget(item)}
+                              className="px-2.5 py-1 rounded-md border border-slate-200 bg-white text-slate-700 text-[11px] font-semibold hover:bg-slate-50 disabled:opacity-60"
+                            >
+                              {removingId === item.id
+                                ? t('common.loading')
+                                : t('eventIssue.removeEnrollment')}
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}
@@ -357,6 +394,60 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
           </div>
         )}
       </div>
+
+      {confirmTarget && onRemoveInscrito && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-md p-5 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">
+              {t('eventIssue.removeTitle')}
+            </h3>
+            <p className="text-sm text-slate-600">
+              {confirmTarget.ja_emitido
+                ? t('eventIssue.removeIssuedHint', { name: confirmTarget.nome })
+                : t('eventIssue.removeHint', { name: confirmTarget.nome })}
+            </p>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <button
+                type="button"
+                disabled={removingId !== null}
+                onClick={() => setConfirmTarget(null)}
+                className="px-4 py-2 rounded-md border border-slate-200 text-sm font-semibold"
+              >
+                {t('common.cancel')}
+              </button>
+              {confirmTarget.ja_emitido ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={removingId !== null}
+                    onClick={() => void handleConfirmRemove(false)}
+                    className="px-4 py-2 rounded-md border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    {t('eventIssue.removeKeepCertificate')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={removingId !== null}
+                    onClick={() => void handleConfirmRemove(true)}
+                    className="px-4 py-2 rounded-md bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
+                  >
+                    {t('eventIssue.removeRevokeCertificate')}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  disabled={removingId !== null}
+                  onClick={() => void handleConfirmRemove(false)}
+                  className="px-4 py-2 rounded-md bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
+                >
+                  {t('eventIssue.removeConfirm')}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showEnrollModal && onEnrollSelected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">

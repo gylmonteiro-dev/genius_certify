@@ -97,4 +97,5 @@ export interface RegistrationFormData {
   email: string;
   documentId: string;
   birthDate: string;
+  password?: string;
 }

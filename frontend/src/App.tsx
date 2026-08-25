@@ -9,6 +9,9 @@ import { PublicEventsPage } from './components/PublicEventsPage';
 import { PublicHomeView } from './components/PublicHomeView';
 import { PublicMyCertificatesView } from './components/PublicMyCertificatesView';
 import { PublicValidateView } from './components/PublicValidateView';
+import { ParticipanteInscricoesView } from './components/ParticipanteInscricoesView';
+import { ParticipanteLoginView } from './components/ParticipanteLoginView';
+import { ParticipanteRegisterView } from './components/ParticipanteRegisterView';
 import { Toast } from './components/Toast';
 import { ApiError } from './lib/api';
 import {
@@ -19,6 +22,15 @@ import {
   loginRequest,
   setStoredToken,
 } from './lib/auth';
+import {
+  ContaParticipante,
+  clearStoredParticipanteToken,
+  fetchContaParticipante,
+  getStoredParticipanteToken,
+  participanteCadastrar,
+  participanteLogin,
+  setStoredParticipanteToken,
+} from './lib/participanteAuth';
 import { APP_NAME } from './lib/brand';
 import { useT } from './i18n';
 
@@ -27,8 +39,12 @@ export function App() {
   const [authBootstrapping, setAuthBootstrapping] = useState(true);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [participante, setParticipante] = useState<ContaParticipante | null>(null);
+  const [participanteToken, setParticipanteToken] = useState<string | null>(null);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [participanteAuthLoading, setParticipanteAuthLoading] = useState(false);
+  const [participanteAuthError, setParticipanteAuthError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,26 +52,54 @@ export function App() {
 
     const bootstrapAuth = async () => {
       const token = getStoredToken();
-      if (!token) {
+      const contaToken = getStoredParticipanteToken();
+      if (!token && !contaToken) {
         if (!cancelled) setAuthBootstrapping(false);
         return;
       }
 
-      try {
-        const user = await fetchCurrentUser(token);
-        if (!cancelled) {
-          setAuthToken(token);
-          setAuthUser(user);
-        }
-      } catch {
-        clearStoredToken();
-        if (!cancelled) {
-          setAuthToken(null);
-          setAuthUser(null);
-        }
-      } finally {
-        if (!cancelled) setAuthBootstrapping(false);
+      const tasks: Promise<void>[] = [];
+      if (token) {
+        tasks.push(
+          (async () => {
+            try {
+              const user = await fetchCurrentUser(token);
+              if (!cancelled) {
+                setAuthToken(token);
+                setAuthUser(user);
+              }
+            } catch {
+              clearStoredToken();
+              if (!cancelled) {
+                setAuthToken(null);
+                setAuthUser(null);
+              }
+            }
+          })(),
+        );
       }
+      if (contaToken) {
+        tasks.push(
+          (async () => {
+            try {
+              const conta = await fetchContaParticipante(contaToken);
+              if (!cancelled) {
+                setParticipanteToken(contaToken);
+                setParticipante(conta);
+              }
+            } catch {
+              clearStoredParticipanteToken();
+              if (!cancelled) {
+                setParticipanteToken(null);
+                setParticipante(null);
+              }
+            }
+          })(),
+        );
+      }
+
+      await Promise.all(tasks);
+      if (!cancelled) setAuthBootstrapping(false);
     };
 
     void bootstrapAuth();
@@ -92,6 +136,56 @@ export function App() {
     setLoginError(null);
   };
 
+  const applyParticipanteSession = async (accessToken: string) => {
+    const conta = await fetchContaParticipante(accessToken);
+    setStoredParticipanteToken(accessToken);
+    setParticipanteToken(accessToken);
+    setParticipante(conta);
+    setParticipanteAuthError(null);
+  };
+
+  const handleParticipanteLogin = async (documento: string, senha: string) => {
+    setParticipanteAuthLoading(true);
+    setParticipanteAuthError(null);
+    try {
+      const { access_token } = await participanteLogin(documento, senha);
+      await applyParticipanteSession(access_token);
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : t('participant.fallbackError');
+      setParticipanteAuthError(message);
+    } finally {
+      setParticipanteAuthLoading(false);
+    }
+  };
+
+  const handleParticipanteCadastrar = async (payload: {
+    documento: string;
+    data_nascimento: string;
+    email: string;
+    senha: string;
+  }) => {
+    setParticipanteAuthLoading(true);
+    setParticipanteAuthError(null);
+    try {
+      const { access_token } = await participanteCadastrar(payload);
+      await applyParticipanteSession(access_token);
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : t('participant.registerFallbackError');
+      setParticipanteAuthError(message);
+    } finally {
+      setParticipanteAuthLoading(false);
+    }
+  };
+
+  const handleParticipanteLogout = () => {
+    clearStoredParticipanteToken();
+    setParticipanteToken(null);
+    setParticipante(null);
+    setParticipanteAuthError(null);
+  };
+
   if (authBootstrapping) {
     return (
       <div className="min-h-screen bg-[#f8f9ff] flex items-center justify-center text-slate-500 text-sm gap-2">
@@ -104,6 +198,7 @@ export function App() {
   }
 
   const isAuthenticated = Boolean(authUser && authToken);
+  const isParticipanteAuthenticated = Boolean(participante && participanteToken);
 
   return (
     <>
@@ -128,6 +223,48 @@ export function App() {
         <Route path="/validar" element={<PublicValidateView />} />
         <Route path="/validar/:codigo" element={<PublicValidateView />} />
         <Route path="/meus-certificados" element={<PublicMyCertificatesView />} />
+        <Route
+          path="/minhas-inscricoes/entrar"
+          element={
+            isParticipanteAuthenticated ? (
+              <Navigate to="/minhas-inscricoes" replace />
+            ) : (
+              <ParticipanteLoginView
+                onSubmit={handleParticipanteLogin}
+                isSubmitting={participanteAuthLoading}
+                errorMessage={participanteAuthError}
+              />
+            )
+          }
+        />
+        <Route
+          path="/minhas-inscricoes/cadastrar"
+          element={
+            isParticipanteAuthenticated ? (
+              <Navigate to="/minhas-inscricoes" replace />
+            ) : (
+              <ParticipanteRegisterView
+                onSubmit={handleParticipanteCadastrar}
+                isSubmitting={participanteAuthLoading}
+                errorMessage={participanteAuthError}
+              />
+            )
+          }
+        />
+        <Route
+          path="/minhas-inscricoes"
+          element={
+            isParticipanteAuthenticated && participante && participanteToken ? (
+              <ParticipanteInscricoesView
+                conta={participante}
+                token={participanteToken}
+                onLogout={handleParticipanteLogout}
+              />
+            ) : (
+              <Navigate to="/minhas-inscricoes/entrar" replace />
+            )
+          }
+        />
         <Route path="/eventos" element={<PublicEventsPage />} />
         <Route path="/eventos/:id" element={<PublicEventRegisterPage />} />
         <Route

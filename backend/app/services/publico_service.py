@@ -16,6 +16,7 @@ from app.schemas.participante import (
     ConsultaCertificadosResponse,
     ParticipanteResponse,
 )
+from app.services.conta_participante_service import ContaParticipanteService
 from app.services.participante_service import resolve_or_create_participante
 
 
@@ -96,6 +97,13 @@ class PublicoService:
             participante_id=participante.id,
             curso_id=curso.id,
         )
+        if data.senha:
+            await ContaParticipanteService(self._session).create_if_absent(
+                nome=participante.nome,
+                email=str(participante.email),
+                documento=participante.documento,
+                senha=data.senha,
+            )
         await self._session.commit()
         await self._session.refresh(participante)
         return ParticipanteResponse.model_validate(participante)

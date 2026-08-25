@@ -264,6 +264,22 @@ export async function inscreverParticipantesLote(
   );
 }
 
+export async function removerInscrito(
+  token: string,
+  cursoId: string,
+  participanteId: string,
+  revogarCertificado: boolean,
+): Promise<void> {
+  await apiRequest(
+    `/api/cursos/${cursoId}/inscritos/${participanteId}`,
+    {
+      method: 'DELETE',
+      body: JSON.stringify({ revogar_certificado: revogarCertificado }),
+    },
+    token,
+  );
+}
+
 export async function liberarEmissao(
   token: string,
   cursoId: string,
@@ -285,7 +301,13 @@ export async function getCursoPublico(id: string): Promise<CursoPublicApi> {
 
 export async function inscreverCursoPublico(
   cursoId: string,
-  payload: { nome: string; email: string; documento: string; data_nascimento: string },
+  payload: {
+    nome: string;
+    email: string;
+    documento: string;
+    data_nascimento: string;
+    senha?: string;
+  },
 ): Promise<void> {
   await apiRequest(`/api/publico/cursos/${cursoId}/inscrever`, {
     method: 'POST',

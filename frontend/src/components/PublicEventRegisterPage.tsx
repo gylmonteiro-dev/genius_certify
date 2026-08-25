@@ -53,6 +53,7 @@ export const PublicEventRegisterPage: React.FC = () => {
         email: form.email,
         documento: form.documentId.replace(/\D/g, ''),
         data_nascimento: form.birthDate,
+        ...(form.password ? { senha: form.password } : {}),
       });
     } catch (err) {
       const message =

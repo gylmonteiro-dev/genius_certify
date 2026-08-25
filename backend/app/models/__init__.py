@@ -1,6 +1,7 @@
 from app.models.base import Base
 from app.models.catalogo_evento import CatalogoEventoItem, CatalogoEventoKind
 from app.models.certificado import Certificado, CertificadoStatus
+from app.models.conta_participante import ContaParticipante
 from app.models.curso import Curso, CursoStatus
 from app.models.inscricao import Inscricao
 from app.models.instituicao import Instituicao, InstituicaoStatus
@@ -14,6 +15,7 @@ __all__ = [
     "CatalogoEventoKind",
     "Certificado",
     "CertificadoStatus",
+    "ContaParticipante",
     "Curso",
     "CursoStatus",
     "Inscricao",

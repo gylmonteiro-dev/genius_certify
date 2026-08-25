@@ -13,6 +13,7 @@ from app.schemas.curso import (
     InscricaoLoteRequest,
     InscricaoLoteResponse,
     InscritoResponse,
+    RemoverInscritoRequest,
 )
 from app.services.curso_service import CursoService
 
@@ -69,6 +70,26 @@ async def inscrever_lote(
         body,
         actor=current_user,
     )
+
+
+@router.delete(
+    "/{curso_id}/inscritos/{participante_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def remover_inscrito(
+    curso_id: UUID,
+    participante_id: UUID,
+    body: RemoverInscritoRequest = RemoverInscritoRequest(),
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> Response:
+    await CursoService(session).remover_inscrito(
+        curso_id,
+        participante_id,
+        body,
+        actor=current_user,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/{curso_id}/liberar-emissao", response_model=CursoResponse)

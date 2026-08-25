@@ -24,6 +24,12 @@ const ACTIONS = [
     titleKey: 'public.homeValidateTitle',
     hintKey: 'public.homeValidateHint',
   },
+  {
+    to: '/minhas-inscricoes',
+    icon: 'assignment_ind',
+    titleKey: 'public.homeEnrollmentsTitle',
+    hintKey: 'public.homeEnrollmentsHint',
+  },
 ] as const;
 
 export const PublicHomeView: React.FC = () => {

@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.curso import Curso
 from app.models.inscricao import Inscricao
 from app.models.participante import Participante
 
@@ -81,9 +82,43 @@ class InscricaoRepository:
         result = await self._session.execute(stmt)
         return list(result.scalars().unique().all())
 
+    async def get_by_id(self, inscricao_id: UUID) -> Inscricao | None:
+        stmt = (
+            select(Inscricao)
+            .where(Inscricao.id == inscricao_id)
+            .options(
+                selectinload(Inscricao.curso),
+                selectinload(Inscricao.participante),
+            )
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def list_by_participante_ids(
+        self,
+        participante_ids: list[UUID],
+    ) -> list[Inscricao]:
+        if not participante_ids:
+            return []
+        stmt = (
+            select(Inscricao)
+            .where(Inscricao.participante_id.in_(participante_ids))
+            .options(
+                selectinload(Inscricao.curso).selectinload(Curso.instituicao),
+                selectinload(Inscricao.participante),
+            )
+            .order_by(Inscricao.created_at.desc())
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().unique().all())
+
     async def create(self, **fields: object) -> Inscricao:
         inscricao = Inscricao(**fields)
         self._session.add(inscricao)
         await self._session.flush()
         await self._session.refresh(inscricao)
         return inscricao
+
+    async def delete(self, inscricao: Inscricao) -> None:
+        await self._session.delete(inscricao)
+        await self._session.flush()
