@@ -10,7 +10,7 @@ from weasyprint import HTML
 
 from app.core.config import get_settings
 from app.models.certificado import Certificado
-from app.services.certificate_templates import resolve_template_filename
+from app.services.certificate_templates import resolve_frente_copy, resolve_template_filename
 from app.services.storage_service import StorageService, get_storage_service
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -30,6 +30,9 @@ class CertificateRenderData:
     emitido_em: str
     logo_url: str | None = None
     assinatura_url: str | None = None
+    frente_tipo: str | None = None
+    frente_titulo: str | None = None
+    frente_atestacao: str | None = None
     verso_parcerias: str | None = None
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
@@ -64,6 +67,12 @@ class PdfService:
 
     def _render_html(self, data: CertificateRenderData, *, font_base: str) -> str:
         template = self._env.get_template(resolve_template_filename(data.template_id))
+        _tipo, frente_titulo, frente_atestacao = resolve_frente_copy(
+            template_id=data.template_id,
+            frente_tipo=data.frente_tipo,
+            frente_titulo=data.frente_titulo,
+            frente_atestacao=data.frente_atestacao,
+        )
         return template.render(
             participante_nome=data.participante_nome,
             curso_titulo=data.curso_titulo,
@@ -77,6 +86,8 @@ class PdfService:
             logo_data_uri=self._to_data_uri(data.logo_url),
             assinatura_data_uri=self._to_data_uri(data.assinatura_url),
             font_base=font_base,
+            frente_titulo=frente_titulo,
+            frente_atestacao=frente_atestacao,
             verso_parcerias=data.verso_parcerias or "",
             verso_conteudos=data.verso_conteudos or "",
             verso_observacoes=data.verso_observacoes or "",
@@ -109,6 +120,9 @@ class PdfService:
             emitido_em=certificado.created_at.strftime("%d/%m/%Y"),
             logo_url=logo_url,
             assinatura_url=assinatura_url,
+            frente_tipo=certificado.frente_tipo,
+            frente_titulo=certificado.frente_titulo,
+            frente_atestacao=certificado.frente_atestacao,
             verso_parcerias=certificado.verso_parcerias,
             verso_conteudos=certificado.verso_conteudos,
             verso_observacoes=certificado.verso_observacoes,
@@ -125,6 +139,9 @@ class PdfService:
         instrutor: str,
         logo_url: str | None = None,
         assinatura_url: str | None = None,
+        frente_tipo: str | None = None,
+        frente_titulo: str | None = None,
+        frente_atestacao: str | None = None,
         verso_parcerias: str | None = None,
         verso_conteudos: str | None = None,
         verso_observacoes: str | None = None,
@@ -143,6 +160,9 @@ class PdfService:
             emitido_em=today,
             logo_url=logo_url,
             assinatura_url=assinatura_url,
+            frente_tipo=frente_tipo,
+            frente_titulo=frente_titulo,
+            frente_atestacao=frente_atestacao,
             verso_parcerias=verso_parcerias,
             verso_conteudos=verso_conteudos,
             verso_observacoes=verso_observacoes,

@@ -46,6 +46,9 @@ class Curso(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     modalidade: Mapped[str | None] = mapped_column(String(64), nullable=True)
     tipo: Mapped[str | None] = mapped_column(String(64), nullable=True)
     template_id: Mapped[str] = mapped_column(String(64), nullable=False, default="classic")
+    frente_tipo: Mapped[str] = mapped_column(String(32), nullable=False, default="conclusao")
+    frente_titulo: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    frente_atestacao: Mapped[str | None] = mapped_column(String(255), nullable=True)
     exigir_conclusao_para_emitir: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

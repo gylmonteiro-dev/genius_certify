@@ -329,6 +329,8 @@ export const en: Messages = {
     realtimeSync: 'Real-time Sync',
     previewError: 'Unable to load the certificate preview.',
     previewHint: 'This is the real template preview. Participants will see and can download the same visual.',
+    previewExpand: 'Enlarge preview',
+    previewExpandHint: 'Click the preview to see the certificate at full size.',
     nameRequired: 'Event name is required.',
     selectInstitution: 'Select an institution.',
     dateFallback: 'Nov 15, 2024',
@@ -349,6 +351,19 @@ export const en: Messages = {
     requireCompletion: 'Only issue after completion and validation',
     requireCompletionHint:
       'When enabled, certificates can only be issued after the event is completed and an admin releases issuance.',
+    frenteTitle: 'Front-page copy',
+    frenteHint:
+      'The template already includes a default heading and attestation. Enable the option below only if you want to customize them.',
+    frentePersonalizar: 'Customize front heading and attestation',
+    frentePadrao: 'Template default',
+    frenteTipo: 'Certificate type',
+    frenteTipoConclusao: 'Certificate of completion',
+    frenteTipoParticipacao: 'Certificate of participation',
+    frenteTitulo: 'Front heading',
+    frenteTituloPlaceholder: 'Certificate of participation',
+    frenteAtestacao: 'Attestation line',
+    frenteAtestacaoPlaceholder: 'participated in the event',
+    frenteAtestacaoHint: 'Shown before the event name. Example: participated in the event',
     versoTitle: 'Certificate back page',
     versoHint:
       'Optional fields. Only filled sections appear on page 2. If all are empty, the PDF stays single-page.',

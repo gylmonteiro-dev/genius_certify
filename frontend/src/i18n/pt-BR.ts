@@ -329,6 +329,8 @@ export const ptBR = {
     realtimeSync: 'Sincronização em tempo real',
     previewError: 'Não foi possível carregar a prévia do certificado.',
     previewHint: 'Esta é a prévia do modelo real. O participante verá e poderá baixar o mesmo visual.',
+    previewExpand: 'Ampliar prévia',
+    previewExpandHint: 'Clique na prévia para ver o certificado em tamanho real.',
     nameRequired: 'O nome do evento é obrigatório.',
     selectInstitution: 'Selecione uma instituição.',
     dateFallback: '15 de nov. de 2024',
@@ -349,6 +351,19 @@ export const ptBR = {
     requireCompletion: 'Só emitir após conclusão e validação',
     requireCompletionHint:
       'Com esta opção ligada, o certificado só pode ser emitido depois que o evento estiver concluído e um admin validar a liberação.',
+    frenteTitle: 'Texto da frente',
+    frenteHint:
+      'O modelo já traz o título e a frase padrão. Marque a opção abaixo só se quiser personalizar.',
+    frentePersonalizar: 'Personalizar título e frase da frente',
+    frentePadrao: 'Padrão do modelo',
+    frenteTipo: 'Tipo de certificado',
+    frenteTipoConclusao: 'Certificado de conclusão',
+    frenteTipoParticipacao: 'Certificado de participação',
+    frenteTitulo: 'Título na frente',
+    frenteTituloPlaceholder: 'Certificado de participação',
+    frenteAtestacao: 'Frase de atestação',
+    frenteAtestacaoPlaceholder: 'participou do evento',
+    frenteAtestacaoHint: 'Vem antes do nome do evento. Ex.: participou do evento',
     versoTitle: 'Verso do certificado',
     versoHint:
       'Campos opcionais. Só as seções preenchidas aparecem na segunda página. Se tudo estiver vazio, o PDF fica só com a frente.',

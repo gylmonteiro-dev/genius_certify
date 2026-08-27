@@ -81,6 +81,9 @@ class CertificadoPreviewRequest(BaseModel):
     carga_horaria: int = Field(default=0, ge=0)
     instrutor: str = ""
     instituicao_id: UUID | None = None
+    frente_tipo: str | None = None
+    frente_titulo: str | None = None
+    frente_atestacao: str | None = None
     verso_parcerias: str | None = None
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None

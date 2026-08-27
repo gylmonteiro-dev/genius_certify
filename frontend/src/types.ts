@@ -56,6 +56,9 @@ export interface EventItem {
   exigirConclusaoParaEmitir: boolean;
   emissaoLiberada: boolean;
   templateId: string;
+  frenteTipo: 'conclusao' | 'participacao';
+  frenteTitulo: string;
+  frenteAtestacao: string;
   versoParcerias: string;
   versoConteudos: string;
   versoObservacoes: string;

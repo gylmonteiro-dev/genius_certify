@@ -48,6 +48,9 @@ async def preview_certificate_template(
         verso_parcerias=body.verso_parcerias,
         verso_conteudos=body.verso_conteudos,
         verso_observacoes=body.verso_observacoes,
+        frente_tipo=body.frente_tipo,
+        frente_titulo=body.frente_titulo,
+        frente_atestacao=body.frente_atestacao,
     )
     return HTMLResponse(content=html)
 

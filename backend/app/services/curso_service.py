@@ -33,7 +33,11 @@ from app.schemas.curso import (
     RevogarCertificadosLoteRequest,
     RevogarCertificadosLoteResponse,
 )
-from app.services.certificate_templates import is_valid_template_id, resolve_template_id
+from app.services.certificate_templates import (
+    is_valid_template_id,
+    resolve_frente_tipo,
+    resolve_template_id,
+)
 from app.services.certificado_service import CertificadoService
 
 JUSTIFICATIVA_MIN_LEN = 10
@@ -82,6 +86,14 @@ class CursoService:
         stripped = value.strip()
         return stripped or None
 
+    @staticmethod
+    def _normalize_frente_tipo(frente_tipo: str | None) -> str:
+        requested = (frente_tipo or "").strip()
+        tipo = resolve_frente_tipo(frente_tipo)
+        if requested and requested != tipo:
+            raise AppError("Tipo de certificado da frente inválido")
+        return tipo
+
     async def _assert_catalog_value(
         self,
         *,
@@ -113,6 +125,9 @@ class CursoService:
         template_id = resolve_template_id(data.template_id)
         if not is_valid_template_id(template_id):
             raise AppError("Modelo de certificado inválido")
+        frente_tipo = self._normalize_frente_tipo(data.frente_tipo)
+        frente_titulo = self._normalize_optional_text(data.frente_titulo)
+        frente_atestacao = self._normalize_optional_text(data.frente_atestacao)
 
         categoria = await self._assert_catalog_value(
             field="categoria",
@@ -143,6 +158,9 @@ class CursoService:
             tipo=tipo,
             exigir_conclusao_para_emitir=data.exigir_conclusao_para_emitir,
             template_id=template_id,
+            frente_tipo=frente_tipo,
+            frente_titulo=frente_titulo,
+            frente_atestacao=frente_atestacao,
             verso_parcerias=self._normalize_optional_text(data.verso_parcerias),
             verso_conteudos=self._normalize_optional_text(data.verso_conteudos),
             verso_observacoes=self._normalize_optional_text(data.verso_observacoes),
@@ -228,6 +246,11 @@ class CursoService:
             if not is_valid_template_id(template_id):
                 raise AppError("Modelo de certificado inválido")
             payload["template_id"] = template_id
+        if "frente_tipo" in payload:
+            payload["frente_tipo"] = self._normalize_frente_tipo(payload["frente_tipo"])
+        for frente_field in ("frente_titulo", "frente_atestacao"):
+            if frente_field in payload:
+                payload[frente_field] = self._normalize_optional_text(payload[frente_field])
 
         for field, value in payload.items():
             setattr(curso, field, value)

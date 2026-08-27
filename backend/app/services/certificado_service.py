@@ -26,7 +26,11 @@ from app.schemas.certificado import (
     CertificadoPublicResponse,
     CertificadoResponse,
 )
-from app.services.certificate_templates import is_valid_template_id, resolve_template_id
+from app.services.certificate_templates import (
+    is_valid_template_id,
+    resolve_frente_copy,
+    resolve_template_id,
+)
 from app.services.pdf_service import CertificateRenderData, PdfService
 
 
@@ -82,6 +86,9 @@ class CertificadoService:
         verso_parcerias: str | None = None,
         verso_conteudos: str | None = None,
         verso_observacoes: str | None = None,
+        frente_tipo: str | None = None,
+        frente_titulo: str | None = None,
+        frente_atestacao: str | None = None,
     ) -> str:
         payload = "|".join(
             [
@@ -94,6 +101,9 @@ class CertificadoService:
                 verso_parcerias or "",
                 verso_conteudos or "",
                 verso_observacoes or "",
+                frente_tipo or "",
+                frente_titulo or "",
+                frente_atestacao or "",
             ]
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -151,6 +161,12 @@ class CertificadoService:
     ) -> Certificado:
         codigo_validacao = uuid.uuid4()
         numero = self._build_numero(codigo_validacao)
+        frente_tipo, frente_titulo, frente_atestacao = resolve_frente_copy(
+            template_id=curso.template_id,
+            frente_tipo=curso.frente_tipo,
+            frente_titulo=curso.frente_titulo,
+            frente_atestacao=curso.frente_atestacao,
+        )
         sha256 = self._compute_sha256(
             codigo_validacao=codigo_validacao,
             numero=numero,
@@ -161,6 +177,9 @@ class CertificadoService:
             verso_parcerias=curso.verso_parcerias,
             verso_conteudos=curso.verso_conteudos,
             verso_observacoes=curso.verso_observacoes,
+            frente_tipo=frente_tipo,
+            frente_titulo=frente_titulo,
+            frente_atestacao=frente_atestacao,
         )
         return await self._certificados.create(
             codigo_validacao=codigo_validacao,
@@ -174,6 +193,9 @@ class CertificadoService:
             carga_horaria=curso.carga_horaria,
             instrutor=curso.instrutor,
             template_id=resolve_template_id(curso.template_id),
+            frente_tipo=frente_tipo,
+            frente_titulo=frente_titulo,
+            frente_atestacao=frente_atestacao,
             verso_parcerias=curso.verso_parcerias,
             verso_conteudos=curso.verso_conteudos,
             verso_observacoes=curso.verso_observacoes,
@@ -394,6 +416,9 @@ class CertificadoService:
         verso_parcerias: str | None = None,
         verso_conteudos: str | None = None,
         verso_observacoes: str | None = None,
+        frente_tipo: str | None = None,
+        frente_titulo: str | None = None,
+        frente_atestacao: str | None = None,
     ) -> str:
         if not is_valid_template_id(template_id):
             raise NotFoundError("Modelo de certificado não encontrado")
@@ -426,6 +451,9 @@ class CertificadoService:
             verso_parcerias=verso_parcerias,
             verso_conteudos=verso_conteudos,
             verso_observacoes=verso_observacoes,
+            frente_tipo=frente_tipo,
+            frente_titulo=frente_titulo,
+            frente_atestacao=frente_atestacao,
         )
         return self._pdf.render_certificado_html(data)
 

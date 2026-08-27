@@ -549,6 +549,8 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         tipo: payload.tipo,
         exigir_conclusao_para_emitir: payload.exigir_conclusao_para_emitir,
         template_id: payload.template_id,
+        frente_titulo: payload.frente_titulo,
+        frente_atestacao: payload.frente_atestacao,
         verso_parcerias: payload.verso_parcerias,
         verso_conteudos: payload.verso_conteudos,
         verso_observacoes: payload.verso_observacoes,

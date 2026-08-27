@@ -145,12 +145,12 @@
       {% if logo_data_uri %}
       <img class="logo" src="{{ logo_data_uri }}" alt="Logo da instituição" />
       {% endif %}
-      <div class="eyebrow">Certificado de conclusão</div>
+      <div class="eyebrow">{{ frente_titulo }}</div>
       <h1>Genius Certify</h1>
       <div class="institution">{{ instituicao_nome }}</div>
       <p>Certificamos que</p>
       <div class="recipient">{{ participante_nome }}</div>
-      <p>concluiu com êxito o curso</p>
+      <p>{{ frente_atestacao }}</p>
       <div class="course">{{ curso_titulo }}</div>
       <div class="meta">
         Carga horária: {{ carga_horaria }} horas<br />

@@ -22,6 +22,9 @@ class CursoCreate(BaseModel):
     tipo: str | None = Field(default=None, max_length=64)
     exigir_conclusao_para_emitir: bool = True
     template_id: str = "classic"
+    frente_tipo: str = Field(default="conclusao", max_length=32)
+    frente_titulo: str | None = Field(default=None, max_length=255)
+    frente_atestacao: str | None = Field(default=None, max_length=255)
     verso_parcerias: str | None = None
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
@@ -41,6 +44,9 @@ class CursoUpdate(BaseModel):
     tipo: str | None = Field(default=None, max_length=64)
     exigir_conclusao_para_emitir: bool | None = None
     template_id: str | None = None
+    frente_tipo: str | None = Field(default=None, max_length=32)
+    frente_titulo: str | None = Field(default=None, max_length=255)
+    frente_atestacao: str | None = Field(default=None, max_length=255)
     verso_parcerias: str | None = None
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
@@ -63,6 +69,9 @@ class CursoResponse(BaseModel):
     exigir_conclusao_para_emitir: bool
     emissao_liberada: bool
     template_id: str
+    frente_tipo: str
+    frente_titulo: str | None = None
+    frente_atestacao: str | None = None
     verso_parcerias: str | None = None
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None

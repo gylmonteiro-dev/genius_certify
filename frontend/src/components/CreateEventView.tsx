@@ -9,6 +9,7 @@ import {
 } from '../lib/cursos';
 import { catalogByKind, CatalogoEventoItem, catalogLabel } from '../lib/catalogoEventos';
 import { certificateHtmlForPage, fetchCertificadoTemplatePreview } from '../lib/certificados';
+import { frentePreset } from '../lib/certificateFront';
 import { formatDisplayDate, labelEventStatus, useT } from '../i18n';
 import { CertificateHtmlViewer } from './CertificateHtmlViewer';
 
@@ -104,6 +105,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
     initialEvent?.versoObservacoes ?? '',
   );
   const [previewPage, setPreviewPage] = useState<'frente' | 'verso'>('frente');
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [instituicaoId, setInstituicaoId] = useState(
     initialEvent?.institutionId || defaultInstituicaoId || '',
   );
@@ -122,6 +124,11 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   const [templateId, setTemplateId] = useState(
     initialEvent?.templateId ?? 'excelencia',
   );
+  const [frentePersonalizada, setFrentePersonalizada] = useState(
+    Boolean(initialEvent?.frenteTitulo?.trim() || initialEvent?.frenteAtestacao?.trim()),
+  );
+  const [frenteTitulo, setFrenteTitulo] = useState(initialEvent?.frenteTitulo ?? '');
+  const [frenteAtestacao, setFrenteAtestacao] = useState(initialEvent?.frenteAtestacao ?? '');
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewError, setPreviewError] = useState<string | null>(null);
   const hasVerso = Boolean(
@@ -139,6 +146,20 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       setPreviewPage('frente');
     }
   }, [hasVerso, previewPage]);
+
+  useEffect(() => {
+    if (!previewModalOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPreviewModalOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [previewModalOpen]);
 
   const selectedTemplate = CERTIFICATE_TEMPLATES.find((item) => item.id === templateId)
     ?? CERTIFICATE_TEMPLATES[0];
@@ -158,6 +179,8 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
             versoParcerias,
             versoConteudos,
             versoObservacoes,
+            frenteTitulo: frentePersonalizada ? frenteTitulo : undefined,
+            frenteAtestacao: frentePersonalizada ? frenteAtestacao : undefined,
           });
           setPreviewHtml(html);
           setPreviewError(null);
@@ -180,6 +203,9 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
     versoParcerias,
     versoConteudos,
     versoObservacoes,
+    frentePersonalizada,
+    frenteTitulo,
+    frenteAtestacao,
     t,
   ]);
 
@@ -214,6 +240,8 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       tipo: tipo || null,
       exigir_conclusao_para_emitir: exigirConclusao,
       template_id: templateId,
+      frente_titulo: frentePersonalizada ? frenteTitulo.trim() || null : null,
+      frente_atestacao: frentePersonalizada ? frenteAtestacao.trim() || null : null,
       verso_parcerias: versoParcerias.trim() || null,
       verso_conteudos: versoConteudos.trim() || null,
       verso_observacoes: versoObservacoes.trim() || null,
@@ -545,6 +573,136 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                     className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                   />
                 </div>
+              </div>
+
+              {/* Step 1 Actions */}
+              <div className="flex justify-end gap-3 pt-6 border-t border-slate-200 mt-8">
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="px-5 py-2 rounded-md border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(2)}
+                  className="px-6 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2"
+                >
+                  {t('createEvent.nextStep')}
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 2 && (
+            <div>
+              <h2 className="text-xl font-bold text-slate-800 mb-2">
+                {t('createEvent.templateTitle')}
+              </h2>
+              <p className="text-xs text-slate-500 mb-6">
+                {t('createEvent.templateHint')}
+              </p>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
+                    {t('createEvent.templateStyle')}
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {CERTIFICATE_TEMPLATES.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          if (frentePersonalizada) {
+                            const previous = frentePreset(templateId);
+                            const nextPreset = frentePreset(item.id);
+                            if (frenteTitulo.trim() === previous.titulo) {
+                              setFrenteTitulo(nextPreset.titulo);
+                            }
+                            if (frenteAtestacao.trim() === previous.atestacao) {
+                              setFrenteAtestacao(nextPreset.atestacao);
+                            }
+                          }
+                          setTemplateId(item.id);
+                        }}
+                        className={`p-3 rounded-lg border text-left transition-all ${
+                          templateId === item.id
+                            ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-500/20'
+                            : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="block text-xs font-semibold">{t(item.nameKey)}</span>
+                        <span className="block text-[11px] font-normal text-slate-500 mt-1">
+                          {t(item.hintKey)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">
+                      {t('createEvent.frenteTitle')}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">{t('createEvent.frenteHint')}</p>
+                  </div>
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={frentePersonalizada}
+                      onChange={(e) => {
+                        const next = e.target.checked;
+                        setFrentePersonalizada(next);
+                        if (next) {
+                          const preset = frentePreset(templateId);
+                          setFrenteTitulo((current) => current.trim() || preset.titulo);
+                          setFrenteAtestacao((current) => current.trim() || preset.atestacao);
+                        }
+                      }}
+                      className="mt-0.5"
+                    />
+                    <span className="text-sm font-semibold text-slate-800">
+                      {t('createEvent.frentePersonalizar')}
+                    </span>
+                  </label>
+                  {frentePersonalizada && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                          {t('createEvent.frenteTitulo')}
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={255}
+                          value={frenteTitulo}
+                          onChange={(e) => setFrenteTitulo(e.target.value)}
+                          placeholder={t('createEvent.frenteTituloPlaceholder')}
+                          className="w-full bg-white border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                          {t('createEvent.frenteAtestacao')}
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={255}
+                          value={frenteAtestacao}
+                          onChange={(e) => setFrenteAtestacao(e.target.value)}
+                          placeholder={t('createEvent.frenteAtestacaoPlaceholder')}
+                          className="w-full bg-white border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          {t('createEvent.frenteAtestacaoHint')}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-4">
                   <div>
@@ -588,63 +746,6 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                       placeholder={t('createEvent.versoObservacoesPlaceholder')}
                       className="w-full bg-white border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                  </div>
-                </div>
-              </div>
-
-              {/* Step 1 Actions */}
-              <div className="flex justify-end gap-3 pt-6 border-t border-slate-200 mt-8">
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="px-5 py-2 rounded-md border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep(2)}
-                  className="px-6 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2"
-                >
-                  {t('createEvent.nextStep')}
-                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 2 && (
-            <div>
-              <h2 className="text-xl font-bold text-slate-800 mb-2">
-                {t('createEvent.templateTitle')}
-              </h2>
-              <p className="text-xs text-slate-500 mb-6">
-                {t('createEvent.templateHint')}
-              </p>
-
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
-                    {t('createEvent.templateStyle')}
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {CERTIFICATE_TEMPLATES.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setTemplateId(item.id)}
-                        className={`p-3 rounded-lg border text-left transition-all ${
-                          templateId === item.id
-                            ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-500/20'
-                            : 'border-slate-200 text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        <span className="block text-xs font-semibold">{t(item.nameKey)}</span>
-                        <span className="block text-[11px] font-normal text-slate-500 mt-1">
-                          {t(item.hintKey)}
-                        </span>
-                      </button>
-                    ))}
                   </div>
                 </div>
 
@@ -735,6 +836,14 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                   <span className="text-slate-400 font-medium">{t('createEvent.stepTemplate')}:</span>
                   <span className="font-bold text-blue-600">
                     {t('createEvent.selectedTemplate', { name: t(selectedTemplate.nameKey) })}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-slate-200/60 gap-4">
+                  <span className="text-slate-400 font-medium">{t('createEvent.frenteTitle')}:</span>
+                  <span className="font-bold text-slate-800 text-right">
+                    {frentePersonalizada
+                      ? `${frenteTitulo.trim() || t('createEvent.frentePadrao')} · ${frenteAtestacao.trim() || t('createEvent.frentePadrao')}`
+                      : t('createEvent.frentePadrao')}
                   </span>
                 </div>
                 <div className="py-1">
@@ -852,10 +961,24 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
               {previewError}
             </div>
           ) : previewHtml ? (
-            <CertificateHtmlViewer
-              title={t('createEvent.livePreview')}
-              html={certificateHtmlForPage(previewHtml, hasVerso ? previewPage : 'frente')}
-            />
+            <button
+              type="button"
+              onClick={() => setPreviewModalOpen(true)}
+              title={t('createEvent.previewExpand')}
+              className="relative w-full text-left rounded-xl overflow-hidden group focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <CertificateHtmlViewer
+                title={t('createEvent.livePreview')}
+                html={certificateHtmlForPage(previewHtml, hasVerso ? previewPage : 'frente')}
+                className="pointer-events-none w-full aspect-[11/8.5] min-h-[240px] rounded-xl border border-slate-200 bg-[#f4f4f2]"
+              />
+              <span className="absolute inset-0 flex items-center justify-center bg-slate-900/0 group-hover:bg-slate-900/35 transition-colors">
+                <span className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm">
+                  <span className="material-symbols-outlined text-[18px]">open_in_full</span>
+                  {t('createEvent.previewExpand')}
+                </span>
+              </span>
+            </button>
           ) : (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-16 text-center text-sm text-slate-500">
               {t('common.loading')}
@@ -868,11 +991,82 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
               info
             </span>
             <p>
-              {t('createEvent.previewHint')}
+              {t('createEvent.previewHint')} {t('createEvent.previewExpandHint')}
             </p>
           </div>
         </div>
       </div>
+
+      {previewModalOpen && previewHtml && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 md:p-6"
+          onClick={() => setPreviewModalOpen(false)}
+          role="presentation"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="certificate-preview-title"
+            className="relative w-full max-w-[min(1123px,calc(100vw-1.5rem))] flex flex-col gap-3"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 text-white">
+              <h2 id="certificate-preview-title" className="text-sm font-semibold">
+                {t('createEvent.livePreview')}
+              </h2>
+              <div className="flex items-center gap-2">
+                <div className="inline-flex rounded-full border border-white/20 bg-white/10 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewPage('frente')}
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      previewPage === 'frente'
+                        ? 'bg-white text-slate-900'
+                        : 'text-white/80 hover:text-white'
+                    }`}
+                  >
+                    {t('createEvent.previewFront')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!hasVerso}
+                    title={!hasVerso ? t('createEvent.previewBackDisabled') : undefined}
+                    onClick={() => setPreviewPage('verso')}
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold disabled:opacity-40 ${
+                      previewPage === 'verso'
+                        ? 'bg-white text-slate-900'
+                        : 'text-white/80 hover:text-white'
+                    }`}
+                  >
+                    {t('createEvent.previewBack')}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewModalOpen(false)}
+                  className="p-1 rounded-md text-white/80 hover:text-white hover:bg-white/10"
+                  aria-label={t('common.close')}
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+            </div>
+            <div
+              className="w-full mx-auto shadow-2xl"
+              style={{
+                maxWidth: 'min(1123px, calc((100vh - 6rem) * 11 / 8.5), calc(100vw - 1.5rem))',
+                aspectRatio: '11 / 8.5',
+              }}
+            >
+              <CertificateHtmlViewer
+                title={t('createEvent.livePreview')}
+                html={certificateHtmlForPage(previewHtml, hasVerso ? previewPage : 'frente')}
+                className="w-full h-full rounded-lg border border-slate-200 bg-[#f4f4f2]"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

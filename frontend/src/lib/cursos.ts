@@ -20,6 +20,9 @@ export interface CursoApi {
   exigir_conclusao_para_emitir: boolean;
   emissao_liberada: boolean;
   template_id?: string;
+  frente_tipo?: string | null;
+  frente_titulo?: string | null;
+  frente_atestacao?: string | null;
   verso_parcerias?: string | null;
   verso_conteudos?: string | null;
   verso_observacoes?: string | null;
@@ -58,6 +61,9 @@ export interface CursoCreatePayload {
   tipo?: string | null;
   exigir_conclusao_para_emitir?: boolean;
   template_id?: string;
+  frente_tipo?: string | null;
+  frente_titulo?: string | null;
+  frente_atestacao?: string | null;
   verso_parcerias?: string | null;
   verso_conteudos?: string | null;
   verso_observacoes?: string | null;
@@ -121,6 +127,9 @@ function mapEventFields(item: {
   exigir_conclusao_para_emitir?: boolean;
   emissao_liberada?: boolean;
   template_id?: string;
+  frente_tipo?: string | null;
+  frente_titulo?: string | null;
+  frente_atestacao?: string | null;
   verso_parcerias?: string | null;
   verso_conteudos?: string | null;
   verso_observacoes?: string | null;
@@ -147,6 +156,9 @@ function mapEventFields(item: {
     exigirConclusaoParaEmitir: item.exigir_conclusao_para_emitir ?? true,
     emissaoLiberada: item.emissao_liberada ?? false,
     templateId: item.template_id ?? 'classic',
+    frenteTipo: item.frente_tipo === 'participacao' ? 'participacao' : 'conclusao',
+    frenteTitulo: item.frente_titulo ?? '',
+    frenteAtestacao: item.frente_atestacao ?? '',
     versoParcerias: item.verso_parcerias ?? '',
     versoConteudos: item.verso_conteudos ?? '',
     versoObservacoes: item.verso_observacoes ?? '',
