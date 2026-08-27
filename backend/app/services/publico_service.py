@@ -90,13 +90,18 @@ class PublicoService:
             curso_id=curso.id,
         )
         if existing is not None:
-            raise ConflictError("Já inscrito neste evento")
-
-        await self._inscricoes.create(
-            instituicao_id=curso.instituicao_id,
-            participante_id=participante.id,
-            curso_id=curso.id,
-        )
+            if existing.cancelada:
+                existing.cancelada = False
+                existing.cancelada_em = None
+                existing.cancelada_justificativa = None
+            else:
+                raise ConflictError("Já inscrito neste evento")
+        else:
+            await self._inscricoes.create(
+                instituicao_id=curso.instituicao_id,
+                participante_id=participante.id,
+                curso_id=curso.id,
+            )
         if data.senha:
             await ContaParticipanteService(self._session).create_if_absent(
                 nome=participante.nome,

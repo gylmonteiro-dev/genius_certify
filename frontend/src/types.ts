@@ -52,13 +52,15 @@ export interface EventItem {
   spotsLeft?: number;
   closingSoon?: boolean;
   bannerImage?: string;
-  status: 'Upcoming' | 'Completed' | 'Draft';
+  status: 'Upcoming' | 'Completed' | 'Draft' | 'Cancelled';
   exigirConclusaoParaEmitir: boolean;
   emissaoLiberada: boolean;
   templateId: string;
   versoParcerias: string;
   versoConteudos: string;
   versoObservacoes: string;
+  cancelamentoJustificativa: string;
+  canceladoEm: string | null;
 }
 
 export interface Certificate {

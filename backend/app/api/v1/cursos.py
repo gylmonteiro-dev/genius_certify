@@ -7,6 +7,9 @@ from app.core.database import get_db
 from app.core.dependencies import RequireInstituicaoAdmin
 from app.models.usuario import Usuario
 from app.schemas.curso import (
+    CancelarCursoRequest,
+    CancelarInscritosLoteRequest,
+    CancelarInscritosLoteResponse,
     CursoCreate,
     CursoResponse,
     CursoUpdate,
@@ -14,6 +17,8 @@ from app.schemas.curso import (
     InscricaoLoteResponse,
     InscritoResponse,
     RemoverInscritoRequest,
+    RevogarCertificadosLoteRequest,
+    RevogarCertificadosLoteResponse,
 )
 from app.services.curso_service import CursoService
 
@@ -90,6 +95,50 @@ async def remover_inscrito(
         actor=current_user,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{curso_id}/inscritos/cancelar-lote",
+    response_model=CancelarInscritosLoteResponse,
+)
+async def cancelar_inscritos_lote(
+    curso_id: UUID,
+    body: CancelarInscritosLoteRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> CancelarInscritosLoteResponse:
+    return await CursoService(session).cancelar_inscritos_lote(
+        curso_id,
+        body,
+        actor=current_user,
+    )
+
+
+@router.post(
+    "/{curso_id}/certificados/revogar-lote",
+    response_model=RevogarCertificadosLoteResponse,
+)
+async def revogar_certificados_lote(
+    curso_id: UUID,
+    body: RevogarCertificadosLoteRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> RevogarCertificadosLoteResponse:
+    return await CursoService(session).revogar_certificados_lote(
+        curso_id,
+        body,
+        actor=current_user,
+    )
+
+
+@router.post("/{curso_id}/cancelar", response_model=CursoResponse)
+async def cancelar_curso(
+    curso_id: UUID,
+    body: CancelarCursoRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> CursoResponse:
+    return await CursoService(session).cancelar(curso_id, body, actor=current_user)
 
 
 @router.post("/{curso_id}/liberar-emissao", response_model=CursoResponse)

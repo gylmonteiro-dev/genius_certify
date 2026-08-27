@@ -51,6 +51,9 @@ import {
   inscreverParticipantesLote,
   mapCursoToUi,
   removerInscrito,
+  cancelarCurso,
+  cancelarInscritosLote,
+  revogarCertificadosLote,
   updateCurso,
 } from './lib/cursos';
 import {
@@ -123,6 +126,8 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
   const [releasingEmissao, setReleasingEmissao] = useState(false);
   const [loteIssuing, setLoteIssuing] = useState(false);
   const [enrollingLote, setEnrollingLote] = useState(false);
+  const [cancellingEvent, setCancellingEvent] = useState(false);
+  const [bulkActing, setBulkActing] = useState(false);
 
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [participantsLoading, setParticipantsLoading] = useState(false);
@@ -818,6 +823,90 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     }
   };
 
+  const handleCancelEvent = async (justificativa: string) => {
+    if (!authToken || !issuingEvent) return;
+    setCancellingEvent(true);
+    setInscritosError(null);
+    try {
+      const updated = await cancelarCurso(authToken, issuingEvent.id, justificativa);
+      const mapped = mapCursoToUi(updated, institutions);
+      setEvents((prev) => prev.map((evt) => (evt.id === mapped.id ? mapped : evt)));
+      setIssuingEvent(mapped);
+      showToast(t('toasts.eventCancelled'));
+      await loadInscritos(issuingEvent.id);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : t('errors.cancelEvent');
+      showToast(message);
+      throw err;
+    } finally {
+      setCancellingEvent(false);
+    }
+  };
+
+  const handleRevokeCertificatesLote = async (participanteIds: string[]) => {
+    if (!authToken || !issuingEvent) return;
+    setBulkActing(true);
+    setInscritosError(null);
+    try {
+      const result = await revogarCertificadosLote(
+        authToken,
+        issuingEvent.id,
+        participanteIds,
+      );
+      if (result.revoked > 0) {
+        showToast(t('toasts.certificatesRevokedBatch', { count: result.revoked }));
+      }
+      if (result.errors.length > 0) {
+        setInscritosError(result.errors.map((item) => item.mensagem).join(' '));
+      }
+      await loadInscritos(issuingEvent.id);
+      const latest = await listCertificados(authToken);
+      setCertificates(latest.map(mapCertificadoToUi));
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : t('errors.revokeCertificatesBatch');
+      showToast(message);
+      throw err;
+    } finally {
+      setBulkActing(false);
+    }
+  };
+
+  const handleCancelInscritosLote = async (
+    participanteIds: string[],
+    revogarCertificados: boolean,
+  ) => {
+    if (!authToken || !issuingEvent) return;
+    setBulkActing(true);
+    setInscritosError(null);
+    try {
+      const result = await cancelarInscritosLote(
+        authToken,
+        issuingEvent.id,
+        participanteIds,
+        revogarCertificados,
+      );
+      if (result.cancelled > 0) {
+        showToast(t('toasts.enrollmentsCancelledBatch', { count: result.cancelled }));
+      }
+      if (result.errors.length > 0) {
+        setInscritosError(result.errors.map((item) => item.mensagem).join(' '));
+      }
+      await loadInscritos(issuingEvent.id);
+      if (revogarCertificados && result.revoked > 0) {
+        const latest = await listCertificados(authToken);
+        setCertificates(latest.map(mapCertificadoToUi));
+      }
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : t('errors.cancelEnrollmentsBatch');
+      showToast(message);
+      throw err;
+    } finally {
+      setBulkActing(false);
+    }
+  };
+
   const handleIssueSelected = async (participanteIds: string[]) => {
     if (!authToken || !issuingEvent) return;
     setLoteIssuing(true);
@@ -1022,6 +1111,8 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
               isReleasing={releasingEmissao}
               isIssuing={loteIssuing}
               isEnrolling={enrollingLote}
+              isCancelling={cancellingEvent}
+              isBulkActing={bulkActing}
               onBack={() => setIssuingEvent(null)}
               onRelease={handleReleaseEmissao}
               onIssueSelected={handleIssueSelected}
@@ -1030,6 +1121,9 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
               }
               onSetStatus={handleSetParticipantStatus}
               onRemoveInscrito={handleRemoveInscrito}
+              onCancelEvent={handleCancelEvent}
+              onRevokeCertificatesLote={handleRevokeCertificatesLote}
+              onCancelInscritosLote={handleCancelInscritosLote}
             />
           ) : (
             <EventsDirectoryView

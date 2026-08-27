@@ -52,6 +52,7 @@ class CursoRepository:
             .join(Instituicao)
             .where(
                 Curso.status != CursoStatus.DRAFT,
+                Curso.status != CursoStatus.CANCELLED,
                 Instituicao.status == InstituicaoStatus.ACTIVE,
             )
             .options(selectinload(Curso.instituicao))
@@ -69,6 +70,7 @@ class CursoRepository:
             .where(
                 Curso.id == curso_id,
                 Curso.status != CursoStatus.DRAFT,
+                Curso.status != CursoStatus.CANCELLED,
                 Instituicao.status == InstituicaoStatus.ACTIVE,
             )
             .options(selectinload(Curso.instituicao))

@@ -119,6 +119,11 @@ class InscricaoRepository:
         await self._session.refresh(inscricao)
         return inscricao
 
+    async def save(self, inscricao: Inscricao) -> Inscricao:
+        await self._session.flush()
+        await self._session.refresh(inscricao)
+        return inscricao
+
     async def delete(self, inscricao: Inscricao) -> None:
         await self._session.delete(inscricao)
         await self._session.flush()

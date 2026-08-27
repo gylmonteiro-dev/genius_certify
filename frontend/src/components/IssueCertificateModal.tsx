@@ -73,7 +73,7 @@ export const IssueCertificateModal: React.FC<IssueCertificateModalProps> = ({
     const byInstitution = isSuperAdmin && instituicaoId
       ? events.filter((e) => e.institutionId === instituicaoId)
       : events;
-    return byInstitution.filter((evt) => evt.status !== 'Draft');
+    return byInstitution.filter((evt) => evt.status !== 'Draft' && evt.status !== 'Cancelled');
   }, [events, isSuperAdmin, instituicaoId]);
 
   const issuedIds = useMemo(

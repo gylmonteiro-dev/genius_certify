@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +10,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.models.certificado import Certificado, CertificadoStatus
 from app.models.conta_participante import ContaParticipante
 from app.models.curso import CursoStatus
 from app.models.participante import Participante
@@ -129,12 +131,18 @@ class ContaParticipanteService:
         participantes = await self._participantes.list_by_documento(conta.documento)
         participante_ids = [item.id for item in participantes]
         inscricoes = await self._inscricoes.list_by_participante_ids(participante_ids)
-        certificados = await self._certificados.list_ativos_by_participante_ids(
-            participante_ids
-        )
-        cert_by_pair = {
-            (item.participante_id, item.curso_id): item for item in certificados
-        }
+        certificados = await self._certificados.list_by_participante_ids(participante_ids)
+        cert_by_pair: dict[tuple[UUID, UUID], Certificado] = {}
+        for item in certificados:
+            key = (item.participante_id, item.curso_id)
+            current = cert_by_pair.get(key)
+            if current is None:
+                cert_by_pair[key] = item
+            elif (
+                item.status == CertificadoStatus.ACTIVE
+                and current.status != CertificadoStatus.ACTIVE
+            ):
+                cert_by_pair[key] = item
 
         items: list[ContaParticipanteInscricaoItem] = []
         for inscricao in inscricoes:
@@ -143,9 +151,14 @@ class ContaParticipanteService:
                 curso.instituicao.nome if curso.instituicao is not None else ""
             )
             certificado = cert_by_pair.get((inscricao.participante_id, inscricao.curso_id))
-            ja_emitido = certificado is not None
+            ja_emitido = (
+                certificado is not None
+                and certificado.status == CertificadoStatus.ACTIVE
+            )
             pode_cancelar = (
-                curso.status != CursoStatus.COMPLETED and not ja_emitido
+                not inscricao.cancelada
+                and curso.status not in {CursoStatus.COMPLETED, CursoStatus.CANCELLED}
+                and not ja_emitido
             )
             items.append(
                 ContaParticipanteInscricaoItem(
@@ -157,14 +170,17 @@ class ContaParticipanteService:
                     curso_status=curso.status,
                     inscrito_em=inscricao.created_at,
                     pode_cancelar=pode_cancelar,
-                    ja_emitido=ja_emitido,
+                    ja_emitido=ja_emitido or certificado is not None,
                     certificado_id=certificado.id if certificado else None,
+                    certificado_status=certificado.status if certificado else None,
                     codigo_validacao=(
                         certificado.codigo_validacao if certificado else None
                     ),
                     numero_certificado=(
                         certificado.numero_certificado if certificado else None
                     ),
+                    inscricao_cancelada=inscricao.cancelada,
+                    cancelada_justificativa=inscricao.cancelada_justificativa,
                 )
             )
         return items
@@ -183,8 +199,10 @@ class ContaParticipanteService:
             raise ForbiddenError("Inscrição não pertence a esta conta")
 
         curso = inscricao.curso
-        if curso.status == CursoStatus.COMPLETED:
-            raise AppError("Não é possível sair de um evento já concluído")
+        if inscricao.cancelada:
+            raise ConflictError("Inscrição já está cancelada")
+        if curso.status in {CursoStatus.COMPLETED, CursoStatus.CANCELLED}:
+            raise AppError("Não é possível sair de um evento já concluído ou cancelado")
 
         certificado = await self._certificados.get_active_by_participante_curso(
             instituicao_id=inscricao.instituicao_id,
@@ -194,7 +212,9 @@ class ContaParticipanteService:
         if certificado is not None:
             raise AppError("Não é possível cancelar uma inscrição com certificado emitido")
 
-        await self._inscricoes.delete(inscricao)
+        inscricao.cancelada = True
+        inscricao.cancelada_em = datetime.now(timezone.utc)
+        inscricao.cancelada_justificativa = None
         await self._session.commit()
 
     async def _match_participantes(

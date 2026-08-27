@@ -15,7 +15,7 @@ export interface ParticipanteLoginResponse {
   token_type: string;
 }
 
-export type CursoApiStatus = 'draft' | 'upcoming' | 'completed';
+export type CursoApiStatus = 'draft' | 'upcoming' | 'completed' | 'cancelled';
 
 export interface MinhaInscricao {
   id: string;
@@ -28,8 +28,11 @@ export interface MinhaInscricao {
   pode_cancelar: boolean;
   ja_emitido: boolean;
   certificado_id: string | null;
+  certificado_status: 'active' | 'revoked' | 'expired' | null;
   codigo_validacao: string | null;
   numero_certificado: string | null;
+  inscricao_cancelada: boolean;
+  cancelada_justificativa: string | null;
 }
 
 export function getStoredParticipanteToken(): string | null {

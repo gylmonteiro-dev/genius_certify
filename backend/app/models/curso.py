@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, Enum, ForeignKey, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,6 +16,7 @@ class CursoStatus(str, enum.Enum):
     DRAFT = "draft"
     UPCOMING = "upcoming"
     COMPLETED = "completed"
+    CANCELLED = "cancelled"
 
 
 class Curso(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -58,6 +59,11 @@ class Curso(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     verso_parcerias: Mapped[str | None] = mapped_column(Text, nullable=True)
     verso_conteudos: Mapped[str | None] = mapped_column(Text, nullable=True)
     verso_observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cancelamento_justificativa: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cancelado_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     instituicao: Mapped[Instituicao] = relationship(back_populates="cursos")
     certificados: Mapped[list[Certificado]] = relationship(back_populates="curso")

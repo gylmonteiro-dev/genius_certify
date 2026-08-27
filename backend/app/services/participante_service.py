@@ -406,11 +406,16 @@ class ParticipanteService:
             instituicao_id=participante.instituicao_id,
             participante_id=participante.id,
         )
-        cert_by_curso = {
-            item.curso_id: item
-            for item in certificados
-            if item.status == CertificadoStatus.ACTIVE
-        }
+        cert_by_curso = {}
+        for item in certificados:
+            current = cert_by_curso.get(item.curso_id)
+            if current is None:
+                cert_by_curso[item.curso_id] = item
+            elif (
+                item.status == CertificadoStatus.ACTIVE
+                and current.status != CertificadoStatus.ACTIVE
+            ):
+                cert_by_curso[item.curso_id] = item
         eventos: list[ParticipanteEventoResponse] = []
         for inscricao in inscricoes:
             curso = inscricao.curso
@@ -424,11 +429,14 @@ class ParticipanteService:
                     data_evento=curso.data_evento,
                     curso_status=curso.status,
                     inscrito_em=inscricao.created_at,
-                    ja_emitido=certificado is not None,
+                    ja_emitido=certificado is not None
+                    and certificado.status == CertificadoStatus.ACTIVE,
                     certificado_id=certificado.id if certificado else None,
+                    certificado_status=certificado.status if certificado else None,
                     numero_certificado=(
                         certificado.numero_certificado if certificado else None
                     ),
+                    inscricao_cancelada=inscricao.cancelada,
                 )
             )
         base = ParticipanteResponse.model_validate(participante)

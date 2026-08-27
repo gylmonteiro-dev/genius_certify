@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { EventItem, Institution } from '../types';
 import {
+  CursoApiStatus,
   CursoCreatePayload,
   EventPublicVisibility,
   getEventPublicVisibility,
@@ -36,10 +37,12 @@ function visibilityMessageKey(
   | 'createEvent.visibilityOpen'
   | 'createEvent.visibilityDraft'
   | 'createEvent.visibilityCompleted'
+  | 'createEvent.visibilityCancelled'
   | 'createEvent.visibilityInstitution' {
   if (visibility === 'open') return 'createEvent.visibilityOpen';
   if (visibility === 'hidden_draft') return 'createEvent.visibilityDraft';
   if (visibility === 'hidden_completed') return 'createEvent.visibilityCompleted';
+  if (visibility === 'hidden_cancelled') return 'createEvent.visibilityCancelled';
   return 'createEvent.visibilityInstitution';
 }
 
@@ -71,7 +74,8 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   const [description, setDescription] = useState(
     initialEvent && initialEvent.description !== '—' ? initialEvent.description : '',
   );
-  const [status, setStatus] = useState<'draft' | 'upcoming' | 'completed'>(
+  const isCancelled = initialEvent?.status === 'Cancelled';
+  const [status, setStatus] = useState<CursoApiStatus>(
     initialEvent ? toCursoApiStatus(initialEvent.status) : 'upcoming',
   );
   const categoriaOptions = useMemo(
@@ -185,6 +189,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   }, [eventDate, dateLocale, t]);
 
   const handleFinish = async () => {
+    if (isCancelled) return;
     setFormError(null);
     if (!eventName.trim()) {
       setFormError(t('createEvent.nameRequired'));
@@ -226,7 +231,9 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
           ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
           : visibility === 'hidden_institution'
             ? 'border-amber-200 bg-amber-50 text-amber-800'
-            : 'border-slate-200 bg-slate-50 text-slate-600'
+            : visibility === 'hidden_cancelled'
+              ? 'border-rose-200 bg-rose-50 text-rose-800'
+              : 'border-slate-200 bg-slate-50 text-slate-600'
       }`}
     >
       {t(visibilityMessageKey(visibility))}
@@ -243,6 +250,11 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
         <p className="text-sm text-slate-500 mt-1">
           {isEdit ? t('createEvent.editSubtitle') : t('createEvent.subtitle')}
         </p>
+        {isCancelled && (
+          <div className="mt-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            {t('createEvent.cancelledReadOnly')}
+          </div>
+        )}
       </div>
 
       {/* Stepper Header */}
@@ -328,6 +340,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Form Section */}
         <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-6 sm:p-8 shadow-sm">
+          <fieldset disabled={isCancelled} className="disabled:opacity-80">
           {currentStep === 1 && (
             <div>
               <h2 className="text-xl font-bold text-slate-800 mb-6">
@@ -433,12 +446,19 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                   </label>
                   <select
                     value={status}
-                    onChange={(e) => setStatus(e.target.value as 'draft' | 'upcoming' | 'completed')}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => setStatus(e.target.value as CursoApiStatus)}
+                    disabled={isCancelled}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
                   >
-                    <option value="upcoming">{t('status.event.upcoming')}</option>
-                    <option value="draft">{t('status.event.draft')}</option>
-                    <option value="completed">{t('status.event.completed')}</option>
+                    {isCancelled ? (
+                      <option value="cancelled">{t('status.event.cancelled')}</option>
+                    ) : (
+                      <>
+                        <option value="upcoming">{t('status.event.upcoming')}</option>
+                        <option value="draft">{t('status.event.draft')}</option>
+                        <option value="completed">{t('status.event.completed')}</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
@@ -697,7 +717,13 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                   <span className="font-bold text-slate-800">
                     {labelEventStatus(
                       t,
-                      status === 'upcoming' ? 'Upcoming' : status === 'draft' ? 'Draft' : 'Completed',
+                      status === 'upcoming'
+                        ? 'Upcoming'
+                        : status === 'draft'
+                          ? 'Draft'
+                          : status === 'cancelled'
+                            ? 'Cancelled'
+                            : 'Completed',
                     )}
                   </span>
                 </div>
@@ -762,7 +788,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 <button
                   type="button"
                   onClick={() => void handleFinish()}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isCancelled}
                   className="px-6 py-2.5 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shadow-md flex items-center gap-2 transition-colors disabled:opacity-60"
                 >
                   <span className="material-symbols-outlined text-[18px]">
@@ -779,6 +805,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
               </div>
             </div>
           )}
+          </fieldset>
         </div>
 
         {/* Right Live Preview Panel */}

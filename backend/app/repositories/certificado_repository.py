@@ -74,6 +74,34 @@ class CertificadoRepository:
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_by_participante_ids(
+        self,
+        participante_ids: list[UUID],
+    ) -> list[Certificado]:
+        if not participante_ids:
+            return []
+        stmt = (
+            select(Certificado)
+            .where(Certificado.participante_id.in_(participante_ids))
+            .order_by(Certificado.created_at.desc())
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def list_ativos_by_curso(
+        self,
+        *,
+        instituicao_id: UUID,
+        curso_id: UUID,
+    ) -> list[Certificado]:
+        stmt = select(Certificado).where(
+            Certificado.instituicao_id == instituicao_id,
+            Certificado.curso_id == curso_id,
+            Certificado.status == CertificadoStatus.ACTIVE,
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
     async def list_by_curso(
         self,
         *,

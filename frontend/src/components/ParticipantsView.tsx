@@ -703,21 +703,29 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
                             ? 'Completed'
                             : evento.curso_status === 'draft'
                               ? 'Draft'
-                              : 'Upcoming',
+                              : evento.curso_status === 'cancelled'
+                                ? 'Cancelled'
+                                : 'Upcoming',
                         )}
                       </td>
                       <td className="py-3 px-5 text-slate-500 text-xs">
                         {evento.inscrito_em.slice(0, 10)}
                       </td>
                       <td className="py-3 px-5">
-                        {evento.ja_emitido ? (
+                        {evento.inscricao_cancelada ? (
+                          <span className="inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200">
+                            {t('eventIssue.enrollmentCancelled')}
+                          </span>
+                        ) : evento.certificado_status === 'revoked' ? (
+                          <span className="inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-200">
+                            {t('eventIssue.certificateRevoked')}
+                          </span>
+                        ) : evento.ja_emitido ? (
                           <span className="inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
                             {evento.numero_certificado ?? t('eventIssue.issued')}
                           </span>
                         ) : (
-                          <span className="text-xs text-slate-400">
-                            {t('eventIssue.pendingIssue')}
-                          </span>
+                          <span className="text-xs text-slate-400">{t('eventIssue.pendingIssue')}</span>
                         )}
                       </td>
                     </tr>

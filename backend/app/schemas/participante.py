@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.core.cpf import normalize_cpf
 from app.core.data_nascimento import validate_data_nascimento
+from app.models.certificado import CertificadoStatus
 from app.models.curso import CursoStatus
 from app.models.participante import ParticipanteStatus
 
@@ -72,7 +73,9 @@ class ParticipanteEventoResponse(BaseModel):
     inscrito_em: datetime
     ja_emitido: bool
     certificado_id: UUID | None = None
+    certificado_status: CertificadoStatus | None = None
     numero_certificado: str | None = None
+    inscricao_cancelada: bool = False
 
 
 class ParticipanteDetalheResponse(ParticipanteResponse):

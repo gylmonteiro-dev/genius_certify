@@ -3,7 +3,7 @@ import { apiRequest } from './api';
 import { ParticipanteApiStatus } from './participantes';
 import { CertificadoApiStatus } from './certificados';
 
-export type CursoApiStatus = 'draft' | 'upcoming' | 'completed';
+export type CursoApiStatus = 'draft' | 'upcoming' | 'completed' | 'cancelled';
 
 export interface CursoApi {
   id: string;
@@ -23,6 +23,8 @@ export interface CursoApi {
   verso_parcerias?: string | null;
   verso_conteudos?: string | null;
   verso_observacoes?: string | null;
+  cancelamento_justificativa?: string | null;
+  cancelado_em?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -68,18 +70,21 @@ export type EventPublicVisibility =
   | 'open'
   | 'hidden_draft'
   | 'hidden_completed'
+  | 'hidden_cancelled'
   | 'hidden_institution';
 
 const UI_TO_API_STATUS: Record<EventItem['status'], CursoApiStatus> = {
   Draft: 'draft',
   Upcoming: 'upcoming',
   Completed: 'completed',
+  Cancelled: 'cancelled',
 };
 
 const API_TO_UI_STATUS: Record<CursoApiStatus, EventItem['status']> = {
   draft: 'Draft',
   upcoming: 'Upcoming',
   completed: 'Completed',
+  cancelled: 'Cancelled',
 };
 
 function dateParts(iso: string | null | undefined): { date: string; dateMonth: string; dateDay: string } {
@@ -119,6 +124,8 @@ function mapEventFields(item: {
   verso_parcerias?: string | null;
   verso_conteudos?: string | null;
   verso_observacoes?: string | null;
+  cancelamento_justificativa?: string | null;
+  cancelado_em?: string | null;
 }): EventItem {
   const parts = dateParts(item.data_evento ?? item.created_at);
   return {
@@ -143,6 +150,8 @@ function mapEventFields(item: {
     versoParcerias: item.verso_parcerias ?? '',
     versoConteudos: item.verso_conteudos ?? '',
     versoObservacoes: item.verso_observacoes ?? '',
+    cancelamentoJustificativa: item.cancelamento_justificativa ?? '',
+    canceladoEm: item.cancelado_em ?? null,
   };
 }
 
@@ -174,6 +183,7 @@ export function getEventPublicVisibility(
   status: CursoApiStatus | EventItem['status'],
   institutionStatus: Institution['status'] | undefined,
 ): EventPublicVisibility {
+  if (status === 'Cancelled' || status === 'cancelled') return 'hidden_cancelled';
   const apiStatus =
     status === 'Draft' || status === 'draft'
       ? 'draft'
@@ -225,6 +235,8 @@ export interface InscritoApi {
   certificado_id: string | null;
   certificado_status: CertificadoApiStatus | null;
   numero_certificado: string | null;
+  inscricao_cancelada?: boolean;
+  cancelada_justificativa?: string | null;
 }
 
 export async function listInscritos(
@@ -275,6 +287,77 @@ export async function removerInscrito(
     {
       method: 'DELETE',
       body: JSON.stringify({ revogar_certificado: revogarCertificado }),
+    },
+    token,
+  );
+}
+
+export async function cancelarCurso(
+  token: string,
+  cursoId: string,
+  justificativa: string,
+): Promise<CursoApi> {
+  return apiRequest<CursoApi>(
+    `/api/cursos/${cursoId}/cancelar`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ justificativa: justificativa || null }),
+    },
+    token,
+  );
+}
+
+export interface LoteItemErro {
+  participante_id: string;
+  mensagem: string;
+}
+
+export interface RevogarCertificadosLoteResult {
+  revoked: number;
+  skipped: number;
+  errors: LoteItemErro[];
+}
+
+export async function revogarCertificadosLote(
+  token: string,
+  cursoId: string,
+  participanteIds?: string[],
+): Promise<RevogarCertificadosLoteResult> {
+  return apiRequest<RevogarCertificadosLoteResult>(
+    `/api/cursos/${cursoId}/certificados/revogar-lote`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        participante_ids: participanteIds && participanteIds.length > 0 ? participanteIds : null,
+      }),
+    },
+    token,
+  );
+}
+
+export interface CancelarInscritosLoteResult {
+  cancelled: number;
+  skipped: number;
+  revoked: number;
+  errors: LoteItemErro[];
+}
+
+export async function cancelarInscritosLote(
+  token: string,
+  cursoId: string,
+  participanteIds: string[],
+  revogarCertificados: boolean,
+  justificativa?: string,
+): Promise<CancelarInscritosLoteResult> {
+  return apiRequest<CancelarInscritosLoteResult>(
+    `/api/cursos/${cursoId}/inscritos/cancelar-lote`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        participante_ids: participanteIds,
+        revogar_certificados: revogarCertificados,
+        justificativa: justificativa || null,
+      }),
     },
     token,
   );

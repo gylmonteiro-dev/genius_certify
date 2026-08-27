@@ -6,6 +6,7 @@ import { mapParticipanteStatus } from '../lib/participantes';
 import { formatDisplayDate, labelEventStatus, labelStudentStatus, useT } from '../i18n';
 
 const ENROLL_LOTE_MAX = 200;
+const JUSTIFICATIVA_MIN = 10;
 
 interface EventIssueViewProps {
   event: EventItem;
@@ -16,18 +17,30 @@ interface EventIssueViewProps {
   isReleasing?: boolean;
   isIssuing?: boolean;
   isEnrolling?: boolean;
+  isCancelling?: boolean;
+  isBulkActing?: boolean;
   onBack: () => void;
   onRelease: () => Promise<void>;
   onIssueSelected: (participanteIds: string[]) => Promise<void>;
   onEnrollSelected?: (participanteIds: string[]) => Promise<void>;
   onSetStatus?: (id: string, status: 'verified' | 'rejected') => Promise<void>;
   onRemoveInscrito?: (participanteId: string, revogarCertificado: boolean) => Promise<void>;
+  onCancelEvent?: (justificativa: string) => Promise<void>;
+  onRevokeCertificatesLote?: (participanteIds: string[]) => Promise<void>;
+  onCancelInscritosLote?: (
+    participanteIds: string[],
+    revogarCertificados: boolean,
+  ) => Promise<void>;
 }
 
 function canIssueOnEvent(event: EventItem): boolean {
-  if (event.status === 'Draft') return false;
+  if (event.status === 'Draft' || event.status === 'Cancelled') return false;
   if (!event.exigirConclusaoParaEmitir) return true;
   return event.status === 'Completed' && event.emissaoLiberada;
+}
+
+function isEnrollmentCancelled(item: InscritoApi): boolean {
+  return Boolean(item.inscricao_cancelada);
 }
 
 export const EventIssueView: React.FC<EventIssueViewProps> = ({
@@ -39,14 +52,20 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
   isReleasing = false,
   isIssuing = false,
   isEnrolling = false,
+  isCancelling = false,
+  isBulkActing = false,
   onBack,
   onRelease,
   onIssueSelected,
   onEnrollSelected,
   onSetStatus,
   onRemoveInscrito,
+  onCancelEvent,
+  onRevokeCertificatesLote,
+  onCancelInscritosLote,
 }) => {
   const { t, dateLocale } = useT();
+  const eventCancelled = event.status === 'Cancelled';
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [formError, setFormError] = useState<string | null>(null);
   const [showEnrollModal, setShowEnrollModal] = useState(false);
@@ -55,13 +74,32 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerSelected, setPickerSelected] = useState<Set<string>>(new Set());
   const [pickerError, setPickerError] = useState<string | null>(null);
+  const [showCancelEvent, setShowCancelEvent] = useState(false);
+  const [showJustification, setShowJustification] = useState(false);
+  const [showBulkCancel, setShowBulkCancel] = useState(false);
+  const [cancelJustification, setCancelJustification] = useState('');
 
   const eligible = useMemo(
-    () => inscritos.filter((item) => !item.ja_emitido && item.status === 'verified'),
+    () =>
+      inscritos.filter(
+        (item) =>
+          !item.ja_emitido &&
+          item.status === 'verified' &&
+          !isEnrollmentCancelled(item),
+      ),
     [inscritos],
   );
-  const issuedCount = inscritos.length - eligible.length;
+  const activeEnrollments = useMemo(
+    () => inscritos.filter((item) => !isEnrollmentCancelled(item)),
+    [inscritos],
+  );
+  const withActiveCert = useMemo(
+    () => inscritos.filter((item) => item.ja_emitido),
+    [inscritos],
+  );
+  const issuedCount = inscritos.filter((item) => item.ja_emitido).length;
   const issuanceOpen = canIssueOnEvent(event);
+  const selectable = eventCancelled ? [] : activeEnrollments;
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -72,25 +110,25 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
     });
   };
 
-  const toggleAllEligible = () => {
-    if (selected.size === eligible.length) {
+  const toggleAllSelectable = () => {
+    if (selected.size === selectable.length) {
       setSelected(new Set());
       return;
     }
-    setSelected(new Set(eligible.map((item) => item.id)));
+    setSelected(new Set(selectable.map((item) => item.id)));
   };
 
-  const enrolledIds = useMemo(
-    () => new Set(inscritos.map((item) => item.id)),
-    [inscritos],
+  const enrolledActiveIds = useMemo(
+    () => new Set(activeEnrollments.map((item) => item.id)),
+    [activeEnrollments],
   );
   const availableToEnroll = useMemo(
     () =>
       participants.filter(
         (item) =>
-          item.instituicaoId === event.institutionId && !enrolledIds.has(item.id),
+          item.instituicaoId === event.institutionId && !enrolledActiveIds.has(item.id),
       ),
-    [participants, event.institutionId, enrolledIds],
+    [participants, event.institutionId, enrolledActiveIds],
   );
   const filteredAvailable = useMemo(() => {
     const term = pickerSearch.trim().toLowerCase();
@@ -103,13 +141,26 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
     );
   }, [availableToEnroll, pickerSearch]);
 
+  const selectedEligible = useMemo(
+    () => eligible.filter((item) => selected.has(item.id)),
+    [eligible, selected],
+  );
+  const selectedWithCert = useMemo(
+    () => withActiveCert.filter((item) => selected.has(item.id)),
+    [withActiveCert, selected],
+  );
+  const selectedActive = useMemo(
+    () => activeEnrollments.filter((item) => selected.has(item.id)),
+    [activeEnrollments, selected],
+  );
+
   const handleIssue = async () => {
     setFormError(null);
-    if (selected.size === 0) {
+    if (selectedEligible.length === 0) {
       setFormError(t('eventIssue.selectStudents'));
       return;
     }
-    await onIssueSelected([...selected]);
+    await onIssueSelected(selectedEligible.map((item) => item.id));
     setSelected(new Set());
   };
 
@@ -152,7 +203,7 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
     closeEnrollModal();
   };
 
-  const showActions = Boolean(onSetStatus || onRemoveInscrito);
+  const showActions = Boolean(onSetStatus || onRemoveInscrito) && !eventCancelled;
 
   const handleConfirmRemove = async (revogarCertificado: boolean) => {
     if (!onRemoveInscrito || !confirmTarget) return;
@@ -173,7 +224,83 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
     }
   };
 
+  const openCancelEvent = () => {
+    setFormError(null);
+    setCancelJustification('');
+    setShowCancelEvent(true);
+  };
+
+  const handleCancelEvent = async () => {
+    if (!onCancelEvent) return;
+    if (withActiveCert.length > 0) return;
+    if (
+      activeEnrollments.length > 0 &&
+      cancelJustification.trim().length < JUSTIFICATIVA_MIN
+    ) {
+      setFormError(t('eventIssue.cancelEventJustificationHint'));
+      return;
+    }
+    setFormError(null);
+    try {
+      await onCancelEvent(cancelJustification.trim());
+      setShowCancelEvent(false);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : t('errors.cancelEvent'));
+    }
+  };
+
+  const handleRevokeSelected = async () => {
+    if (!onRevokeCertificatesLote) return;
+    if (selectedWithCert.length === 0) {
+      setFormError(t('eventIssue.selectForBulk'));
+      return;
+    }
+    setFormError(null);
+    try {
+      await onRevokeCertificatesLote(selectedWithCert.map((item) => item.id));
+      setSelected(new Set());
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : t('errors.revokeCertificatesBatch'));
+    }
+  };
+
+  const handleRevokeAll = async () => {
+    if (!onRevokeCertificatesLote) return;
+    if (withActiveCert.length === 0) {
+      setFormError(t('eventIssue.noActiveCertificates'));
+      return;
+    }
+    setFormError(null);
+    try {
+      await onRevokeCertificatesLote([]);
+      setSelected(new Set());
+      setShowCancelEvent(false);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : t('errors.revokeCertificatesBatch'));
+    }
+  };
+
+  const handleBulkCancel = async (revogarCertificados: boolean) => {
+    if (!onCancelInscritosLote) return;
+    if (selectedActive.length === 0) {
+      setFormError(t('eventIssue.selectForBulk'));
+      return;
+    }
+    setFormError(null);
+    try {
+      await onCancelInscritosLote(
+        selectedActive.map((item) => item.id),
+        revogarCertificados,
+      );
+      setSelected(new Set());
+      setShowBulkCancel(false);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : t('errors.cancelEnrollmentsBatch'));
+    }
+  };
+
   const gateMessage = (() => {
+    if (eventCancelled) return t('eventIssue.blockedCancelled');
     if (event.status === 'Draft') return t('eventIssue.blockedDraft');
     if (!event.exigirConclusaoParaEmitir) return t('eventIssue.gateOff');
     if (event.status !== 'Completed') return t('eventIssue.blockedNotCompleted');
@@ -182,6 +309,7 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
   })();
 
   const showRelease =
+    !eventCancelled &&
     event.exigirConclusaoParaEmitir &&
     event.status === 'Completed' &&
     !event.emissaoLiberada;
@@ -212,17 +340,43 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
               <span>{event.instructor || '—'}</span>
             </div>
           </div>
-          {showRelease && (
-            <button
-              type="button"
-              disabled={isReleasing}
-              onClick={() => void onRelease()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold disabled:opacity-60"
-            >
-              {isReleasing ? t('eventIssue.releasing') : t('eventIssue.release')}
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {showRelease && (
+              <button
+                type="button"
+                disabled={isReleasing}
+                onClick={() => void onRelease()}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold disabled:opacity-60"
+              >
+                {isReleasing ? t('eventIssue.releasing') : t('eventIssue.release')}
+              </button>
+            )}
+            {eventCancelled && event.cancelamentoJustificativa && (
+              <button
+                type="button"
+                onClick={() => setShowJustification(true)}
+                className="px-4 py-2 border border-slate-200 text-slate-700 rounded-md text-xs font-semibold hover:bg-slate-50"
+              >
+                {t('eventIssue.viewJustification')}
+              </button>
+            )}
+            {!eventCancelled && onCancelEvent && (
+              <button
+                type="button"
+                onClick={openCancelEvent}
+                className="px-4 py-2 border border-rose-200 bg-rose-50 text-rose-700 rounded-md text-xs font-semibold hover:bg-rose-100"
+              >
+                {t('eventIssue.cancelEvent')}
+              </button>
+            )}
+          </div>
         </div>
+
+        {eventCancelled && (
+          <div className="mt-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            {t('eventIssue.cancelledBanner')}
+          </div>
+        )}
 
         <div
           className={`mt-4 rounded-md border px-4 py-3 text-sm ${
@@ -247,7 +401,7 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {onEnrollSelected && (
+            {onEnrollSelected && !eventCancelled && (
               <button
                 type="button"
                 onClick={() => setShowEnrollModal(true)}
@@ -256,15 +410,48 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                 {t('eventIssue.enrollParticipants')}
               </button>
             )}
+            {onRevokeCertificatesLote && !eventCancelled && (
+              <>
+                <button
+                  type="button"
+                  disabled={isBulkActing || selectedWithCert.length === 0}
+                  onClick={() => void handleRevokeSelected()}
+                  className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-semibold disabled:opacity-50"
+                >
+                  {t('eventIssue.revokeSelected')}
+                </button>
+                <button
+                  type="button"
+                  disabled={isBulkActing || withActiveCert.length === 0}
+                  onClick={() => void handleRevokeAll()}
+                  className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-semibold disabled:opacity-50"
+                >
+                  {t('eventIssue.revokeAllActive')}
+                </button>
+              </>
+            )}
+            {onCancelInscritosLote && !eventCancelled && (
+              <button
+                type="button"
+                disabled={isBulkActing || selectedActive.length === 0}
+                onClick={() => {
+                  setFormError(null);
+                  setShowBulkCancel(true);
+                }}
+                className="px-4 py-2 bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 rounded-md text-xs font-semibold disabled:opacity-50"
+              >
+                {t('eventIssue.cancelSelected')}
+              </button>
+            )}
             <button
               type="button"
-              disabled={!issuanceOpen || isIssuing || selected.size === 0}
+              disabled={!issuanceOpen || isIssuing || selectedEligible.length === 0}
               onClick={() => void handleIssue()}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold disabled:opacity-50"
             >
               {isIssuing
                 ? t('eventIssue.issuing')
-                : t('eventIssue.issueSelected', { count: selected.size })}
+                : t('eventIssue.issueSelected', { count: selectedEligible.length })}
             </button>
           </div>
         </div>
@@ -298,9 +485,9 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                   <th className="px-4 py-3 text-left w-10">
                     <input
                       type="checkbox"
-                      checked={eligible.length > 0 && selected.size === eligible.length}
-                      disabled={!issuanceOpen || eligible.length === 0}
-                      onChange={toggleAllEligible}
+                      checked={selectable.length > 0 && selected.size === selectable.length}
+                      disabled={selectable.length === 0}
+                      onChange={toggleAllSelectable}
                     />
                   </th>
                   <th className="px-4 py-3 text-left">{t('eventIssue.colStudent')}</th>
@@ -315,7 +502,8 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {inscritos.map((item) => {
-                  const canSelect = issuanceOpen && !item.ja_emitido && item.status === 'verified';
+                  const cancelled = isEnrollmentCancelled(item);
+                  const canSelect = !eventCancelled && !cancelled;
                   return (
                   <tr key={item.id} className="text-slate-700">
                     <td className="px-4 py-3">
@@ -330,10 +518,21 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                     <td className="px-4 py-3">{item.email}</td>
                     <td className="px-4 py-3 font-mono text-xs">{formatCpf(item.documento)}</td>
                     <td className="px-4 py-3">
-                      {labelStudentStatus(t, mapParticipanteStatus(item.status))}
+                      <div className="flex flex-wrap gap-1.5">
+                        {labelStudentStatus(t, mapParticipanteStatus(item.status))}
+                        {cancelled && (
+                          <span className="inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200">
+                            {t('eventIssue.enrollmentCancelled')}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
-                      {item.ja_emitido ? (
+                      {item.certificado_status === 'revoked' ? (
+                        <span className="inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-200">
+                          {t('eventIssue.certificateRevoked')}
+                        </span>
+                      ) : item.ja_emitido ? (
                         <span className="inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
                           {item.numero_certificado ?? t('eventIssue.issued')}
                         </span>
@@ -346,7 +545,7 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                     {showActions && (
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1.5">
-                          {onSetStatus && item.status !== 'verified' && (
+                          {onSetStatus && item.status !== 'verified' && !cancelled && (
                             <button
                               type="button"
                               onClick={() => void onSetStatus(item.id, 'verified')}
@@ -355,7 +554,7 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                               {t('students.approve')}
                             </button>
                           )}
-                          {onSetStatus && item.status !== 'rejected' && (
+                          {onSetStatus && item.status !== 'rejected' && !cancelled && (
                             <button
                               type="button"
                               onClick={() => {
@@ -371,7 +570,7 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                               {t('students.reject')}
                             </button>
                           )}
-                          {onRemoveInscrito && (
+                          {onRemoveInscrito && !cancelled && (
                             <button
                               type="button"
                               disabled={removingId === item.id}
@@ -444,6 +643,153 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                   {t('eventIssue.removeConfirm')}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCancelEvent && onCancelEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-md p-5 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">
+              {t('eventIssue.cancelEventTitle')}
+            </h3>
+            {withActiveCert.length > 0 ? (
+              <>
+                <p className="text-sm text-slate-600">{t('eventIssue.cancelEventBlockedCerts')}</p>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCancelEvent(false)}
+                    className="px-4 py-2 rounded-md border border-slate-200 text-sm font-semibold"
+                  >
+                    {t('common.close')}
+                  </button>
+                  {onRevokeCertificatesLote && (
+                    <button
+                      type="button"
+                      disabled={isBulkActing}
+                      onClick={() => void handleRevokeAll()}
+                      className="px-4 py-2 rounded-md bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
+                    >
+                      {t('eventIssue.cancelEventGoRevoke')}
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-slate-600">{t('eventIssue.cancelEventHint')}</p>
+                {activeEnrollments.length > 0 && (
+                  <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                    {t('eventIssue.cancelEventEnrollmentsWarn')}
+                  </p>
+                )}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                    {t('eventIssue.cancelEventJustification')}
+                  </label>
+                  <textarea
+                    value={cancelJustification}
+                    onChange={(e) => setCancelJustification(e.target.value)}
+                    rows={4}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm"
+                  />
+                {activeEnrollments.length > 0 && (
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {t('eventIssue.cancelEventJustificationHint')}
+                  </p>
+                )}
+                {formError && showCancelEvent && (
+                  <p className="mt-2 text-sm text-rose-700">{formError}</p>
+                )}
+                </div>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={isCancelling}
+                    onClick={() => setShowCancelEvent(false)}
+                    className="px-4 py-2 rounded-md border border-slate-200 text-sm font-semibold"
+                  >
+                    {t('common.close')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isCancelling}
+                    onClick={() => void handleCancelEvent()}
+                    className="px-4 py-2 rounded-md bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
+                  >
+                    {isCancelling ? t('common.loading') : t('eventIssue.cancelEventConfirm')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showBulkCancel && onCancelInscritosLote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-md p-5 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">
+              {t('eventIssue.bulkCancelTitle')}
+            </h3>
+            <p className="text-sm text-slate-600">{t('eventIssue.bulkCancelHint')}</p>
+            {selectedWithCert.length > 0 && (
+              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                {t('eventIssue.bulkCancelIssuedHint')}
+              </p>
+            )}
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <button
+                type="button"
+                disabled={isBulkActing}
+                onClick={() => setShowBulkCancel(false)}
+                className="px-4 py-2 rounded-md border border-slate-200 text-sm font-semibold"
+              >
+                {t('common.close')}
+              </button>
+              {selectedWithCert.length > 0 ? (
+                <button
+                  type="button"
+                  disabled={isBulkActing}
+                  onClick={() => void handleBulkCancel(true)}
+                  className="px-4 py-2 rounded-md bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
+                >
+                  {t('eventIssue.bulkCancelRevoke')}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isBulkActing}
+                  onClick={() => void handleBulkCancel(false)}
+                  className="px-4 py-2 rounded-md bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
+                >
+                  {t('eventIssue.bulkCancelConfirm')}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showJustification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-md p-5 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">
+              {t('eventIssue.justificationTitle')}
+            </h3>
+            <p className="text-sm text-slate-700 whitespace-pre-wrap">
+              {event.cancelamentoJustificativa || '—'}
+            </p>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowJustification(false)}
+                className="px-4 py-2 rounded-md border border-slate-200 text-sm font-semibold"
+              >
+                {t('common.close')}
+              </button>
             </div>
           </div>
         </div>

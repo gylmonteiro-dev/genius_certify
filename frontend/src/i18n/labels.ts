@@ -43,6 +43,8 @@ export function labelEventStatus(t: TranslateFn, status: EventItem['status']): s
       return t('status.event.draft');
     case 'Completed':
       return t('status.event.completed');
+    case 'Cancelled':
+      return t('status.event.cancelled');
     default:
       return status;
   }

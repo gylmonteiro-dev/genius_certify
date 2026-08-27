@@ -99,6 +99,8 @@ class CertificadoService:
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     def _assert_can_emit(self, curso: Curso) -> None:
+        if curso.status == CursoStatus.CANCELLED:
+            raise AppError("Não é permitido emitir certificado de evento cancelado")
         if curso.status == CursoStatus.DRAFT:
             raise AppError("Não é permitido emitir certificado de evento em rascunho")
         if not curso.exigir_conclusao_para_emitir:
@@ -130,6 +132,8 @@ class CertificadoService:
             curso_id=curso_id,
         )
         if existing is not None:
+            if existing.cancelada:
+                raise AppError("Inscrição cancelada neste evento")
             return
         await self._inscricoes.create(
             instituicao_id=instituicao_id,
@@ -334,15 +338,22 @@ class CertificadoService:
         certificado = await self._get_or_404(certificado_id, actor=actor)
         return CertificadoResponse.model_validate(certificado)
 
-    async def revogar(self, certificado_id: UUID, *, actor: Usuario) -> CertificadoResponse:
+    async def revogar(
+        self,
+        certificado_id: UUID,
+        *,
+        actor: Usuario,
+        commit: bool = True,
+    ) -> CertificadoResponse:
         certificado = await self._get_or_404(certificado_id, actor=actor)
         if certificado.status == CertificadoStatus.REVOKED:
             raise ConflictError("Certificado já está revogado")
 
         certificado.status = CertificadoStatus.REVOKED
         await self._certificados.save(certificado)
-        await self._session.commit()
-        await self._session.refresh(certificado)
+        if commit:
+            await self._session.commit()
+            await self._session.refresh(certificado)
         return CertificadoResponse.model_validate(certificado)
 
     async def gerar_html(self, certificado_id: UUID, *, actor: Usuario) -> str:

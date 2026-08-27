@@ -20,6 +20,9 @@ function visibilityBadgeClass(visibility: EventPublicVisibility): string {
   if (visibility === 'hidden_institution') {
     return 'bg-amber-50 text-amber-800 border-amber-200';
   }
+  if (visibility === 'hidden_cancelled') {
+    return 'bg-rose-50 text-rose-700 border-rose-200';
+  }
   return 'bg-slate-100 text-slate-600 border-slate-200';
 }
 
@@ -29,10 +32,12 @@ function visibilityLabelKey(
   | 'eventsDirectory.visibilityOpen'
   | 'eventsDirectory.visibilityDraft'
   | 'eventsDirectory.visibilityCompleted'
+  | 'eventsDirectory.visibilityCancelled'
   | 'eventsDirectory.visibilityInstitution' {
   if (visibility === 'open') return 'eventsDirectory.visibilityOpen';
   if (visibility === 'hidden_draft') return 'eventsDirectory.visibilityDraft';
   if (visibility === 'hidden_completed') return 'eventsDirectory.visibilityCompleted';
+  if (visibility === 'hidden_cancelled') return 'eventsDirectory.visibilityCancelled';
   return 'eventsDirectory.visibilityInstitution';
 }
 
@@ -92,6 +97,7 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
               <option value="Upcoming">{t('status.event.upcoming')}</option>
               <option value="Draft">{t('status.event.draft')}</option>
               <option value="Completed">{t('status.event.completed')}</option>
+              <option value="Cancelled">{t('status.event.cancelled')}</option>
             </select>
             <input
               type="text"

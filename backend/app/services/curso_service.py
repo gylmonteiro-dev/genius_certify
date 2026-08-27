@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppError, ConflictError, ForbiddenError, NotFoundError
 from app.models.catalogo_evento import CatalogoEventoKind
-from app.models.certificado import CertificadoStatus
+from app.models.certificado import Certificado, CertificadoStatus
 from app.models.curso import Curso, CursoStatus
+from app.models.inscricao import Inscricao
 from app.models.usuario import Usuario, UsuarioRole
 from app.repositories.catalogo_evento_repository import CatalogoEventoRepository
 from app.repositories.certificado_repository import CertificadoRepository
@@ -16,6 +18,9 @@ from app.repositories.inscricao_repository import InscricaoRepository
 from app.repositories.instituicao_repository import InstituicaoRepository
 from app.repositories.participante_repository import ParticipanteRepository
 from app.schemas.curso import (
+    CancelarCursoRequest,
+    CancelarInscritosLoteRequest,
+    CancelarInscritosLoteResponse,
     CursoCreate,
     CursoResponse,
     CursoUpdate,
@@ -23,10 +28,15 @@ from app.schemas.curso import (
     InscricaoLoteRequest,
     InscricaoLoteResponse,
     InscritoResponse,
+    LoteItemErro,
     RemoverInscritoRequest,
+    RevogarCertificadosLoteRequest,
+    RevogarCertificadosLoteResponse,
 )
 from app.services.certificate_templates import is_valid_template_id, resolve_template_id
 from app.services.certificado_service import CertificadoService
+
+JUSTIFICATIVA_MIN_LEN = 10
 
 
 class CursoService:
@@ -91,6 +101,9 @@ class CursoService:
         return slug
 
     async def create(self, data: CursoCreate, *, actor: Usuario) -> CursoResponse:
+        if data.status == CursoStatus.CANCELLED:
+            raise AppError("Use o cancelamento dedicado para cancelar um evento")
+
         instituicao_id = self._resolve_instituicao_id_for_create(actor, data.instituicao_id)
 
         instituicao = await self._instituicoes.get_by_id(instituicao_id)
@@ -175,7 +188,12 @@ class CursoService:
         actor: Usuario,
     ) -> CursoResponse:
         curso = await self._get_or_404(curso_id, actor=actor)
+        if curso.status == CursoStatus.CANCELLED:
+            raise ConflictError("Evento cancelado não pode ser editado")
         payload = data.model_dump(exclude_unset=True)
+
+        if payload.get("status") == CursoStatus.CANCELLED:
+            raise AppError("Use o cancelamento dedicado para cancelar um evento")
 
         if "titulo" in payload and payload["titulo"] is not None:
             payload["titulo"] = payload["titulo"].strip()
@@ -245,7 +263,16 @@ class CursoService:
             instituicao_id=curso.instituicao_id,
             curso_id=curso.id,
         )
-        cert_by_participante = {item.participante_id: item for item in certificados}
+        cert_by_participante: dict = {}
+        for item in certificados:
+            current = cert_by_participante.get(item.participante_id)
+            if current is None:
+                cert_by_participante[item.participante_id] = item
+            elif (
+                item.status == CertificadoStatus.ACTIVE
+                and current.status != CertificadoStatus.ACTIVE
+            ):
+                cert_by_participante[item.participante_id] = item
 
         items: list[InscritoResponse] = []
         for inscricao in inscricoes:
@@ -266,6 +293,8 @@ class CursoService:
                     numero_certificado=(
                         certificado.numero_certificado if certificado else None
                     ),
+                    inscricao_cancelada=inscricao.cancelada,
+                    cancelada_justificativa=inscricao.cancelada_justificativa,
                 )
             )
         items.sort(key=lambda item: item.nome.lower())
@@ -279,6 +308,8 @@ class CursoService:
         actor: Usuario,
     ) -> InscricaoLoteResponse:
         curso = await self._get_or_404(curso_id, actor=actor)
+        if curso.status == CursoStatus.CANCELLED:
+            raise ConflictError("Não é possível inscrever em um evento cancelado")
         instituicao_id = curso.instituicao_id
         unique_ids = list(dict.fromkeys(data.participante_ids))
 
@@ -306,6 +337,10 @@ class CursoService:
                 curso_id=curso.id,
             )
             if existing is not None:
+                if existing.cancelada:
+                    self._reativar_inscricao(existing)
+                    enrolled += 1
+                    continue
                 already_enrolled += 1
                 continue
 
@@ -340,26 +375,197 @@ class CursoService:
         if inscricao is None:
             raise NotFoundError("Inscrição não encontrada")
 
+        if inscricao.cancelada:
+            return
+
         certificado = await self._certificados.get_active_by_participante_curso(
             instituicao_id=curso.instituicao_id,
             participante_id=participante_id,
             curso_id=curso.id,
         )
         if certificado is not None and data.revogar_certificado:
-            await CertificadoService(self._session).revogar(certificado.id, actor=actor)
+            await CertificadoService(self._session).revogar(
+                certificado.id,
+                actor=actor,
+                commit=False,
+            )
+
+        justificativa = self._normalize_justificativa(data.justificativa)
+        self._mark_inscricao_cancelada(inscricao, justificativa=justificativa)
+        await self._session.commit()
+
+    async def cancelar(
+        self,
+        curso_id: UUID,
+        data: CancelarCursoRequest,
+        *,
+        actor: Usuario,
+    ) -> CursoResponse:
+        curso = await self._get_or_404(curso_id, actor=actor)
+        if curso.status == CursoStatus.CANCELLED:
+            raise ConflictError("Evento já está cancelado")
+
+        ativos = await self._certificados.list_ativos_by_curso(
+            instituicao_id=curso.instituicao_id,
+            curso_id=curso.id,
+        )
+        if ativos:
+            raise ConflictError(
+                "Revogue os certificados ativos antes de cancelar o evento"
+            )
+
+        inscricoes = await self._inscricoes.list_by_curso(
+            instituicao_id=curso.instituicao_id,
+            curso_id=curso.id,
+        )
+        ativas = [item for item in inscricoes if not item.cancelada]
+        justificativa = self._normalize_justificativa(data.justificativa)
+        if ativas and (justificativa is None or len(justificativa) < JUSTIFICATIVA_MIN_LEN):
+            raise AppError(
+                "Informe uma justificativa com pelo menos "
+                f"{JUSTIFICATIVA_MIN_LEN} caracteres para cancelar um evento com inscritos"
+            )
+
+        now = datetime.now(timezone.utc)
+        for inscricao in ativas:
+            self._mark_inscricao_cancelada(
+                inscricao,
+                justificativa=justificativa,
+                when=now,
+            )
+
+        curso.status = CursoStatus.CANCELLED
+        curso.cancelamento_justificativa = justificativa
+        curso.cancelado_em = now
+        await self._cursos.save(curso)
+        await self._session.commit()
+        await self._session.refresh(curso)
+        return CursoResponse.model_validate(curso)
+
+    async def revogar_certificados_lote(
+        self,
+        curso_id: UUID,
+        data: RevogarCertificadosLoteRequest,
+        *,
+        actor: Usuario,
+    ) -> RevogarCertificadosLoteResponse:
+        curso = await self._get_or_404(curso_id, actor=actor)
+        ativos = await self._certificados.list_ativos_by_curso(
+            instituicao_id=curso.instituicao_id,
+            curso_id=curso.id,
+        )
+        by_participante = {item.participante_id: item for item in ativos}
+
+        if data.participante_ids:
+            unique_ids = list(dict.fromkeys(data.participante_ids))
+        else:
+            unique_ids = list(by_participante.keys())
+
+        revoked = 0
+        skipped = 0
+        errors: list[LoteItemErro] = []
+        cert_service = CertificadoService(self._session)
+
+        for participante_id in unique_ids:
+            certificado = by_participante.get(participante_id)
+            if certificado is None:
+                skipped += 1
+                continue
+            try:
+                await cert_service.revogar(certificado.id, actor=actor, commit=False)
+                revoked += 1
+            except AppError as exc:
+                errors.append(
+                    LoteItemErro(participante_id=participante_id, mensagem=exc.message)
+                )
+
+        await self._session.commit()
+        return RevogarCertificadosLoteResponse(
+            revoked=revoked,
+            skipped=skipped,
+            errors=errors,
+        )
+
+    async def cancelar_inscritos_lote(
+        self,
+        curso_id: UUID,
+        data: CancelarInscritosLoteRequest,
+        *,
+        actor: Usuario,
+    ) -> CancelarInscritosLoteResponse:
+        curso = await self._get_or_404(curso_id, actor=actor)
+        unique_ids = list(dict.fromkeys(data.participante_ids))
+        justificativa = self._normalize_justificativa(data.justificativa)
+        now = datetime.now(timezone.utc)
+
+        pending: list[tuple[UUID, Inscricao, Certificado | None]] = []
+        errors: list[LoteItemErro] = []
+        skipped = 0
+
+        for participante_id in unique_ids:
             inscricao = await self._inscricoes.get_by_participante_curso(
                 instituicao_id=curso.instituicao_id,
                 participante_id=participante_id,
                 curso_id=curso.id,
             )
             if inscricao is None:
-                return
+                errors.append(
+                    LoteItemErro(
+                        participante_id=participante_id,
+                        mensagem="Inscrição não encontrada",
+                    )
+                )
+                continue
+            if inscricao.cancelada:
+                skipped += 1
+                continue
+            certificado = await self._certificados.get_active_by_participante_curso(
+                instituicao_id=curso.instituicao_id,
+                participante_id=participante_id,
+                curso_id=curso.id,
+            )
+            pending.append((participante_id, inscricao, certificado))
 
-        await self._inscricoes.delete(inscricao)
+        if any(cert is not None for _pid, _insc, cert in pending) and not data.revogar_certificados:
+            raise ConflictError(
+                "Há certificados ativos na seleção. Revogue-os antes de cancelar as inscrições."
+            )
+
+        revoked = 0
+        cancelled = 0
+        cert_service = CertificadoService(self._session)
+        for participante_id, inscricao, certificado in pending:
+            if certificado is not None:
+                try:
+                    await cert_service.revogar(certificado.id, actor=actor, commit=False)
+                    revoked += 1
+                except AppError as exc:
+                    errors.append(
+                        LoteItemErro(
+                            participante_id=participante_id,
+                            mensagem=exc.message,
+                        )
+                    )
+                    continue
+            self._mark_inscricao_cancelada(
+                inscricao,
+                justificativa=justificativa,
+                when=now,
+            )
+            cancelled += 1
+
         await self._session.commit()
+        return CancelarInscritosLoteResponse(
+            cancelled=cancelled,
+            skipped=skipped,
+            revoked=revoked,
+            errors=errors,
+        )
 
     async def liberar_emissao(self, curso_id: UUID, *, actor: Usuario) -> CursoResponse:
         curso = await self._get_or_404(curso_id, actor=actor)
+        if curso.status == CursoStatus.CANCELLED:
+            raise ConflictError("Evento cancelado não pode ter emissão liberada")
         if curso.exigir_conclusao_para_emitir and curso.status != CursoStatus.COMPLETED:
             raise AppError(
                 "Conclua o evento antes de validar e liberar a emissão"
@@ -379,3 +585,27 @@ class CursoService:
         if curso is None:
             raise NotFoundError("Curso não encontrado")
         return curso
+
+    @staticmethod
+    def _normalize_justificativa(value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+    @staticmethod
+    def _mark_inscricao_cancelada(
+        inscricao: Inscricao,
+        *,
+        justificativa: str | None,
+        when: datetime | None = None,
+    ) -> None:
+        inscricao.cancelada = True
+        inscricao.cancelada_em = when or datetime.now(timezone.utc)
+        inscricao.cancelada_justificativa = justificativa
+
+    @staticmethod
+    def _reativar_inscricao(inscricao: Inscricao) -> None:
+        inscricao.cancelada = False
+        inscricao.cancelada_em = None
+        inscricao.cancelada_justificativa = None

@@ -66,6 +66,8 @@ class CursoResponse(BaseModel):
     verso_parcerias: str | None = None
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
+    cancelamento_justificativa: str | None = None
+    cancelado_em: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -98,6 +100,8 @@ class InscritoResponse(BaseModel):
     certificado_id: UUID | None = None
     certificado_status: CertificadoStatus | None = None
     numero_certificado: str | None = None
+    inscricao_cancelada: bool = False
+    cancelada_justificativa: str | None = None
 
 
 class InscricaoLoteRequest(BaseModel):
@@ -147,3 +151,36 @@ class InscricaoPublicaRequest(BaseModel):
 
 class RemoverInscritoRequest(BaseModel):
     revogar_certificado: bool = False
+    justificativa: str | None = None
+
+
+class CancelarCursoRequest(BaseModel):
+    justificativa: str | None = None
+
+
+class RevogarCertificadosLoteRequest(BaseModel):
+    participante_ids: list[UUID] | None = None
+
+
+class CancelarInscritosLoteRequest(BaseModel):
+    participante_ids: list[UUID] = Field(min_length=1, max_length=200)
+    justificativa: str | None = None
+    revogar_certificados: bool = False
+
+
+class LoteItemErro(BaseModel):
+    participante_id: UUID
+    mensagem: str
+
+
+class RevogarCertificadosLoteResponse(BaseModel):
+    revoked: int
+    skipped: int
+    errors: list[LoteItemErro]
+
+
+class CancelarInscritosLoteResponse(BaseModel):
+    cancelled: int
+    skipped: int
+    revoked: int
+    errors: list[LoteItemErro]

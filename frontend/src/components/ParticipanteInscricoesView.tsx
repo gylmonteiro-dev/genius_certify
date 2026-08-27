@@ -20,6 +20,7 @@ interface ParticipanteInscricoesViewProps {
 function mapCursoStatus(status: MinhaInscricao['curso_status']): EventItem['status'] {
   if (status === 'draft') return 'Draft';
   if (status === 'completed') return 'Completed';
+  if (status === 'cancelled') return 'Cancelled';
   return 'Upcoming';
 }
 
@@ -58,7 +59,13 @@ export const ParticipanteInscricoesView: React.FC<ParticipanteInscricoesViewProp
     setError(null);
     try {
       await cancelarMinhaInscricao(token, item.id);
-      setItems((prev) => prev.filter((row) => row.id !== item.id));
+      setItems((prev) =>
+        prev.map((row) =>
+          row.id === item.id
+            ? { ...row, inscricao_cancelada: true, pode_cancelar: false }
+            : row,
+        ),
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('participant.loadError'));
     } finally {
@@ -141,7 +148,19 @@ export const ParticipanteInscricoesView: React.FC<ParticipanteInscricoesViewProp
                           : '—'}
                       </td>
                       <td className="py-3 px-5 text-slate-600 text-xs">
-                        {labelEventStatus(t, mapCursoStatus(item.curso_status))}
+                        <div className="flex flex-col gap-1">
+                          <span>{labelEventStatus(t, mapCursoStatus(item.curso_status))}</span>
+                          {item.inscricao_cancelada && (
+                            <span className="inline-flex w-fit text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200">
+                              {t('participant.enrollmentCancelled')}
+                            </span>
+                          )}
+                          {item.certificado_status === 'revoked' && (
+                            <span className="inline-flex w-fit text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-200">
+                              {t('participant.certificateRevoked')}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-5">
                         <div className="flex flex-wrap gap-2">
@@ -157,7 +176,7 @@ export const ParticipanteInscricoesView: React.FC<ParticipanteInscricoesViewProp
                                 : t('participant.leaveEvent')}
                             </button>
                           )}
-                          {!item.pode_cancelar && item.ja_emitido && item.codigo_validacao && (
+                          {item.codigo_validacao && (
                             <Link
                               to={`/validar/${item.codigo_validacao}`}
                               className="px-2.5 py-1 rounded-md border border-blue-200 bg-blue-50 text-blue-700 text-[11px] font-semibold hover:bg-blue-100"
@@ -165,12 +184,30 @@ export const ParticipanteInscricoesView: React.FC<ParticipanteInscricoesViewProp
                               {t('participant.viewCertificate')}
                             </Link>
                           )}
-                          {!item.pode_cancelar && item.curso_status === 'completed' && !item.ja_emitido && (
+                          {item.inscricao_cancelada && !item.codigo_validacao && (
+                            <span className="text-[11px] text-slate-400">
+                              {t('participant.leaveBlockedCancelled')}
+                            </span>
+                          )}
+                          {!item.pode_cancelar &&
+                            !item.inscricao_cancelada &&
+                            item.curso_status === 'completed' &&
+                            !item.ja_emitido && (
                             <span className="text-[11px] text-slate-400">
                               {t('participant.leaveBlockedCompleted')}
                             </span>
                           )}
-                          {!item.pode_cancelar && item.ja_emitido && !item.codigo_validacao && (
+                          {!item.pode_cancelar &&
+                            !item.inscricao_cancelada &&
+                            item.curso_status === 'cancelled' && (
+                            <span className="text-[11px] text-slate-400">
+                              {t('participant.eventCancelled')}
+                            </span>
+                          )}
+                          {!item.pode_cancelar &&
+                            !item.inscricao_cancelada &&
+                            item.ja_emitido &&
+                            !item.codigo_validacao && (
                             <span className="text-[11px] text-slate-400">
                               {t('participant.leaveBlockedCertificate')}
                             </span>
