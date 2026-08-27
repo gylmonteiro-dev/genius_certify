@@ -29,18 +29,21 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
             <NavLink to="/meus-certificados" className={linkClass}>
               {t('public.myCertificates')}
             </NavLink>
-            <NavLink to="/minhas-inscricoes" className={linkClass}>
-              {t('public.myEnrollments')}
-            </NavLink>
             <NavLink to="/eventos" className={linkClass}>
               {t('public.events')}
             </NavLink>
             <LanguageSwitch />
             <Link
-              to="/entrar"
+              to="/minhas-inscricoes"
               className="text-sm font-semibold px-3 py-1.5 rounded-md bg-slate-900 text-white hover:bg-slate-800"
             >
-              {t('public.adminLogin')}
+              {t('public.participantAccess')}
+            </Link>
+            <Link
+              to="/entrar"
+              className="text-xs font-semibold text-slate-400 hover:text-slate-700"
+            >
+              {t('public.institutionAccess')}
             </Link>
           </nav>
         </div>

@@ -181,6 +181,15 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 {t('login.forgotPassword')}
               </Link>
             </p>
+            <p className="text-center text-sm text-slate-500 mt-4">
+              {t('login.participantInstead')}{' '}
+              <Link
+                to="/minhas-inscricoes"
+                className="font-semibold text-blue-600 hover:underline"
+              >
+                {t('public.participantAccess')}
+              </Link>
+            </p>
           </div>
 
           <p className="text-center text-[11px] text-slate-400 mt-6 space-x-3">

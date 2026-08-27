@@ -24,12 +24,6 @@ const ACTIONS = [
     titleKey: 'public.homeValidateTitle',
     hintKey: 'public.homeValidateHint',
   },
-  {
-    to: '/minhas-inscricoes',
-    icon: 'assignment_ind',
-    titleKey: 'public.homeEnrollmentsTitle',
-    hintKey: 'public.homeEnrollmentsHint',
-  },
 ] as const;
 
 export const PublicHomeView: React.FC = () => {
@@ -51,13 +45,31 @@ export const PublicHomeView: React.FC = () => {
             <p className="mt-2 text-sm text-slate-500 leading-relaxed">
               {t('public.homeSubtitle')}
             </p>
-            <Link
-              to="/entrar"
-              className="mt-5 inline-flex items-center justify-center gap-2 bg-[#0f172a] hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg font-semibold text-sm shadow-sm transition-colors active:scale-[0.98]"
-            >
-              <span className="material-symbols-outlined text-[18px]">login</span>
-              {t('public.adminLogin')}
-            </Link>
+            <div className="mt-5 space-y-3">
+              <div>
+                <Link
+                  to="/minhas-inscricoes"
+                  className="w-full inline-flex items-center justify-center gap-2 bg-[#0f172a] hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg font-semibold text-sm shadow-sm transition-colors active:scale-[0.98]"
+                >
+                  <span className="material-symbols-outlined text-[18px]">assignment_ind</span>
+                  {t('public.participantAccess')}
+                </Link>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  {t('public.participantAccessHint')}
+                </p>
+              </div>
+              <div>
+                <Link
+                  to="/entrar"
+                  className="text-sm font-semibold text-slate-500 hover:text-slate-800"
+                >
+                  {t('public.institutionAccess')}
+                </Link>
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  {t('public.institutionAccessHint')}
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -112,13 +124,31 @@ export const PublicHomeView: React.FC = () => {
           <p className="mt-4 text-sm text-slate-400 max-w-sm leading-relaxed">
             {t('public.homeSubtitle')}
           </p>
-          <Link
-            to="/entrar"
-            className="mt-8 inline-flex items-center justify-center gap-2 bg-white text-[#0f172a] hover:bg-slate-100 px-4 py-2.5 rounded-lg font-semibold text-sm shadow-sm transition-colors active:scale-[0.98]"
-          >
-            <span className="material-symbols-outlined text-[18px]">login</span>
-            {t('public.adminLogin')}
-          </Link>
+          <div className="mt-8 space-y-4">
+            <div>
+              <Link
+                to="/minhas-inscricoes"
+                className="inline-flex items-center justify-center gap-2 bg-white text-[#0f172a] hover:bg-slate-100 px-4 py-2.5 rounded-lg font-semibold text-sm shadow-sm transition-colors active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined text-[18px]">assignment_ind</span>
+                {t('public.participantAccess')}
+              </Link>
+              <p className="mt-2 text-xs text-slate-400 max-w-sm">
+                {t('public.participantAccessHint')}
+              </p>
+            </div>
+            <div>
+              <Link
+                to="/entrar"
+                className="text-sm font-semibold text-slate-400 hover:text-white transition-colors"
+              >
+                {t('public.institutionAccess')}
+              </Link>
+              <p className="mt-1 text-[11px] text-slate-500 max-w-sm">
+                {t('public.institutionAccessHint')}
+              </p>
+            </div>
+          </div>
         </div>
 
         <p className="relative z-10 text-xs text-slate-500">{APP_NAME}</p>

@@ -125,7 +125,7 @@ export const ptBR = {
     featureTenants: 'Tenants isolados por instituição',
     featurePdf: 'Certificados PDF gerados na hora',
     signIn: 'Entrar',
-    signInHint: 'Use as credenciais de administrador para acessar o painel.',
+    signInHint: 'Área restrita a gestores da instituição. Use e-mail e senha do painel.',
     signingIn: 'Entrando...',
     showPassword: 'Mostrar senha',
     hidePassword: 'Ocultar senha',
@@ -150,13 +150,19 @@ export const ptBR = {
     resetInvalid: 'Link de recuperação inválido ou expirado.',
     resetSuccess: 'Senha atualizada. Entre com a nova senha.',
     backToLogin: 'Voltar ao login',
+    participantInstead:
+      'Se você se inscreveu em um evento, use a Área do participante.',
   },
   public: {
     validate: 'Validar',
     events: 'Eventos',
     myCertificates: 'Meus certificados',
     myEnrollments: 'Minhas inscrições',
-    adminLogin: 'Acesso admin',
+    participantAccess: 'Área do participante',
+    participantAccessHint: 'CPF e senha para ver e gerenciar suas inscrições.',
+    institutionAccess: 'Acesso da instituição',
+    institutionAccessHint: 'Somente gestores da instituição.',
+    adminLogin: 'Acesso da instituição',
     adminAccess: 'Acesso administrativo',
     backHome: 'Voltar ao início',
     homeTitle: 'Consulte eventos, certificados e validade',
@@ -200,8 +206,8 @@ export const ptBR = {
     invalidCode: 'Código de validação inválido.',
   },
   participant: {
-    loginTitle: 'Minhas inscrições',
-    loginHeadline: 'Acesse suas inscrições',
+    loginTitle: 'Área do participante',
+    loginHeadline: 'Acesse como participante',
     loginSubtitle:
       'Entre com CPF e senha para ver os eventos em que você se inscreveu e sair de um evento ainda não concluído.',
     loginSubmit: 'Entrar',
@@ -232,6 +238,7 @@ export const ptBR = {
     viewCertificate: 'Ver certificado',
     logout: 'Sair',
     hello: 'Olá, {name}',
+    institutionInstead: 'Instituições entram em Acesso da instituição.',
   },
   dashboard: {
     title: 'Painel executivo',

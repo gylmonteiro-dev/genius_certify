@@ -141,6 +141,12 @@ export const ParticipanteRegisterView: React.FC<ParticipanteRegisterViewProps> =
           {t('participant.alreadyHaveAccess')}
         </Link>
       </p>
+      <p className="mt-4 text-sm text-slate-500">
+        {t('participant.institutionInstead')}{' '}
+        <Link to="/entrar" className="font-semibold text-blue-600 hover:underline">
+          {t('public.institutionAccess')}
+        </Link>
+      </p>
       <p className="mt-6 text-sm">
         <Link to="/" className="text-slate-500 hover:text-slate-800 font-semibold">
           {t('public.backHome')}
