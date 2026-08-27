@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CatalogoEventoItem, catalogByKind, catalogLabel } from '../lib/catalogoEventos';
 import { EventItem } from '../types';
-import { labelEventModality, labelEventType, useT } from '../i18n';
+import { labelEventModality, labelEventStatus, labelEventType, useT } from '../i18n';
 
 interface EventsCatalogViewProps {
   events: EventItem[];
@@ -72,6 +72,8 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
       ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredEvents.map((evt) => {
+          const cancelled = evt.status === 'Cancelled';
+          const canRegister = evt.status === 'Upcoming';
           // Default banner images if missing
           const defaultBanner =
             'https://lh3.googleusercontent.com/aida-public/AB6AXuDHWNgAzdsDqjQxubvrpMFCHtJHUyl2441P5HrQIvlRqRObtSFi6cR45owJRXPBhKChYXReX3KSHk98estRq0Ma2oGKXDBRPenXesMktAgi3GIDy2093X2cFoeYbeE8A8xnL6Bsg0FnTOZxiW-E4JgnLp3ESiZ1QgIOmtzvFOTwXovUvwNHbhfy80h1VUNgKc2gwwXsQOk0ys_LEzzw_TXBcU3Sn1AL4ASjxP4OSrhQx9rDHa-AFsVdzw';
@@ -79,7 +81,9 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
           return (
             <div
               key={evt.id}
-              className="bg-white rounded-xl border border-slate-200 hover:shadow-md transition-all overflow-hidden flex flex-col group"
+              className={`bg-white rounded-xl border hover:shadow-md transition-all overflow-hidden flex flex-col group ${
+                cancelled ? 'border-rose-200' : 'border-slate-200'
+              }`}
             >
               {/* Image Banner Header */}
               <div
@@ -90,9 +94,19 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
               >
                 <div className="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent" />
 
-                {/* Badge top right */}
-                <div className="absolute top-3 right-3 px-2.5 py-0.5 bg-blue-600 text-white rounded-md font-bold text-[10px] uppercase tracking-wider shadow-xs">
-                  {labelEventType(t, evt.type, catalogItems, locale)}
+                {!cancelled && (
+                  <div className="absolute top-3 left-3 px-2.5 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wider shadow-xs bg-white/90 text-slate-700">
+                    {labelEventStatus(t, evt.status)}
+                  </div>
+                )}
+                <div
+                  className={`absolute top-3 right-3 px-2.5 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wider shadow-xs ${
+                    cancelled ? 'bg-rose-600 text-white' : 'bg-blue-600 text-white'
+                  }`}
+                >
+                  {cancelled
+                    ? t('catalog.cancelled')
+                    : labelEventType(t, evt.type, catalogItems, locale)}
                 </div>
               </div>
 
@@ -129,12 +143,27 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
                     </span>
                   )}
 
-                  <button
-                    onClick={() => onSelectRegister(evt)}
-                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold text-xs transition-colors shadow-xs"
-                  >
-                    {t('catalog.register')}
-                  </button>
+                  {canRegister ? (
+                    <button
+                      type="button"
+                      onClick={() => onSelectRegister(evt)}
+                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold text-xs transition-colors shadow-xs"
+                    >
+                      {t('catalog.register')}
+                    </button>
+                  ) : (
+                    <span
+                      className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                        cancelled
+                          ? 'bg-rose-50 text-rose-700 border-rose-200'
+                          : 'bg-slate-100 text-slate-500 border-slate-200'
+                      }`}
+                    >
+                      {cancelled
+                        ? t('catalog.cancelled')
+                        : t('catalog.registrationUnavailable')}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

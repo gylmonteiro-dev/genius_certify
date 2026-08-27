@@ -5,6 +5,7 @@ from app.api.v1 import (
     catalogo_eventos,
     certificados,
     cursos,
+    dashboard,
     instituicoes,
     participante,
     participantes,
@@ -19,4 +20,5 @@ api_router.include_router(cursos.router)
 api_router.include_router(participantes.router)
 api_router.include_router(participante.router)
 api_router.include_router(certificados.router)
+api_router.include_router(dashboard.router)
 api_router.include_router(publico.router)

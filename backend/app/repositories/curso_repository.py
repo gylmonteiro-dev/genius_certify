@@ -78,6 +78,21 @@ class CursoRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def count_by_status(
+        self,
+        *,
+        instituicao_id: UUID | None = None,
+    ) -> dict[str, int]:
+        stmt = select(Curso.status, func.count()).group_by(Curso.status)
+        if instituicao_id is not None:
+            stmt = stmt.where(Curso.instituicao_id == instituicao_id)
+        result = await self._session.execute(stmt)
+        counts: dict[str, int] = {}
+        for status, n in result.all():
+            key = status.value if isinstance(status, CursoStatus) else str(status)
+            counts[key] = int(n)
+        return counts
+
     async def create(self, **fields: object) -> Curso:
         curso = Curso(**fields)
         self._session.add(curso)

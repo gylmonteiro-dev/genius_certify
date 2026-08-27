@@ -90,6 +90,7 @@ import {
   revogarCertificado,
   validarCertificadoPublico,
 } from './lib/certificados';
+import { DashboardResumo, fetchDashboardResumo } from './lib/dashboard';
 
 interface AdminAppProps {
   authUser: AuthUser;
@@ -156,9 +157,26 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [catalogSubmitting, setCatalogSubmitting] = useState(false);
 
+  const [dashboardResumo, setDashboardResumo] = useState<DashboardResumo | null>(null);
+  const [dashboardResumoLoading, setDashboardResumoLoading] = useState(false);
+  const [dashboardResumoError, setDashboardResumoError] = useState<string | null>(null);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
   };
+
+  const refreshDashboardResumo = useCallback(async () => {
+    if (!authToken) return;
+    try {
+      const data = await fetchDashboardResumo(authToken);
+      setDashboardResumo(data);
+      setDashboardResumoError(null);
+    } catch (err) {
+      setDashboardResumoError(
+        err instanceof ApiError ? err.message : t('errors.loadDashboard'),
+      );
+    }
+  }, [authToken, t]);
 
   const institutionsWithCounts = useMemo(
     () =>
@@ -193,11 +211,13 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       setParticipants([]);
       setCertificates([]);
       setCatalogItems([]);
+      setDashboardResumo(null);
       setInstitutionsError(null);
       setEventsError(null);
       setParticipantsError(null);
       setCertificatesError(null);
       setCatalogError(null);
+      setDashboardResumoError(null);
       return;
     }
 
@@ -209,19 +229,22 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       setParticipantsLoading(true);
       setCertificatesLoading(true);
       setCatalogLoading(true);
+      setDashboardResumoLoading(true);
       setInstitutionsError(null);
       setEventsError(null);
       setParticipantsError(null);
       setCertificatesError(null);
       setCatalogError(null);
+      setDashboardResumoError(null);
 
-      const [instResult, cursoResult, participanteResult, certResult, catalogResult] =
+      const [instResult, cursoResult, participanteResult, certResult, catalogResult, resumoResult] =
         await Promise.allSettled([
           listInstituicoes(authToken),
           listCursos(authToken),
           listParticipantes(authToken),
           listCertificados(authToken),
           listCatalogoEventos(authToken),
+          fetchDashboardResumo(authToken),
         ]);
 
       if (cancelled) return;
@@ -268,11 +291,22 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         setCatalogItems([]);
       }
 
+      if (resumoResult.status === 'fulfilled') {
+        setDashboardResumo(resumoResult.value);
+      } else {
+        const err = resumoResult.reason;
+        setDashboardResumoError(
+          err instanceof ApiError ? err.message : t('errors.loadDashboard'),
+        );
+        setDashboardResumo(null);
+      }
+
       setInstitutionsLoading(false);
       setEventsLoading(false);
       setParticipantsLoading(false);
       setCertificatesLoading(false);
       setCatalogLoading(false);
+      setDashboardResumoLoading(false);
     };
 
     void loadAll();
@@ -488,6 +522,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       showToast(t('toasts.eventPublished', { title: created.titulo }));
       setEditingEvent(null);
       setCurrentTab('events');
+      void refreshDashboardResumo();
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : t('errors.createEvent');
@@ -527,6 +562,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       showToast(t('toasts.eventUpdated', { title: updated.titulo }));
       setEditingEvent(null);
       setCurrentTab('events');
+      void refreshDashboardResumo();
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : t('errors.updateEvent');
@@ -638,6 +674,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         }),
       );
       setIsIssueModalOpen(false);
+      void refreshDashboardResumo();
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : t('errors.issueCertificate');
@@ -654,6 +691,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       const mapped = mapCertificadoToUi(updated);
       setCertificates((prev) => prev.map((c) => (c.id === id ? mapped : c)));
       showToast(t('toasts.certificateRevoked'));
+      void refreshDashboardResumo();
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : t('errors.revokeCertificate');
@@ -815,6 +853,9 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
           : t('toasts.enrollmentRemoved'),
       );
       await loadInscritos(issuingEvent.id);
+      if (revogarCertificado) {
+        void refreshDashboardResumo();
+      }
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : t('errors.removeEnrollment');
@@ -834,6 +875,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       setIssuingEvent(mapped);
       showToast(t('toasts.eventCancelled'));
       await loadInscritos(issuingEvent.id);
+      void refreshDashboardResumo();
     } catch (err) {
       const message = err instanceof ApiError ? err.message : t('errors.cancelEvent');
       showToast(message);
@@ -862,6 +904,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       await loadInscritos(issuingEvent.id);
       const latest = await listCertificados(authToken);
       setCertificates(latest.map(mapCertificadoToUi));
+      void refreshDashboardResumo();
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : t('errors.revokeCertificatesBatch');
@@ -896,6 +939,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       if (revogarCertificados && result.revoked > 0) {
         const latest = await listCertificados(authToken);
         setCertificates(latest.map(mapCertificadoToUi));
+        void refreshDashboardResumo();
       }
     } catch (err) {
       const message =
@@ -930,6 +974,9 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         setInscritosError(result.erros.map((item) => item.mensagem).join(' '));
       }
       await loadInscritos(issuingEvent.id);
+      if (mapped.length > 0) {
+        void refreshDashboardResumo();
+      }
     } catch (err) {
       setInscritosError(
         err instanceof ApiError ? err.message : t('errors.issueCertificate'),
@@ -952,6 +999,9 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     }
     setIssuingEvent(null);
     setCurrentTab(tab);
+    if (tab === 'dashboard') {
+      void refreshDashboardResumo();
+    }
   };
 
   return (
@@ -1011,8 +1061,11 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         {currentTab === 'dashboard' && (
           <DashboardView
             institutions={institutionsWithCounts}
-            events={events}
             certificates={certificates}
+            resumo={dashboardResumo}
+            resumoLoading={dashboardResumoLoading}
+            resumoError={dashboardResumoError}
+            isSuperAdmin={isSuperAdmin}
             onSelectTab={handleSelectTab}
             onOpenIssueModal={() => {
               setIssueError(null);

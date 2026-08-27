@@ -142,17 +142,40 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
               const visibility = getEventPublicVisibility(evt.status, institution?.status);
               return (
               <div key={evt.id} className="p-5 flex flex-col md:flex-row gap-4">
-                <div className="md:w-36 shrink-0 flex flex-col items-center justify-center bg-slate-50 rounded-lg p-4 border border-slate-200 text-center">
-                  <span className="text-xs font-bold tracking-widest text-blue-600 uppercase mb-1">
+                <div
+                  className={`md:w-36 shrink-0 flex flex-col items-center justify-center rounded-lg p-4 border text-center ${
+                    evt.status === 'Cancelled'
+                      ? 'bg-rose-50 border-rose-200'
+                      : 'bg-slate-50 border-slate-200'
+                  }`}
+                >
+                  <span
+                    className={`text-xs font-bold tracking-widest uppercase mb-1 ${
+                      evt.status === 'Cancelled' ? 'text-rose-600' : 'text-blue-600'
+                    }`}
+                  >
                     {formatMonthLabel(evt.date, dateLocale)}
                   </span>
                   <span className="text-3xl font-bold text-slate-900 leading-none">
                     {evt.dateDay}
                   </span>
-                  <span className="text-[10px] text-slate-400 mt-1">{labelEventStatus(t, evt.status)}</span>
+                  <span
+                    className={`text-[10px] mt-1 font-semibold ${
+                      evt.status === 'Cancelled' ? 'text-rose-700' : 'text-slate-400'
+                    }`}
+                  >
+                    {labelEventStatus(t, evt.status)}
+                  </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-lg font-bold text-slate-900 mb-1">{evt.title}</h4>
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <h4 className="text-lg font-bold text-slate-900">{evt.title}</h4>
+                    {evt.status === 'Cancelled' && (
+                      <span className="inline-flex text-[11px] font-semibold px-2.5 py-0.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200">
+                        {t('status.event.cancelled')}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-slate-500 line-clamp-2 mb-3">{evt.description}</p>
                   <div className="flex flex-wrap gap-4 text-xs text-slate-500">
                     <span className="flex items-center gap-1">
