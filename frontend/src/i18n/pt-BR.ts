@@ -21,6 +21,7 @@ export const ptBR = {
     fullName: 'Nome completo',
     phone: 'Telefone',
     date: 'Data',
+    pickDate: 'Selecionar data',
     birthDate: 'Data de nascimento',
     description: 'Descrição',
     institution: 'Instituição',

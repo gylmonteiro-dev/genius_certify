@@ -11,6 +11,7 @@ import {
 import { CertificateHtmlViewer } from './CertificateHtmlViewer';
 import { digitsOnly, formatCpf, isValidCpf } from '../lib/cpf';
 import { formatDisplayDate, useT } from '../i18n';
+import { DateField } from './DateField';
 import { PublicLayout } from './PublicLayout';
 
 export const PublicMyCertificatesView: React.FC = () => {
@@ -120,11 +121,10 @@ export const PublicMyCertificatesView: React.FC = () => {
               >
                 {t('common.birthDate')}
               </label>
-              <input
+              <DateField
                 id="consultaNascimento"
-                type="date"
                 value={dataNascimento}
-                onChange={(e) => setDataNascimento(e.target.value)}
+                onChange={setDataNascimento}
                 className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />

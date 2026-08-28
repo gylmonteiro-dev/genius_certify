@@ -16,6 +16,7 @@ import {
 import { digitsOnly, formatCpf, isValidCpf } from '../lib/cpf';
 import { ApiError } from '../lib/api';
 import { formatDisplayDate, labelEventStatus, labelStudentStatus, useT } from '../i18n';
+import { DateField } from './DateField';
 
 interface ParticipantsViewProps {
   participants: Participant[];
@@ -372,10 +373,9 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
                 {t('common.birthDate')}
               </label>
-              <input
-                type="date"
+              <DateField
                 value={dataNascimento}
-                onChange={(e) => setDataNascimento(e.target.value)}
+                onChange={setDataNascimento}
                 className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm"
                 required
               />
@@ -555,7 +555,9 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
                     <td className="py-4 px-5 text-center font-bold text-blue-600">
                       {item.certificatesCount}
                     </td>
-                    <td className="py-4 px-5 text-slate-500 text-xs">{item.joinedDate}</td>
+                    <td className="py-4 px-5 text-slate-500 text-xs">
+                      {formatDisplayDate(item.joinedDate, dateLocale, item.joinedDate)}
+                    </td>
                     <td className="py-4 px-5">
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusBadgeClass(item.status)}`}
@@ -635,10 +637,9 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
                   {t('common.birthDate')}
                 </label>
-                <input
-                  type="date"
+                <DateField
                   value={detailBirthDate}
-                  onChange={(e) => setDetailBirthDate(e.target.value)}
+                  onChange={setDetailBirthDate}
                   className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm"
                   required
                 />
@@ -709,7 +710,11 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
                         )}
                       </td>
                       <td className="py-3 px-5 text-slate-500 text-xs">
-                        {evento.inscrito_em.slice(0, 10)}
+                        {formatDisplayDate(
+                          evento.inscrito_em.slice(0, 10),
+                          dateLocale,
+                          evento.inscrito_em.slice(0, 10),
+                        )}
                       </td>
                       <td className="py-3 px-5">
                         {evento.inscricao_cancelada ? (

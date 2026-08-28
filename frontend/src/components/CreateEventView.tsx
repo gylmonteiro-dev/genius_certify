@@ -12,6 +12,7 @@ import { certificateHtmlForPage, fetchCertificadoTemplatePreview } from '../lib/
 import { frentePreset } from '../lib/certificateFront';
 import { formatDisplayDate, labelEventStatus, useT } from '../i18n';
 import { CertificateHtmlViewer } from './CertificateHtmlViewer';
+import { DateField } from './DateField';
 
 const CERTIFICATE_TEMPLATES = [
   { id: 'excelencia', nameKey: 'createEvent.templateExcelencia', hintKey: 'createEvent.templateExcelenciaHint' },
@@ -430,10 +431,9 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                       {t('common.date')}
                     </label>
                     <div className="relative">
-                      <input
-                        type="date"
+                      <DateField
                         value={eventDate}
-                        onChange={(e) => setEventDate(e.target.value)}
+                        onChange={setEventDate}
                         className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                       />
                     </div>

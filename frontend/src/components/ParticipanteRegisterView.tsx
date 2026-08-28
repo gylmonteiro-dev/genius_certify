@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AuthSplitLayout } from './AuthSplitLayout';
 import { digitsOnly, formatCpf, isValidCpf } from '../lib/cpf';
 import { useT } from '../i18n';
+import { DateField } from './DateField';
 
 interface ParticipanteRegisterViewProps {
   onSubmit: (payload: {
@@ -99,11 +100,10 @@ export const ParticipanteRegisterView: React.FC<ParticipanteRegisterViewProps> =
           >
             {t('common.birthDate')}
           </label>
-          <input
+          <DateField
             id="cadastroNascimento"
-            type="date"
             value={dataNascimento}
-            onChange={(e) => setDataNascimento(e.target.value)}
+            onChange={setDataNascimento}
             className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { EventItem, RegistrationFormData } from '../types';
 import { digitsOnly, formatCpf, isValidCpf } from '../lib/cpf';
-import { useT } from '../i18n';
+import { formatDisplayDate, useT } from '../i18n';
+import { DateField } from './DateField';
 
 interface EventRegistrationViewProps {
   event: EventItem;
@@ -18,7 +19,7 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
   isSubmitting = false,
   errorMessage = null,
 }) => {
-  const { t } = useT();
+  const { t, dateLocale } = useT();
   const [fullName, setFullName] = useState('');
   const [workEmail, setWorkEmail] = useState('');
   const [documentId, setDocumentId] = useState('');
@@ -90,7 +91,7 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                     </span>
                     <div>
                       <p className="font-semibold text-base text-slate-900">
-                        {event.date}
+                        {formatDisplayDate(event.date, dateLocale, event.date)}
                       </p>
                       <p className="text-slate-500 text-xs">{event.time}</p>
                     </div>
@@ -208,12 +209,11 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                     >
                       {t('registration.birthDate')}
                     </label>
-                    <input
+                    <DateField
                       id="birthDate"
-                      type="date"
                       required
                       value={birthDate}
-                      onChange={(e) => setBirthDate(e.target.value)}
+                      onChange={setBirthDate}
                       className="w-full h-11 px-4 border border-slate-200 rounded-md bg-slate-50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                     />
                   </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Certificate } from '../types';
-import { labelCertificateStatus, useT } from '../i18n';
+import { formatDisplayDate, labelCertificateStatus, useT } from '../i18n';
 
 interface CertificatesViewProps {
   certificates: Certificate[];
@@ -29,7 +29,7 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
   onDownloadPdf,
   onVerify,
 }) => {
-  const { t } = useT();
+  const { t, dateLocale } = useT();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [codigoInput, setCodigoInput] = useState('');
@@ -200,7 +200,7 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
                       <span className="block text-xs text-slate-400">{cert.institutionName}</span>
                     </td>
                     <td className="py-4 px-5 text-slate-600 font-medium text-xs">
-                      {cert.issueDate}
+                      {formatDisplayDate(cert.issueDate, dateLocale, cert.issueDate)}
                     </td>
                     <td
                       className="py-4 px-5 font-mono text-[10px] text-slate-400 max-w-[140px] truncate"

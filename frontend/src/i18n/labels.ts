@@ -1,4 +1,5 @@
 import { CatalogoEventoItem, catalogLabel } from '../lib/catalogoEventos';
+import { formatDateBr } from '../lib/dateBr';
 import { Certificate, EventItem, Institution, Participant } from '../types';
 import type { TranslateFn } from './locale';
 
@@ -127,15 +128,6 @@ export function formatMonthLabel(isoDate: string, dateLocale: string): string {
   return parsed.toLocaleDateString(dateLocale, { month: 'long' }).toUpperCase();
 }
 
-export function formatDisplayDate(isoDate: string, dateLocale: string, fallback: string): string {
-  try {
-    const parts = isoDate.split('-');
-    if (parts.length === 3) {
-      const dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-      return dateObj.toLocaleDateString(dateLocale, { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-  } catch {
-    // fallback
-  }
-  return fallback;
+export function formatDisplayDate(isoDate: string, _dateLocale: string, fallback: string): string {
+  return formatDateBr(isoDate) || fallback;
 }

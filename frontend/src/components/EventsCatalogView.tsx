@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CatalogoEventoItem, catalogByKind, catalogLabel } from '../lib/catalogoEventos';
 import { EventItem } from '../types';
-import { labelEventModality, labelEventStatus, labelEventType, useT } from '../i18n';
+import { formatDisplayDate, labelEventModality, labelEventStatus, labelEventType, useT } from '../i18n';
 
 interface EventsCatalogViewProps {
   events: EventItem[];
@@ -14,7 +14,7 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
   catalogItems = [],
   onSelectRegister,
 }) => {
-  const { t, locale } = useT();
+  const { t, locale, dateLocale } = useT();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const categories = [
@@ -116,7 +116,7 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
                   <span className="material-symbols-outlined text-[14px]">
                     calendar_today
                   </span>
-                  {evt.date}
+                  {formatDisplayDate(evt.date, dateLocale, evt.date)}
                 </div>
 
                 <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">

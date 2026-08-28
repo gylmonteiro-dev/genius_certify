@@ -23,6 +23,7 @@ export const en: Messages = {
     fullName: 'Full name',
     phone: 'Phone',
     date: 'Date',
+    pickDate: 'Pick a date',
     birthDate: 'Date of birth',
     description: 'Description',
     institution: 'Institution',
