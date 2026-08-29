@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError } from '../lib/api';
 import {
@@ -6,7 +6,7 @@ import {
   ConsultaCertificadosApi,
   consultarMeusCertificados,
   downloadCertificadoPublicoPdf,
-  publicCertificadoHtmlUrl,
+  fetchCertificadoPublicoHtml,
 } from '../lib/certificados';
 import { CertificateHtmlViewer } from './CertificateHtmlViewer';
 import { digitsOnly, formatCpf, isValidCpf } from '../lib/cpf';
@@ -24,6 +24,35 @@ export const PublicMyCertificatesView: React.FC = () => {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [downloadingCodigo, setDownloadingCodigo] = useState<string | null>(null);
   const [viewingItem, setViewingItem] = useState<ConsultaCertificadoItemApi | null>(null);
+  const [viewingHtml, setViewingHtml] = useState('');
+  const [viewingError, setViewingError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!viewingItem) {
+      setViewingHtml('');
+      setViewingError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setViewingHtml('');
+    setViewingError(null);
+    void fetchCertificadoPublicoHtml(viewingItem.codigo_validacao)
+      .then((html) => {
+        if (!cancelled) setViewingHtml(html);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setViewingError(
+            err instanceof ApiError ? err.message : t('createEvent.previewError'),
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [viewingItem, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -253,11 +282,21 @@ export const PublicMyCertificatesView: React.FC = () => {
                   <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
-              <CertificateHtmlViewer
-                title={t('public.viewCertificate')}
-                src={publicCertificadoHtmlUrl(viewingItem.codigo_validacao)}
-                layout="scroll"
-              />
+              {viewingError ? (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-8 text-center text-sm text-rose-700">
+                  {viewingError}
+                </div>
+              ) : viewingHtml ? (
+                <CertificateHtmlViewer
+                  title={t('public.viewCertificate')}
+                  html={viewingHtml}
+                  layout="scroll"
+                />
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-16 text-center text-sm text-slate-500">
+                  {t('common.loading')}
+                </div>
+              )}
               <div className="flex justify-end gap-2 mt-4">
                 <button
                   type="button"

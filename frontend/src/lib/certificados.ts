@@ -1,5 +1,5 @@
 import { Certificate } from '../types';
-import { API_BASE, apiRequest, apiRequestBlob, apiRequestText } from './api';
+import { apiRequest, apiRequestBlob, apiRequestText } from './api';
 
 export type CertificadoApiStatus = 'active' | 'revoked' | 'expired';
 
@@ -189,8 +189,10 @@ export async function downloadCertificadoPublicoPdf(
   URL.revokeObjectURL(url);
 }
 
-export function publicCertificadoHtmlUrl(codigoValidacao: string): string {
-  return `${API_BASE}/api/publico/certificados/${codigoValidacao}/html`;
+export async function fetchCertificadoPublicoHtml(
+  codigoValidacao: string,
+): Promise<string> {
+  return apiRequestText(`/api/publico/certificados/${codigoValidacao}/html`);
 }
 
 export async function fetchCertificadoHtml(

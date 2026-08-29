@@ -4,8 +4,8 @@ import { Certificate } from '../types';
 import { ApiError } from '../lib/api';
 import {
   downloadCertificadoPublicoPdf,
+  fetchCertificadoPublicoHtml,
   mapPublicCertificadoToUi,
-  publicCertificadoHtmlUrl,
   validarCertificadoPublico,
 } from '../lib/certificados';
 import { CertificateHtmlViewer } from './CertificateHtmlViewer';
@@ -20,11 +20,15 @@ export const PublicValidateView: React.FC = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [result, setResult] = useState<Certificate | 'NOT_FOUND' | 'INVALID' | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   const runVerify = async (value: string) => {
     setIsVerifying(true);
     setResult(null);
     setMessage(null);
+    setPreviewHtml('');
+    setPreviewError(null);
     try {
       const data = await validarCertificadoPublico(value);
       setMessage(data.mensagem);
@@ -50,6 +54,33 @@ export const PublicValidateView: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codigo]);
+
+  useEffect(() => {
+    if (!result || result === 'NOT_FOUND' || result === 'INVALID') {
+      setPreviewHtml('');
+      setPreviewError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setPreviewHtml('');
+    setPreviewError(null);
+    void fetchCertificadoPublicoHtml(result.codigoValidacao)
+      .then((html) => {
+        if (!cancelled) setPreviewHtml(html);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setPreviewError(
+            err instanceof ApiError ? err.message : t('createEvent.previewError'),
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [result, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,11 +131,21 @@ export const PublicValidateView: React.FC = () => {
               <p className="text-xs text-emerald-700/80">{result.certificateNumber}</p>
               {message && <p className="text-xs mt-2">{message}</p>}
             </div>
-            <CertificateHtmlViewer
-              title={t('public.viewCertificate')}
-              src={publicCertificadoHtmlUrl(result.codigoValidacao)}
-              layout="scroll"
-            />
+            {previewError ? (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-8 text-center text-sm text-rose-700">
+                {previewError}
+              </div>
+            ) : previewHtml ? (
+              <CertificateHtmlViewer
+                title={t('public.viewCertificate')}
+                html={previewHtml}
+                layout="scroll"
+              />
+            ) : (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-16 text-center text-sm text-slate-500">
+                {t('common.loading')}
+              </div>
+            )}
             <button
               type="button"
               onClick={() =>

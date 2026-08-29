@@ -3,7 +3,7 @@ import { Certificate } from '../types';
 import { labelCertificateStatus, useT } from '../i18n';
 import {
   fetchCertificadoHtml,
-  publicCertificadoHtmlUrl,
+  fetchCertificadoPublicoHtml,
 } from '../lib/certificados';
 import { CertificateHtmlViewer } from './CertificateHtmlViewer';
 
@@ -25,13 +25,9 @@ export const CertificateDetailModal: React.FC<CertificateDetailModalProps> = ({
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const isIssuedRecord = Boolean(certificate?.participanteId && authToken);
-  const publicSrc =
-    certificate && !isIssuedRecord
-      ? publicCertificadoHtmlUrl(certificate.codigoValidacao)
-      : undefined;
 
   useEffect(() => {
-    if (!certificate || !isIssuedRecord || !authToken) {
+    if (!certificate) {
       setHtml('');
       setLoadError(null);
       return;
@@ -39,7 +35,13 @@ export const CertificateDetailModal: React.FC<CertificateDetailModalProps> = ({
 
     let cancelled = false;
     setLoadError(null);
-    void fetchCertificadoHtml(authToken, certificate.id)
+    setHtml('');
+
+    const load = isIssuedRecord && authToken
+      ? fetchCertificadoHtml(authToken, certificate.id)
+      : fetchCertificadoPublicoHtml(certificate.codigoValidacao);
+
+    void load
       .then((value) => {
         if (!cancelled) setHtml(value);
       })
@@ -77,11 +79,10 @@ export const CertificateDetailModal: React.FC<CertificateDetailModalProps> = ({
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-8 text-center text-sm text-rose-700">
             {loadError}
           </div>
-        ) : html || publicSrc ? (
+        ) : html ? (
           <CertificateHtmlViewer
             title={t('public.viewCertificate')}
-            html={html || undefined}
-            src={publicSrc}
+            html={html}
             layout="scroll"
           />
         ) : (
