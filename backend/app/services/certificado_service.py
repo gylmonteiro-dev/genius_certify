@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -419,6 +419,7 @@ class CertificadoService:
         frente_tipo: str | None = None,
         frente_titulo: str | None = None,
         frente_atestacao: str | None = None,
+        data_evento: date | None = None,
     ) -> str:
         if not is_valid_template_id(template_id):
             raise NotFoundError("Modelo de certificado não encontrado")
@@ -454,15 +455,18 @@ class CertificadoService:
             frente_tipo=frente_tipo,
             frente_titulo=frente_titulo,
             frente_atestacao=frente_atestacao,
+            data_evento=data_evento,
         )
         return self._pdf.render_certificado_html(data)
 
     async def _render_context(self, certificado: Certificado) -> CertificateRenderData:
         instituicao = await self._instituicoes.get_by_id(certificado.instituicao_id)
+        curso = await self._cursos.get_by_id(certificado.curso_id)
         return self._pdf.data_from_certificado(
             certificado,
             logo_url=instituicao.logo_url if instituicao else None,
             assinatura_url=instituicao.assinatura_url if instituicao else None,
+            data_evento=curso.data_evento if curso else None,
         )
 
     async def _render_html(self, certificado: Certificado) -> str:

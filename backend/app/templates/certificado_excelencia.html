@@ -393,7 +393,8 @@
         <p class="course-copy">
           {{ frente_atestacao }}
           <strong>{{ curso_titulo }}</strong>{% if carga_horaria %},
-          com carga horária de {{ carga_horaria }} horas{% endif %}.
+          com carga horária de {{ carga_horaria }} horas{% endif %}{% if data_evento %}.
+          O evento foi realizado na data de {{ data_evento }}{% endif %}.
         </p>
       </div>
 

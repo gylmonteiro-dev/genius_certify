@@ -231,6 +231,7 @@ export async function fetchCertificadoTemplatePreview(
     frenteTipo?: string;
     frenteTitulo?: string;
     frenteAtestacao?: string;
+    dataEvento?: string | null;
   },
 ): Promise<string> {
   return apiRequestText(
@@ -251,6 +252,7 @@ export async function fetchCertificadoTemplatePreview(
         verso_parcerias: params.versoParcerias || null,
         verso_conteudos: params.versoConteudos || null,
         verso_observacoes: params.versoObservacoes || null,
+        data_evento: params.dataEvento || null,
       }),
     },
   );

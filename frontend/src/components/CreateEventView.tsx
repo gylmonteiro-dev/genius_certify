@@ -182,6 +182,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
             versoObservacoes,
             frenteTitulo: frentePersonalizada ? frenteTitulo : undefined,
             frenteAtestacao: frentePersonalizada ? frenteAtestacao : undefined,
+            dataEvento: eventDate || null,
           });
           setPreviewHtml(html);
           setPreviewError(null);
@@ -207,6 +208,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
     frentePersonalizada,
     frenteTitulo,
     frenteAtestacao,
+    eventDate,
     t,
   ]);
 

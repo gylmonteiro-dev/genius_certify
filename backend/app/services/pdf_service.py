@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -29,6 +29,7 @@ class CertificateRenderData:
     sha256: str
     emitido_em: str
     url_validacao: str = ""
+    data_evento: str = ""
     logo_url: str | None = None
     assinatura_url: str | None = None
     frente_tipo: str | None = None
@@ -51,6 +52,12 @@ class PdfService:
     def validation_url(codigo: str) -> str:
         base = get_settings().public_app_url.rstrip("/")
         return f"{base}/validar/{codigo}"
+
+    @staticmethod
+    def format_data_evento(value: date | None) -> str:
+        if value is None:
+            return ""
+        return value.strftime("%d/%m/%Y")
 
     def _to_data_uri(self, url: str | None) -> str | None:
         if not url:
@@ -90,6 +97,7 @@ class PdfService:
             sha256=data.sha256 or "",
             emitido_em=data.emitido_em,
             url_validacao=data.url_validacao or self.validation_url(data.codigo_validacao),
+            data_evento=data.data_evento,
             logo_data_uri=self._to_data_uri(data.logo_url),
             assinatura_data_uri=self._to_data_uri(data.assinatura_url),
             font_base=font_base,
@@ -113,6 +121,7 @@ class PdfService:
         *,
         logo_url: str | None = None,
         assinatura_url: str | None = None,
+        data_evento: date | None = None,
     ) -> CertificateRenderData:
         return CertificateRenderData(
             template_id=certificado.template_id,
@@ -126,6 +135,7 @@ class PdfService:
             sha256=certificado.sha256 or "",
             emitido_em=certificado.created_at.strftime("%d/%m/%Y"),
             url_validacao=self.validation_url(str(certificado.codigo_validacao)),
+            data_evento=self.format_data_evento(data_evento),
             logo_url=logo_url,
             assinatura_url=assinatura_url,
             frente_tipo=certificado.frente_tipo,
@@ -153,6 +163,7 @@ class PdfService:
         verso_parcerias: str | None = None,
         verso_conteudos: str | None = None,
         verso_observacoes: str | None = None,
+        data_evento: date | None = None,
     ) -> CertificateRenderData:
         today = datetime.now().strftime("%d/%m/%Y")
         return CertificateRenderData(
@@ -167,6 +178,7 @@ class PdfService:
             sha256="",
             emitido_em=today,
             url_validacao=PdfService.validation_url("prévia"),
+            data_evento=PdfService.format_data_evento(data_evento),
             logo_url=logo_url,
             assinatura_url=assinatura_url,
             frente_tipo=frente_tipo,
