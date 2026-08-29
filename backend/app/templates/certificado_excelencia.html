@@ -307,6 +307,16 @@
       color: #74777f;
     }
 
+    .validate-url {
+      margin-top: 6px;
+      text-align: center;
+      font-size: 10px;
+      letter-spacing: 0;
+      text-transform: none;
+      color: #74777f;
+      word-break: break-all;
+    }
+
     .verso-title {
       margin: 0;
       font-family: "EB Garamond", "DejaVu Serif", serif;
@@ -426,6 +436,7 @@
         Código de verificação: {{ codigo_validacao }} · Emitido em: {{ emitido_em }}
         {% if numero_certificado %} · {{ numero_certificado }}{% endif %}
       </p>
+      <p class="validate-url">Para validar este certificado, acesse: {{ url_validacao }}</p>
     </div>
   </div>
   {% if verso_parcerias or verso_conteudos or verso_observacoes %}
@@ -465,6 +476,7 @@
       <p class="fine-print">
         {{ instituicao_nome }} · Código de verificação: {{ codigo_validacao }}
       </p>
+      <p class="validate-url">Para validar este certificado, acesse: {{ url_validacao }}</p>
     </div>
   </div>
   {% endif %}

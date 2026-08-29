@@ -28,6 +28,7 @@ class CertificateRenderData:
     codigo_validacao: str
     sha256: str
     emitido_em: str
+    url_validacao: str = ""
     logo_url: str | None = None
     assinatura_url: str | None = None
     frente_tipo: str | None = None
@@ -45,6 +46,11 @@ class PdfService:
             autoescape=select_autoescape(["html", "xml"]),
         )
         self._storage = storage
+
+    @staticmethod
+    def validation_url(codigo: str) -> str:
+        base = get_settings().public_app_url.rstrip("/")
+        return f"{base}/validar/{codigo}"
 
     def _to_data_uri(self, url: str | None) -> str | None:
         if not url:
@@ -83,6 +89,7 @@ class PdfService:
             codigo_validacao=data.codigo_validacao,
             sha256=data.sha256 or "",
             emitido_em=data.emitido_em,
+            url_validacao=data.url_validacao or self.validation_url(data.codigo_validacao),
             logo_data_uri=self._to_data_uri(data.logo_url),
             assinatura_data_uri=self._to_data_uri(data.assinatura_url),
             font_base=font_base,
@@ -118,6 +125,7 @@ class PdfService:
             codigo_validacao=str(certificado.codigo_validacao),
             sha256=certificado.sha256 or "",
             emitido_em=certificado.created_at.strftime("%d/%m/%Y"),
+            url_validacao=self.validation_url(str(certificado.codigo_validacao)),
             logo_url=logo_url,
             assinatura_url=assinatura_url,
             frente_tipo=certificado.frente_tipo,
@@ -158,6 +166,7 @@ class PdfService:
             codigo_validacao="prévia",
             sha256="",
             emitido_em=today,
+            url_validacao=PdfService.validation_url("prévia"),
             logo_url=logo_url,
             assinatura_url=assinatura_url,
             frente_tipo=frente_tipo,
