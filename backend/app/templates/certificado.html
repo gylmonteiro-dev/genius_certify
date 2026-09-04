@@ -69,6 +69,11 @@
       font-weight: 700;
       margin: 18px 0 8px;
     }
+    .participant-cpf {
+      margin: 0 0 12px;
+      font-size: 14px;
+      color: #475569;
+    }
     .course {
       font-size: 20px;
       margin: 8px 0 24px;
@@ -158,6 +163,9 @@
       <div class="institution">{{ instituicao_nome }}</div>
       <p>Certificamos que</p>
       <div class="recipient">{{ participante_nome }}</div>
+      {% if participante_cpf %}
+      <div class="participant-cpf">com CPF {{ participante_cpf }}</div>
+      {% endif %}
       <p>{{ frente_atestacao }}</p>
       <div class="course">{{ curso_titulo }}</div>
       {% if data_evento %}

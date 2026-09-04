@@ -28,6 +28,7 @@ class CertificateRenderData:
     codigo_validacao: str
     sha256: str
     emitido_em: str
+    participante_cpf: str = ""
     url_validacao: str = ""
     data_evento: str = ""
     logo_url: str | None = None
@@ -59,6 +60,15 @@ class PdfService:
             return ""
         return value.strftime("%d/%m/%Y")
 
+    @staticmethod
+    def format_cpf(value: str | None) -> str:
+        if not value:
+            return ""
+        digits = "".join(character for character in value if character.isdigit())
+        if len(digits) != 11:
+            return value
+        return f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
+
     def _to_data_uri(self, url: str | None) -> str | None:
         if not url:
             return None
@@ -88,6 +98,7 @@ class PdfService:
         )
         return template.render(
             participante_nome=data.participante_nome,
+            participante_cpf=data.participante_cpf,
             curso_titulo=data.curso_titulo,
             instituicao_nome=data.instituicao_nome,
             carga_horaria=data.carga_horaria,
@@ -119,6 +130,7 @@ class PdfService:
         self,
         certificado: Certificado,
         *,
+        participante_documento: str | None = None,
         logo_url: str | None = None,
         assinatura_url: str | None = None,
         data_evento: date | None = None,
@@ -126,6 +138,7 @@ class PdfService:
         return CertificateRenderData(
             template_id=certificado.template_id,
             participante_nome=certificado.participante_nome,
+            participante_cpf=self.format_cpf(participante_documento),
             curso_titulo=certificado.curso_titulo,
             instituicao_nome=certificado.instituicao_nome,
             carga_horaria=certificado.carga_horaria,
@@ -169,6 +182,7 @@ class PdfService:
         return CertificateRenderData(
             template_id=template_id,
             participante_nome=participante_nome,
+            participante_cpf="000.000.000-00",
             curso_titulo=curso_titulo,
             instituicao_nome=instituicao_nome,
             carga_horaria=carga_horaria,

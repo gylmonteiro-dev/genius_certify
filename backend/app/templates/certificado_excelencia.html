@@ -192,6 +192,13 @@
       border-bottom: 1px solid #c4c6cf;
     }
 
+    .participant-cpf {
+      margin: -10px 0 18px;
+      font-size: 14px;
+      line-height: 20px;
+      color: #44474e;
+    }
+
     .course-copy {
       margin: 0;
       font-size: 18px;
@@ -236,6 +243,10 @@
       font-size: 28px;
       color: #001b3d;
       line-height: 1;
+    }
+
+    .signature-script.institution-signature {
+      font-size: 14px;
     }
 
     .signature-line {
@@ -390,6 +401,9 @@
       <div class="body">
         <p class="attest">Este certificado atesta que</p>
         <h2 class="recipient">{{ participante_nome }}</h2>
+        {% if participante_cpf %}
+        <p class="participant-cpf">com CPF {{ participante_cpf }}</p>
+        {% endif %}
         <p class="course-copy">
           {{ frente_atestacao }}
           <strong>{{ curso_titulo }}</strong>{% if carga_horaria %},
@@ -425,7 +439,7 @@
 
         <div class="signature">
           <div class="signature-image-wrap">
-            <span class="signature-script">{{ instituicao_nome }}</span>
+            <span class="signature-script institution-signature">{{ instituicao_nome }}</span>
           </div>
           <div class="signature-line"></div>
           <p class="signature-name">{{ instituicao_nome }}</p>

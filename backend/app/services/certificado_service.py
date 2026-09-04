@@ -477,8 +477,13 @@ class CertificadoService:
     async def _render_context(self, certificado: Certificado) -> CertificateRenderData:
         instituicao = await self._instituicoes.get_by_id(certificado.instituicao_id)
         curso = await self._cursos.get_by_id(certificado.curso_id)
+        participante = await self._participantes.get_by_id(
+            certificado.participante_id,
+            instituicao_id=certificado.instituicao_id,
+        )
         return self._pdf.data_from_certificado(
             certificado,
+            participante_documento=participante.documento if participante else None,
             logo_url=instituicao.logo_url if instituicao else None,
             assinatura_url=instituicao.assinatura_url if instituicao else None,
             data_evento=curso.data_evento if curso else None,
