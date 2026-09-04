@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.core.cpf import normalize_cpf
 from app.core.data_nascimento import validate_data_nascimento
@@ -37,6 +37,25 @@ class ContaParticipanteLoginRequest(BaseModel):
         return normalize_cpf(value)
 
 
+class ContaParticipanteAtualizarPerfilRequest(BaseModel):
+    email: EmailStr | None = None
+    data_nascimento: date | None = None
+    senha_atual: str = Field(min_length=8, max_length=128)
+
+    @field_validator("data_nascimento")
+    @classmethod
+    def validate_nascimento(cls, value: date | None) -> date | None:
+        if value is None:
+            return None
+        return validate_data_nascimento(value)
+
+    @model_validator(mode="after")
+    def validate_changes(self) -> "ContaParticipanteAtualizarPerfilRequest":
+        if self.email is None and self.data_nascimento is None:
+            raise ValueError("Informe e-mail ou data de nascimento para atualizar")
+        return self
+
+
 class ContaParticipanteResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -44,6 +63,7 @@ class ContaParticipanteResponse(BaseModel):
     nome: str
     email: EmailStr
     documento: str
+    data_nascimento: date | None
     is_active: bool
 
 

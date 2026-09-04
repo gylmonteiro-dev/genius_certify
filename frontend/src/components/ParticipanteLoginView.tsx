@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { AuthSplitLayout } from './AuthSplitLayout';
 import { digitsOnly, formatCpf, isValidCpf } from '../lib/cpf';
 import { useT } from '../i18n';
@@ -16,6 +16,10 @@ export const ParticipanteLoginView: React.FC<ParticipanteLoginViewProps> = ({
   errorMessage = null,
 }) => {
   const { t } = useT();
+  const location = useLocation();
+  const passwordReset = Boolean(
+    (location.state as { passwordReset?: boolean } | null)?.passwordReset,
+  );
   const [documento, setDocumento] = useState('');
   const [senha, setSenha] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
@@ -41,6 +45,11 @@ export const ParticipanteLoginView: React.FC<ParticipanteLoginViewProps> = ({
       <p className="mt-2 text-sm text-slate-500">{t('participant.loginSubtitle')}</p>
 
       <form onSubmit={(e) => void handleSubmit(e)} className="mt-6 space-y-4">
+        {passwordReset && (
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {t('login.resetSuccess')}
+          </div>
+        )}
         {(errorMessage || localError) && (
           <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {errorMessage ?? localError}
@@ -82,6 +91,14 @@ export const ParticipanteLoginView: React.FC<ParticipanteLoginViewProps> = ({
             className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
+          <div className="mt-2 text-right">
+            <Link
+              to="/minhas-inscricoes/recuperar"
+              className="text-xs font-semibold text-blue-600 hover:underline"
+            >
+              {t('login.forgotPassword')}
+            </Link>
+          </div>
         </div>
         <button
           type="submit"

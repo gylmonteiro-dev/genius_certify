@@ -86,13 +86,21 @@ export const ParticipanteInscricoesView: React.FC<ParticipanteInscricoesViewProp
               {t('participant.hello', { name: conta.nome })}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onLogout}
-            className="self-start text-sm font-semibold text-slate-600 hover:text-slate-900 px-3 py-2 rounded-md border border-slate-200 bg-white"
-          >
-            {t('participant.logout')}
-          </button>
+          <div className="flex gap-2">
+            <Link
+              to="/minhas-inscricoes/perfil"
+              className="self-start text-sm font-semibold text-blue-700 px-3 py-2 rounded-md border border-blue-200 bg-blue-50"
+            >
+              {t('participant.myProfile')}
+            </Link>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="self-start text-sm font-semibold text-slate-600 hover:text-slate-900 px-3 py-2 rounded-md border border-slate-200 bg-white"
+            >
+              {t('participant.logout')}
+            </button>
+          </div>
         </div>
 
         {error && (

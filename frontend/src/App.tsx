@@ -11,7 +11,10 @@ import { PublicMyCertificatesView } from './components/PublicMyCertificatesView'
 import { PublicValidateView } from './components/PublicValidateView';
 import { ParticipanteInscricoesView } from './components/ParticipanteInscricoesView';
 import { ParticipanteLoginView } from './components/ParticipanteLoginView';
+import { ParticipantePerfilView } from './components/ParticipantePerfilView';
+import { ParticipanteRecoverPasswordView } from './components/ParticipanteRecoverPasswordView';
 import { ParticipanteRegisterView } from './components/ParticipanteRegisterView';
+import { ParticipanteResetPasswordView } from './components/ParticipanteResetPasswordView';
 import { Toast } from './components/Toast';
 import { ApiError } from './lib/api';
 import {
@@ -252,12 +255,35 @@ export function App() {
           }
         />
         <Route
+          path="/minhas-inscricoes/recuperar"
+          element={<ParticipanteRecoverPasswordView />}
+        />
+        <Route
+          path="/minhas-inscricoes/redefinir"
+          element={<ParticipanteResetPasswordView />}
+        />
+        <Route
           path="/minhas-inscricoes"
           element={
             isParticipanteAuthenticated && participante && participanteToken ? (
               <ParticipanteInscricoesView
                 conta={participante}
                 token={participanteToken}
+                onLogout={handleParticipanteLogout}
+              />
+            ) : (
+              <Navigate to="/minhas-inscricoes/entrar" replace />
+            )
+          }
+        />
+        <Route
+          path="/minhas-inscricoes/perfil"
+          element={
+            isParticipanteAuthenticated && participante && participanteToken ? (
+              <ParticipantePerfilView
+                conta={participante}
+                token={participanteToken}
+                onContaUpdated={setParticipante}
                 onLogout={handleParticipanteLogout}
               />
             ) : (

@@ -108,6 +108,7 @@ class PublicoService:
                 email=str(participante.email),
                 documento=participante.documento,
                 senha=data.senha,
+                data_nascimento=participante.data_nascimento,
             )
         await self._session.commit()
         await self._session.refresh(participante)

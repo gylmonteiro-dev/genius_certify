@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import UUID
 
 from sqlalchemy import select
@@ -31,6 +32,7 @@ class ContaParticipanteRepository:
         nome: str,
         email: str,
         documento: str,
+        data_nascimento: date | None = None,
         hashed_password: str,
         is_active: bool = True,
     ) -> ContaParticipante:
@@ -38,6 +40,7 @@ class ContaParticipanteRepository:
             nome=nome,
             email=email.lower(),
             documento=documento,
+            data_nascimento=data_nascimento,
             hashed_password=hashed_password,
             is_active=is_active,
         )

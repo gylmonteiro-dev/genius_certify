@@ -7,6 +7,7 @@ export interface ContaParticipante {
   nome: string;
   email: string;
   documento: string;
+  data_nascimento: string | null;
   is_active: boolean;
 }
 
@@ -73,6 +74,56 @@ export async function fetchContaParticipante(
   token: string,
 ): Promise<ContaParticipante> {
   return apiRequest<ContaParticipante>('/api/participante/me', { method: 'GET' }, token);
+}
+
+export async function atualizarPerfilParticipante(
+  token: string,
+  payload: {
+    email: string;
+    data_nascimento: string;
+    senha_atual: string;
+  },
+): Promise<ContaParticipante> {
+  return apiRequest<ContaParticipante>(
+    '/api/participante/me',
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    },
+    token,
+  );
+}
+
+export async function alterarSenhaParticipante(
+  token: string,
+  senhaAtual: string,
+  senhaNova: string,
+): Promise<void> {
+  await apiRequest(
+    '/api/participante/alterar-senha',
+    {
+      method: 'POST',
+      body: JSON.stringify({ senha_atual: senhaAtual, senha_nova: senhaNova }),
+    },
+    token,
+  );
+}
+
+export async function solicitarRecuperacaoParticipante(email: string): Promise<void> {
+  await apiRequest('/api/participante/recuperar-senha', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function redefinirSenhaParticipante(
+  token: string,
+  senhaNova: string,
+): Promise<void> {
+  await apiRequest('/api/participante/redefinir-senha', {
+    method: 'POST',
+    body: JSON.stringify({ token, senha_nova: senhaNova }),
+  });
 }
 
 export async function listMinhasInscricoes(
