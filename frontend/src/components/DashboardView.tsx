@@ -51,6 +51,7 @@ const EMPTY_RESUMO: DashboardResumo = {
   certificados_validados: 0,
   certificados_revogados: 0,
   certificados_expirados: 0,
+  acessos_certificados_total: 0,
 };
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -123,7 +124,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <h2 className="text-sm font-bold text-slate-800 mb-3">
               {t('dashboard.certificatesSection')}
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
               <MetricCard
                 label={t('dashboard.certsIssued')}
                 value={stats.certificados_emitidos}
@@ -141,6 +142,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 value={stats.certificados_revogados}
                 hint={t('dashboard.certsRevokedHint')}
                 accent="text-rose-700"
+              />
+              <MetricCard
+                label={t('dashboard.certsAccesses')}
+                value={stats.acessos_certificados_total}
+                hint={t(
+                  isSuperAdmin
+                    ? 'dashboard.certsAccessesGlobalHint'
+                    : 'dashboard.certsAccessesTenantHint',
+                )}
+                accent="text-blue-700"
               />
             </div>
           </div>

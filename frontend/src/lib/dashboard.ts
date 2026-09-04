@@ -10,6 +10,7 @@ export interface DashboardResumo {
   certificados_validados: number;
   certificados_revogados: number;
   certificados_expirados: number;
+  acessos_certificados_total: number;
 }
 
 export async function fetchDashboardResumo(token: string): Promise<DashboardResumo> {

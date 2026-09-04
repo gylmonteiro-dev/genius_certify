@@ -11,3 +11,4 @@ class DashboardResumoResponse(BaseModel):
     certificados_validados: int
     certificados_revogados: int
     certificados_expirados: int
+    acessos_certificados_total: int

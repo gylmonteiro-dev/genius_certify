@@ -10,6 +10,7 @@ from app.models import Base
 from app.models import (  # noqa: F401
     CatalogoEventoItem,
     Certificado,
+    CertificadoAcesso,
     ContaParticipante,
     Curso,
     Inscricao,

@@ -9,15 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppError, ConflictError, ForbiddenError, NotFoundError
 from app.models.certificado import Certificado, CertificadoStatus
+from app.models.certificado_acesso import CertificadoAcessoTipo
 from app.models.curso import Curso, CursoStatus
 from app.models.instituicao import Instituicao
 from app.models.participante import Participante, ParticipanteStatus
 from app.models.usuario import Usuario, UsuarioRole
-from app.repositories.participante_repository import ParticipanteRepository
+from app.repositories.certificado_acesso_repository import CertificadoAcessoRepository
 from app.repositories.certificado_repository import CertificadoRepository
 from app.repositories.curso_repository import CursoRepository
 from app.repositories.inscricao_repository import InscricaoRepository
 from app.repositories.instituicao_repository import InstituicaoRepository
+from app.repositories.participante_repository import ParticipanteRepository
 from app.schemas.certificado import (
     CertificadoEmitLoteErro,
     CertificadoEmitLoteRequest,
@@ -38,6 +40,7 @@ class CertificadoService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
         self._certificados = CertificadoRepository(session)
+        self._acessos = CertificadoAcessoRepository(session)
         self._participantes = ParticipanteRepository(session)
         self._cursos = CursoRepository(session)
         self._instituicoes = InstituicaoRepository(session)
@@ -382,25 +385,37 @@ class CertificadoService:
         certificado = await self._get_or_404(certificado_id, actor=actor)
         if certificado.status != CertificadoStatus.ACTIVE:
             raise AppError("Somente certificados ativos podem ser visualizados")
-        return await self._render_html(certificado)
+        return await self._render_html(
+            certificado,
+            tipo_acesso=CertificadoAcessoTipo.VISUALIZACAO,
+        )
 
     async def gerar_html_publico(self, codigo: UUID) -> str:
         certificado = await self._certificados.get_by_codigo_validacao(codigo)
         if certificado is None or certificado.status != CertificadoStatus.ACTIVE:
             raise NotFoundError("Certificado não encontrado")
-        return await self._render_html(certificado)
+        return await self._render_html(
+            certificado,
+            tipo_acesso=CertificadoAcessoTipo.VISUALIZACAO,
+        )
 
     async def gerar_pdf(self, certificado_id: UUID, *, actor: Usuario) -> tuple[bytes, str]:
         certificado = await self._get_or_404(certificado_id, actor=actor)
         if certificado.status != CertificadoStatus.ACTIVE:
             raise AppError("Somente certificados ativos podem gerar PDF")
-        return await self._render_pdf(certificado)
+        return await self._render_pdf(
+            certificado,
+            tipo_acesso=CertificadoAcessoTipo.DOWNLOAD,
+        )
 
     async def gerar_pdf_publico(self, codigo: UUID) -> tuple[bytes, str]:
         certificado = await self._certificados.get_by_codigo_validacao(codigo)
         if certificado is None or certificado.status != CertificadoStatus.ACTIVE:
             raise NotFoundError("Certificado não encontrado")
-        return await self._render_pdf(certificado)
+        return await self._render_pdf(
+            certificado,
+            tipo_acesso=CertificadoAcessoTipo.DOWNLOAD,
+        )
 
     async def preview_html(
         self,
@@ -469,11 +484,37 @@ class CertificadoService:
             data_evento=curso.data_evento if curso else None,
         )
 
-    async def _render_html(self, certificado: Certificado) -> str:
-        return self._pdf.render_certificado_html(await self._render_context(certificado))
+    async def _registrar_acesso(
+        self,
+        certificado: Certificado,
+        *,
+        tipo: CertificadoAcessoTipo,
+    ) -> None:
+        await self._acessos.registrar(
+            certificado_id=certificado.id,
+            instituicao_id=certificado.instituicao_id,
+            tipo=tipo,
+        )
+        await self._session.commit()
 
-    async def _render_pdf(self, certificado: Certificado) -> tuple[bytes, str]:
+    async def _render_html(
+        self,
+        certificado: Certificado,
+        *,
+        tipo_acesso: CertificadoAcessoTipo,
+    ) -> str:
+        html = self._pdf.render_certificado_html(await self._render_context(certificado))
+        await self._registrar_acesso(certificado, tipo=tipo_acesso)
+        return html
+
+    async def _render_pdf(
+        self,
+        certificado: Certificado,
+        *,
+        tipo_acesso: CertificadoAcessoTipo,
+    ) -> tuple[bytes, str]:
         pdf = self._pdf.render_certificado_pdf(await self._render_context(certificado))
+        await self._registrar_acesso(certificado, tipo=tipo_acesso)
         filename = f"{certificado.numero_certificado}.pdf"
         return pdf, filename
 

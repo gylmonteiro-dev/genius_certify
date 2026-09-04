@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenError
 from app.models.usuario import Usuario, UsuarioRole
+from app.repositories.certificado_acesso_repository import CertificadoAcessoRepository
 from app.repositories.certificado_repository import CertificadoRepository
 from app.repositories.curso_repository import CursoRepository
 from app.schemas.dashboard import DashboardResumoResponse
@@ -13,6 +14,7 @@ class DashboardService:
     def __init__(self, session: AsyncSession) -> None:
         self._cursos = CursoRepository(session)
         self._certificados = CertificadoRepository(session)
+        self._acessos = CertificadoAcessoRepository(session)
 
     def _tenant_id_for_queries(
         self,
@@ -36,6 +38,7 @@ class DashboardService:
         tenant = self._tenant_id_for_queries(actor, instituicao_id)
         eventos = await self._cursos.count_by_status(instituicao_id=tenant)
         certificados = await self._certificados.count_by_status(instituicao_id=tenant)
+        acessos_total = await self._acessos.count_total(instituicao_id=tenant)
 
         abertos = eventos.get("upcoming", 0)
         cancelados = eventos.get("cancelled", 0)
@@ -55,4 +58,5 @@ class DashboardService:
             certificados_validados=validados,
             certificados_revogados=revogados,
             certificados_expirados=expirados,
+            acessos_certificados_total=acessos_total,
         )
