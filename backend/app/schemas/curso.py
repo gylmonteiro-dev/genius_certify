@@ -50,6 +50,7 @@ class CursoUpdate(BaseModel):
     verso_parcerias: str | None = None
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
+    atualizar_certificados_emitidos: bool = False
 
 
 class CursoResponse(BaseModel):
@@ -79,6 +80,10 @@ class CursoResponse(BaseModel):
     cancelado_em: datetime | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class CursoUpdateResponse(CursoResponse):
+    certificados_atualizados: int = 0
 
 
 class CursoPublicResponse(BaseModel):

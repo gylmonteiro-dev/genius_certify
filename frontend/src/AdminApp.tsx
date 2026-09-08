@@ -532,7 +532,9 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     }
   };
 
-  const handleUpdateEvent = async (payload: CursoCreatePayload) => {
+  const handleUpdateEvent = async (
+    payload: CursoCreatePayload & { atualizar_certificados_emitidos?: boolean },
+  ) => {
     if (!authToken || !editingEvent) return;
     setCreateEventLoading(true);
     setCreateEventError(null);
@@ -554,6 +556,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         verso_parcerias: payload.verso_parcerias,
         verso_conteudos: payload.verso_conteudos,
         verso_observacoes: payload.verso_observacoes,
+        atualizar_certificados_emitidos: payload.atualizar_certificados_emitidos === true,
       };
       const updated = await updateCurso(authToken, editingEvent.id, updatePayload);
       setEvents((prev) =>
@@ -561,7 +564,32 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
           evt.id === updated.id ? mapCursoToUi(updated, institutions) : evt,
         ),
       );
-      showToast(t('toasts.eventUpdated', { title: updated.titulo }));
+      if (
+        payload.atualizar_certificados_emitidos &&
+        (updated.certificados_atualizados ?? 0) > 0
+      ) {
+        setCertificates((prev) =>
+          prev.map((cert) =>
+            cert.eventId === updated.id && cert.status === 'Active'
+              ? {
+                  ...cert,
+                  eventName: updated.titulo,
+                  durationHours: updated.carga_horaria,
+                  instructor: updated.instrutor ?? cert.instructor,
+                }
+              : cert,
+          ),
+        );
+      }
+      const updatedCount = updated.certificados_atualizados ?? 0;
+      showToast(
+        updatedCount > 0
+          ? t('toasts.eventUpdatedWithCertificates', {
+              title: updated.titulo,
+              count: updatedCount,
+            })
+          : t('toasts.eventUpdated', { title: updated.titulo }),
+      );
       setEditingEvent(null);
       setCurrentTab('events');
       void refreshDashboardResumo();

@@ -13,6 +13,7 @@ from app.schemas.curso import (
     CursoCreate,
     CursoResponse,
     CursoUpdate,
+    CursoUpdateResponse,
     InscricaoLoteRequest,
     InscricaoLoteResponse,
     InscritoResponse,
@@ -159,13 +160,13 @@ async def get_curso(
     return await CursoService(session).get(curso_id, actor=current_user)
 
 
-@router.patch("/{curso_id}", response_model=CursoResponse)
+@router.patch("/{curso_id}", response_model=CursoUpdateResponse)
 async def update_curso(
     curso_id: UUID,
     body: CursoUpdate,
     session: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(RequireInstituicaoAdmin),
-) -> CursoResponse:
+) -> CursoUpdateResponse:
     return await CursoService(session).update(curso_id, body, actor=current_user)
 
 
