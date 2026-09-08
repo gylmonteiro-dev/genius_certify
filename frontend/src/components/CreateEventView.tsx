@@ -20,7 +20,7 @@ const CERTIFICATE_TEMPLATES = [
 ] as const;
 
 interface CreateEventViewProps {
-  onSubmit: (payload: CursoCreatePayload) => Promise<void>;
+  onSubmit: (payload: CursoCreatePayload & { atualizar_certificados_emitidos?: boolean }) => Promise<void>;
   onCancel: () => void;
   institutions: Institution[];
   isSuperAdmin: boolean;
@@ -130,6 +130,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   );
   const [frenteTitulo, setFrenteTitulo] = useState(initialEvent?.frenteTitulo ?? '');
   const [frenteAtestacao, setFrenteAtestacao] = useState(initialEvent?.frenteAtestacao ?? '');
+  const [atualizarCertificadosEmitidos, setAtualizarCertificadosEmitidos] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewError, setPreviewError] = useState<string | null>(null);
   const hasVerso = Boolean(
@@ -231,7 +232,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       return;
     }
 
-    const payload: CursoCreatePayload = {
+    const payload: CursoCreatePayload & { atualizar_certificados_emitidos?: boolean } = {
       titulo: eventName.trim(),
       descricao: description.trim(),
       carga_horaria: Number(durationHours) || 0,
@@ -251,6 +252,9 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
     };
     if (!isEdit && isSuperAdmin) {
       payload.instituicao_id = instituicaoId;
+    }
+    if (isEdit) {
+      payload.atualizar_certificados_emitidos = atualizarCertificadosEmitidos;
     }
     await onSubmit(payload);
   };
@@ -886,6 +890,25 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                   </div>
                 )}
               </div>
+
+              {isEdit && (
+                <label className="mt-6 flex items-start gap-2.5 cursor-pointer rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={atualizarCertificadosEmitidos}
+                    onChange={(e) => setAtualizarCertificadosEmitidos(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-800">
+                      {t('createEvent.updateIssuedCertificates')}
+                    </span>
+                    <span className="block text-xs text-slate-600 mt-1">
+                      {t('createEvent.updateIssuedCertificatesHint')}
+                    </span>
+                  </span>
+                </label>
+              )}
 
               {/* Step 3 Actions */}
               <div className="flex justify-between gap-3 pt-6 border-t border-slate-200 mt-8">

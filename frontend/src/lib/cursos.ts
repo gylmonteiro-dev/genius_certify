@@ -30,6 +30,7 @@ export interface CursoApi {
   cancelado_em?: string | null;
   created_at: string;
   updated_at: string;
+  certificados_atualizados?: number;
 }
 
 export interface CursoPublicApi {
@@ -70,7 +71,9 @@ export interface CursoCreatePayload {
   instituicao_id?: string;
 }
 
-export type CursoUpdatePayload = Omit<CursoCreatePayload, 'instituicao_id'>;
+export type CursoUpdatePayload = Omit<CursoCreatePayload, 'instituicao_id'> & {
+  atualizar_certificados_emitidos?: boolean;
+};
 
 export type EventPublicVisibility =
   | 'open'
