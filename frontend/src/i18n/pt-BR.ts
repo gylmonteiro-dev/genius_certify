@@ -394,6 +394,9 @@ export const ptBR = {
     previewFront: 'Frente',
     previewBack: 'Verso',
     previewBackDisabled: 'Preencha ao menos um campo do verso para pré-visualizar a segunda página.',
+    updateIssuedCertificates: 'Atualizar certificados já emitidos',
+    updateIssuedCertificatesHint:
+      'Copia os dados deste evento para os certificados ativos. Código de validação e número permanecem os mesmos; o próximo download já sai com o texto novo. Certificados revogados não são alterados.',
   },
   eventTypes: {
     title: 'Catálogo de eventos',
@@ -779,6 +782,8 @@ export const ptBR = {
     institutionSuspended: 'Instituição suspensa.',
     eventPublished: 'Evento "{title}" publicado com sucesso!',
     eventUpdated: 'Evento "{title}" atualizado com sucesso!',
+    eventUpdatedWithCertificates:
+      'Evento "{title}" atualizado. {count} certificado(s) ativo(s) atualizado(s).',
     eventTypeSaved: 'Item do catálogo salvo.',
     eventTypeDeactivated: 'Item do catálogo desativado.',
     studentRegistered: 'Participante "{name}" cadastrado com sucesso!',

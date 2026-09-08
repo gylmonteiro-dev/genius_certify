@@ -206,6 +206,51 @@ class CertificadoService:
             status=CertificadoStatus.ACTIVE,
         )
 
+    async def sincronizar_snapshot_do_curso(self, curso: Curso) -> int:
+        ativos = await self._certificados.list_ativos_by_curso(
+            instituicao_id=curso.instituicao_id,
+            curso_id=curso.id,
+        )
+        if not ativos:
+            return 0
+
+        frente_tipo, frente_titulo, frente_atestacao = resolve_frente_copy(
+            template_id=curso.template_id,
+            frente_tipo=curso.frente_tipo,
+            frente_titulo=curso.frente_titulo,
+            frente_atestacao=curso.frente_atestacao,
+        )
+        template_id = resolve_template_id(curso.template_id)
+
+        for certificado in ativos:
+            certificado.curso_titulo = curso.titulo
+            certificado.carga_horaria = curso.carga_horaria
+            certificado.instrutor = curso.instrutor
+            certificado.template_id = template_id
+            certificado.frente_tipo = frente_tipo
+            certificado.frente_titulo = frente_titulo
+            certificado.frente_atestacao = frente_atestacao
+            certificado.verso_parcerias = curso.verso_parcerias
+            certificado.verso_conteudos = curso.verso_conteudos
+            certificado.verso_observacoes = curso.verso_observacoes
+            certificado.sha256 = self._compute_sha256(
+                codigo_validacao=certificado.codigo_validacao,
+                numero=certificado.numero_certificado,
+                participante_nome=certificado.participante_nome,
+                curso_titulo=curso.titulo,
+                instituicao_nome=certificado.instituicao_nome,
+                carga_horaria=curso.carga_horaria,
+                verso_parcerias=curso.verso_parcerias,
+                verso_conteudos=curso.verso_conteudos,
+                verso_observacoes=curso.verso_observacoes,
+                frente_tipo=frente_tipo,
+                frente_titulo=frente_titulo,
+                frente_atestacao=frente_atestacao,
+            )
+
+        await self._session.flush()
+        return len(ativos)
+
     async def emitir(
         self,
         data: CertificadoEmitRequest,

@@ -394,6 +394,9 @@ export const en: Messages = {
     previewFront: 'Front',
     previewBack: 'Back',
     previewBackDisabled: 'Fill at least one back-page field to preview page 2.',
+    updateIssuedCertificates: 'Update already issued certificates',
+    updateIssuedCertificatesHint:
+      "Copies this event's data onto active certificates. Validation code and number stay the same; the next download uses the new text. Revoked certificates are not changed.",
   },
   eventTypes: {
     title: 'Event catalog',
@@ -780,6 +783,8 @@ export const en: Messages = {
     institutionSuspended: 'Institution suspended.',
     eventPublished: 'Event "{title}" published successfully!',
     eventUpdated: 'Event "{title}" updated successfully!',
+    eventUpdatedWithCertificates:
+      'Event "{title}" updated. {count} active certificate(s) updated.',
     eventTypeSaved: 'Catalog item saved.',
     eventTypeDeactivated: 'Catalog item deactivated.',
     studentRegistered: 'Participant "{name}" registered successfully!',

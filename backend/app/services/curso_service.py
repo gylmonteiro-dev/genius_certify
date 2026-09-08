@@ -24,6 +24,7 @@ from app.schemas.curso import (
     CursoCreate,
     CursoResponse,
     CursoUpdate,
+    CursoUpdateResponse,
     InscricaoLoteErro,
     InscricaoLoteRequest,
     InscricaoLoteResponse,
@@ -204,11 +205,12 @@ class CursoService:
         data: CursoUpdate,
         *,
         actor: Usuario,
-    ) -> CursoResponse:
+    ) -> CursoUpdateResponse:
         curso = await self._get_or_404(curso_id, actor=actor)
         if curso.status == CursoStatus.CANCELLED:
             raise ConflictError("Evento cancelado não pode ser editado")
         payload = data.model_dump(exclude_unset=True)
+        atualizar_certificados = bool(payload.pop("atualizar_certificados_emitidos", False))
 
         if payload.get("status") == CursoStatus.CANCELLED:
             raise AppError("Use o cancelamento dedicado para cancelar um evento")
@@ -256,9 +258,17 @@ class CursoService:
             setattr(curso, field, value)
 
         await self._cursos.save(curso)
+        certificados_atualizados = 0
+        if atualizar_certificados:
+            certificados_atualizados = await CertificadoService(
+                self._session
+            ).sincronizar_snapshot_do_curso(curso)
         await self._session.commit()
         await self._session.refresh(curso)
-        return CursoResponse.model_validate(curso)
+        return CursoUpdateResponse(
+            **CursoResponse.model_validate(curso).model_dump(),
+            certificados_atualizados=certificados_atualizados,
+        )
 
     async def delete(self, curso_id: UUID, *, actor: Usuario) -> None:
         curso = await self._get_or_404(curso_id, actor=actor)
