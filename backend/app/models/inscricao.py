@@ -53,6 +53,16 @@ class Inscricao(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=True,
     )
     cancelada_justificativa: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reprovada: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+    reprovada_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    reprovada_justificativa: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     instituicao: Mapped[Instituicao] = relationship(back_populates="inscricoes")
     participante: Mapped[Participante] = relationship(back_populates="inscricoes")

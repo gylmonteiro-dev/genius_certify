@@ -116,6 +116,8 @@ class InscritoResponse(BaseModel):
     numero_certificado: str | None = None
     inscricao_cancelada: bool = False
     cancelada_justificativa: str | None = None
+    inscricao_reprovada: bool = False
+    reprovada_justificativa: str | None = None
 
 
 class InscricaoLoteRequest(BaseModel):
@@ -161,6 +163,10 @@ class InscricaoPublicaRequest(BaseModel):
         if len(stripped) < 8:
             raise ValueError("Senha deve ter pelo menos 8 caracteres")
         return stripped
+
+
+class ReprovarInscritoRequest(BaseModel):
+    justificativa: str = Field(min_length=10, max_length=2000)
 
 
 class RemoverInscritoRequest(BaseModel):

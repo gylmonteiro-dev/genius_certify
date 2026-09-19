@@ -83,3 +83,5 @@ class ContaParticipanteInscricaoItem(BaseModel):
     numero_certificado: str | None = None
     inscricao_cancelada: bool = False
     cancelada_justificativa: str | None = None
+    inscricao_reprovada: bool = False
+    reprovada_justificativa: str | None = None

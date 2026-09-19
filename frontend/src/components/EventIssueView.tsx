@@ -23,7 +23,8 @@ interface EventIssueViewProps {
   onRelease: () => Promise<void>;
   onIssueSelected: (participanteIds: string[]) => Promise<void>;
   onEnrollSelected?: (participanteIds: string[]) => Promise<void>;
-  onSetStatus?: (id: string, status: 'verified' | 'rejected') => Promise<void>;
+  onApproveInscrito?: (participanteId: string) => Promise<void>;
+  onRejectInscrito?: (participanteId: string, justificativa: string) => Promise<void>;
   onRemoveInscrito?: (participanteId: string, revogarCertificado: boolean) => Promise<void>;
   onCancelEvent?: (justificativa: string) => Promise<void>;
   onRevokeCertificatesLote?: (participanteIds: string[]) => Promise<void>;
@@ -43,6 +44,10 @@ function isEnrollmentCancelled(item: InscritoApi): boolean {
   return Boolean(item.inscricao_cancelada);
 }
 
+function isEnrollmentRejected(item: InscritoApi): boolean {
+  return Boolean(item.inscricao_reprovada);
+}
+
 export const EventIssueView: React.FC<EventIssueViewProps> = ({
   event,
   inscritos,
@@ -58,7 +63,8 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
   onRelease,
   onIssueSelected,
   onEnrollSelected,
-  onSetStatus,
+  onApproveInscrito,
+  onRejectInscrito,
   onRemoveInscrito,
   onCancelEvent,
   onRevokeCertificatesLote,
@@ -78,6 +84,9 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
   const [showJustification, setShowJustification] = useState(false);
   const [showBulkCancel, setShowBulkCancel] = useState(false);
   const [cancelJustification, setCancelJustification] = useState('');
+  const [rejectTarget, setRejectTarget] = useState<InscritoApi | null>(null);
+  const [rejectJustification, setRejectJustification] = useState('');
+  const [rejecting, setRejecting] = useState(false);
 
   const eligible = useMemo(
     () =>
@@ -85,7 +94,8 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
         (item) =>
           !item.ja_emitido &&
           item.status === 'verified' &&
-          !isEnrollmentCancelled(item),
+          !isEnrollmentCancelled(item) &&
+          !isEnrollmentRejected(item),
       ),
     [inscritos],
   );
@@ -203,7 +213,36 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
     closeEnrollModal();
   };
 
-  const showActions = Boolean(onSetStatus || onRemoveInscrito) && !eventCancelled;
+  const openRejectModal = (item: InscritoApi) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.delete(item.id);
+      return next;
+    });
+    setRejectTarget(item);
+    setRejectJustification('');
+    setFormError(null);
+  };
+
+  const handleReject = async () => {
+    if (!onRejectInscrito || !rejectTarget) return;
+    const reason = rejectJustification.trim();
+    if (reason.length < JUSTIFICATIVA_MIN) {
+      setFormError(t('eventIssue.rejectJustificationHint'));
+      return;
+    }
+    setRejecting(true);
+    try {
+      await onRejectInscrito(rejectTarget.id, reason);
+      setRejectTarget(null);
+      setRejectJustification('');
+    } finally {
+      setRejecting(false);
+    }
+  };
+
+  const showActions =
+    Boolean(onApproveInscrito || onRejectInscrito || onRemoveInscrito) && !eventCancelled;
 
   const handleConfirmRemove = async (revogarCertificado: boolean) => {
     if (!onRemoveInscrito || !confirmTarget) return;
@@ -503,7 +542,8 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
               <tbody className="divide-y divide-slate-100">
                 {inscritos.map((item) => {
                   const cancelled = isEnrollmentCancelled(item);
-                  const canSelect = !eventCancelled && !cancelled;
+                  const rejected = isEnrollmentRejected(item);
+                  const canSelect = !eventCancelled && !cancelled && !rejected;
                   return (
                   <tr key={item.id} className="text-slate-700">
                     <td className="px-4 py-3">
@@ -525,7 +565,17 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                             {t('eventIssue.enrollmentCancelled')}
                           </span>
                         )}
+                        {rejected && (
+                          <span className="inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-200">
+                            {t('eventIssue.enrollmentRejected')}
+                          </span>
+                        )}
                       </div>
+                      {rejected && item.reprovada_justificativa && (
+                        <p className="mt-1 text-[11px] text-slate-500 max-w-xs">
+                          {item.reprovada_justificativa}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {item.certificado_status === 'revoked' ? (
@@ -536,7 +586,7 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                         <span className="inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
                           {item.numero_certificado ?? t('eventIssue.issued')}
                         </span>
-                      ) : item.status !== 'verified' ? (
+                      ) : rejected || item.status !== 'verified' ? (
                         <span className="text-xs text-slate-400">{t('eventIssue.notEligible')}</span>
                       ) : (
                         <span className="text-xs text-slate-400">{t('eventIssue.pendingIssue')}</span>
@@ -545,26 +595,21 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                     {showActions && (
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1.5">
-                          {onSetStatus && item.status !== 'verified' && !cancelled && (
+                          {onApproveInscrito &&
+                            !cancelled &&
+                            (item.status !== 'verified' || rejected) && (
                             <button
                               type="button"
-                              onClick={() => void onSetStatus(item.id, 'verified')}
+                              onClick={() => void onApproveInscrito(item.id)}
                               className="px-2.5 py-1 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 text-[11px] font-semibold hover:bg-emerald-100"
                             >
                               {t('students.approve')}
                             </button>
                           )}
-                          {onSetStatus && item.status !== 'rejected' && !cancelled && (
+                          {onRejectInscrito && !cancelled && !rejected && (
                             <button
                               type="button"
-                              onClick={() => {
-                                setSelected((prev) => {
-                                  const next = new Set(prev);
-                                  next.delete(item.id);
-                                  return next;
-                                });
-                                void onSetStatus(item.id, 'rejected');
-                              }}
+                              onClick={() => openRejectModal(item)}
                               className="px-2.5 py-1 rounded-md border border-rose-200 bg-rose-50 text-rose-700 text-[11px] font-semibold hover:bg-rose-100"
                             >
                               {t('students.reject')}
@@ -643,6 +688,58 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                   {t('eventIssue.removeConfirm')}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rejectTarget && onRejectInscrito && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-md p-5 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">
+              {t('eventIssue.rejectTitle')}
+            </h3>
+            <p className="text-sm text-slate-600">
+              {t('eventIssue.rejectHint', { name: rejectTarget.nome })}
+            </p>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                {t('eventIssue.rejectJustification')}
+              </label>
+              <textarea
+                value={rejectJustification}
+                onChange={(e) => setRejectJustification(e.target.value)}
+                rows={4}
+                placeholder={t('eventIssue.rejectPlaceholder')}
+                className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm"
+              />
+              <p className="mt-1 text-[11px] text-slate-500">
+                {t('eventIssue.rejectJustificationHint')}
+              </p>
+              {formError && (
+                <p className="mt-2 text-sm text-rose-700">{formError}</p>
+              )}
+            </div>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <button
+                type="button"
+                disabled={rejecting}
+                onClick={() => {
+                  setRejectTarget(null);
+                  setRejectJustification('');
+                }}
+                className="px-4 py-2 rounded-md border border-slate-200 text-sm font-semibold"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                disabled={rejecting}
+                onClick={() => void handleReject()}
+                className="px-4 py-2 rounded-md bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
+              >
+                {rejecting ? t('common.saving') : t('eventIssue.rejectConfirm')}
+              </button>
             </div>
           </div>
         </div>

@@ -34,6 +34,8 @@ export interface MinhaInscricao {
   numero_certificado: string | null;
   inscricao_cancelada: boolean;
   cancelada_justificativa: string | null;
+  inscricao_reprovada: boolean;
+  reprovada_justificativa: string | null;
 }
 
 export function getStoredParticipanteToken(): string | null {

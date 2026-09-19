@@ -252,6 +252,8 @@ export interface InscritoApi {
   numero_certificado: string | null;
   inscricao_cancelada?: boolean;
   cancelada_justificativa?: string | null;
+  inscricao_reprovada?: boolean;
+  reprovada_justificativa?: string | null;
 }
 
 export async function listInscritos(
@@ -286,6 +288,34 @@ export async function inscreverParticipantesLote(
     {
       method: 'POST',
       body: JSON.stringify({ participante_ids: participanteIds }),
+    },
+    token,
+  );
+}
+
+export async function aprovarInscrito(
+  token: string,
+  cursoId: string,
+  participanteId: string,
+): Promise<InscritoApi> {
+  return apiRequest<InscritoApi>(
+    `/api/cursos/${cursoId}/inscritos/${participanteId}/aprovar`,
+    { method: 'POST' },
+    token,
+  );
+}
+
+export async function reprovarInscrito(
+  token: string,
+  cursoId: string,
+  participanteId: string,
+  justificativa: string,
+): Promise<InscritoApi> {
+  return apiRequest<InscritoApi>(
+    `/api/cursos/${cursoId}/inscritos/${participanteId}/reprovar`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ justificativa }),
     },
     token,
   );

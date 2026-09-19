@@ -163,6 +163,21 @@ export const ParticipanteInscricoesView: React.FC<ParticipanteInscricoesViewProp
                               {t('participant.enrollmentCancelled')}
                             </span>
                           )}
+                          {item.inscricao_reprovada && (
+                            <span className="inline-flex w-fit text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-200">
+                              {t('participant.enrollmentRejected')}
+                            </span>
+                          )}
+                          {item.inscricao_reprovada && item.reprovada_justificativa && (
+                            <span className="text-[11px] text-slate-500">
+                              {t('participant.rejectionReason')}: {item.reprovada_justificativa}
+                            </span>
+                          )}
+                          {item.inscricao_cancelada && item.cancelada_justificativa && (
+                            <span className="text-[11px] text-slate-500">
+                              {t('participant.cancellationReason')}: {item.cancelada_justificativa}
+                            </span>
+                          )}
                           {item.certificado_status === 'revoked' && (
                             <span className="inline-flex w-fit text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-200">
                               {t('participant.certificateRevoked')}

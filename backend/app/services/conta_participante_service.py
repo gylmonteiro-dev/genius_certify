@@ -356,6 +356,8 @@ class ContaParticipanteService:
                     ),
                     inscricao_cancelada=inscricao.cancelada,
                     cancelada_justificativa=inscricao.cancelada_justificativa,
+                    inscricao_reprovada=inscricao.reprovada,
+                    reprovada_justificativa=inscricao.reprovada_justificativa,
                 )
             )
         return items
@@ -421,6 +423,8 @@ class ContaParticipanteService:
             numero_certificado=None,
             inscricao_cancelada=False,
             cancelada_justificativa=None,
+            inscricao_reprovada=False,
+            reprovada_justificativa=None,
         )
 
     async def cancelar_inscricao(

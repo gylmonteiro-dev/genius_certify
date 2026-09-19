@@ -50,6 +50,8 @@ import {
   listInscritos,
   inscreverParticipantesLote,
   mapCursoToUi,
+  aprovarInscrito,
+  reprovarInscrito,
   removerInscrito,
   cancelarCurso,
   cancelarInscritosLote,
@@ -75,6 +77,7 @@ import {
   getParticipantePorCpf,
   importParticipantesCsv,
   listParticipantes,
+  mapParticipanteStatus,
   mapParticipanteToUi,
   reprovarParticipante,
   updateParticipante,
@@ -629,6 +632,50 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
           { name: updated.nome },
         ),
       );
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : t('errors.updateParticipantStatus');
+      showToast(message);
+      throw err;
+    }
+  };
+
+  const handleApproveInscrito = async (participanteId: string) => {
+    if (!authToken || !issuingEvent) return;
+    try {
+      const updated = await aprovarInscrito(authToken, issuingEvent.id, participanteId);
+      setInscritos((prev) =>
+        prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
+      );
+      setParticipants((prev) =>
+        prev.map((item) =>
+          item.id === updated.id
+            ? { ...item, status: mapParticipanteStatus(updated.status) }
+            : item,
+        ),
+      );
+      showToast(t('toasts.participantApproved', { name: updated.nome }));
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : t('errors.updateParticipantStatus');
+      showToast(message);
+      throw err;
+    }
+  };
+
+  const handleRejectInscrito = async (participanteId: string, justificativa: string) => {
+    if (!authToken || !issuingEvent) return;
+    try {
+      const updated = await reprovarInscrito(
+        authToken,
+        issuingEvent.id,
+        participanteId,
+        justificativa,
+      );
+      setInscritos((prev) =>
+        prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
+      );
+      showToast(t('toasts.enrollmentRejected', { name: updated.nome }));
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : t('errors.updateParticipantStatus');
@@ -1202,7 +1249,8 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
               onEnrollSelected={(participanteIds) =>
                 handleEnrollLote(issuingEvent.id, participanteIds)
               }
-              onSetStatus={handleSetParticipantStatus}
+              onApproveInscrito={handleApproveInscrito}
+              onRejectInscrito={handleRejectInscrito}
               onRemoveInscrito={handleRemoveInscrito}
               onCancelEvent={handleCancelEvent}
               onRevokeCertificatesLote={handleRevokeCertificatesLote}

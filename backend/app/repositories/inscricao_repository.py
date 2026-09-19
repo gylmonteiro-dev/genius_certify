@@ -20,10 +20,14 @@ class InscricaoRepository:
         participante_id: UUID,
         curso_id: UUID,
     ) -> Inscricao | None:
-        stmt = select(Inscricao).where(
-            Inscricao.instituicao_id == instituicao_id,
-            Inscricao.participante_id == participante_id,
-            Inscricao.curso_id == curso_id,
+        stmt = (
+            select(Inscricao)
+            .where(
+                Inscricao.instituicao_id == instituicao_id,
+                Inscricao.participante_id == participante_id,
+                Inscricao.curso_id == curso_id,
+            )
+            .options(selectinload(Inscricao.participante))
         )
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()

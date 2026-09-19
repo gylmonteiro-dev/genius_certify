@@ -147,6 +147,11 @@ class CertificadoService:
         if existing is not None:
             if existing.cancelada:
                 raise AppError("Inscrição cancelada neste evento")
+            if existing.reprovada:
+                motivo = existing.reprovada_justificativa or (
+                    "Inscrição reprovada neste evento"
+                )
+                raise AppError(motivo)
             return
         await self._inscricoes.create(
             instituicao_id=instituicao_id,
@@ -340,6 +345,11 @@ class CertificadoService:
 
             try:
                 self._assert_participante_apto(participante)
+                await self._ensure_inscricao(
+                    instituicao_id=instituicao_id,
+                    participante_id=participante.id,
+                    curso_id=curso.id,
+                )
             except AppError as exc:
                 erros.append(
                     CertificadoEmitLoteErro(
@@ -348,12 +358,6 @@ class CertificadoService:
                     )
                 )
                 continue
-
-            await self._ensure_inscricao(
-                instituicao_id=instituicao_id,
-                participante_id=participante.id,
-                curso_id=curso.id,
-            )
 
             existing = await self._certificados.get_active_by_participante_curso(
                 instituicao_id=instituicao_id,

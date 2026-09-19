@@ -18,6 +18,7 @@ from app.schemas.curso import (
     InscricaoLoteResponse,
     InscritoResponse,
     RemoverInscritoRequest,
+    ReprovarInscritoRequest,
     RevogarCertificadosLoteRequest,
     RevogarCertificadosLoteResponse,
 )
@@ -96,6 +97,42 @@ async def remover_inscrito(
         actor=current_user,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{curso_id}/inscritos/{participante_id}/aprovar",
+    response_model=InscritoResponse,
+)
+async def aprovar_inscrito(
+    curso_id: UUID,
+    participante_id: UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> InscritoResponse:
+    return await CursoService(session).aprovar_inscrito(
+        curso_id,
+        participante_id,
+        actor=current_user,
+    )
+
+
+@router.post(
+    "/{curso_id}/inscritos/{participante_id}/reprovar",
+    response_model=InscritoResponse,
+)
+async def reprovar_inscrito(
+    curso_id: UUID,
+    participante_id: UUID,
+    body: ReprovarInscritoRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> InscritoResponse:
+    return await CursoService(session).reprovar_inscrito(
+        curso_id,
+        participante_id,
+        body,
+        actor=current_user,
+    )
 
 
 @router.post(

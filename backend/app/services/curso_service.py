@@ -10,6 +10,7 @@ from app.models.catalogo_evento import CatalogoEventoKind
 from app.models.certificado import Certificado, CertificadoStatus
 from app.models.curso import Curso, CursoStatus
 from app.models.inscricao import Inscricao
+from app.models.participante import Participante, ParticipanteStatus
 from app.models.usuario import Usuario, UsuarioRole
 from app.repositories.catalogo_evento_repository import CatalogoEventoRepository
 from app.repositories.certificado_repository import CertificadoRepository
@@ -31,6 +32,7 @@ from app.schemas.curso import (
     InscritoResponse,
     LoteItemErro,
     RemoverInscritoRequest,
+    ReprovarInscritoRequest,
     RevogarCertificadosLoteRequest,
     RevogarCertificadosLoteResponse,
 )
@@ -328,6 +330,8 @@ class CursoService:
                     ),
                     inscricao_cancelada=inscricao.cancelada,
                     cancelada_justificativa=inscricao.cancelada_justificativa,
+                    inscricao_reprovada=inscricao.reprovada,
+                    reprovada_justificativa=inscricao.reprovada_justificativa,
                 )
             )
         items.sort(key=lambda item: item.nome.lower())
@@ -426,6 +430,71 @@ class CursoService:
         justificativa = self._normalize_justificativa(data.justificativa)
         self._mark_inscricao_cancelada(inscricao, justificativa=justificativa)
         await self._session.commit()
+
+    async def aprovar_inscrito(
+        self,
+        curso_id: UUID,
+        participante_id: UUID,
+        *,
+        actor: Usuario,
+    ) -> InscritoResponse:
+        curso, inscricao = await self._get_inscricao_or_404(
+            curso_id,
+            participante_id,
+            actor=actor,
+        )
+        if inscricao.cancelada:
+            raise ConflictError("Não é possível aprovar uma inscrição cancelada")
+
+        participante = inscricao.participante
+        if participante is None:
+            participante = await self._participantes.get_by_id(
+                participante_id,
+                instituicao_id=curso.instituicao_id,
+            )
+        if participante is None:
+            raise NotFoundError("Participante não encontrado")
+
+        participante.status = ParticipanteStatus.VERIFIED
+        self._clear_inscricao_reprovada(inscricao)
+        await self._session.commit()
+        return await self._inscrito_response(curso, inscricao, participante)
+
+    async def reprovar_inscrito(
+        self,
+        curso_id: UUID,
+        participante_id: UUID,
+        data: ReprovarInscritoRequest,
+        *,
+        actor: Usuario,
+    ) -> InscritoResponse:
+        curso, inscricao = await self._get_inscricao_or_404(
+            curso_id,
+            participante_id,
+            actor=actor,
+        )
+        if inscricao.cancelada:
+            raise ConflictError("Não é possível reprovar uma inscrição cancelada")
+
+        participante = inscricao.participante
+        if participante is None:
+            participante = await self._participantes.get_by_id(
+                participante_id,
+                instituicao_id=curso.instituicao_id,
+            )
+        if participante is None:
+            raise NotFoundError("Participante não encontrado")
+
+        justificativa = self._normalize_justificativa(data.justificativa)
+        if justificativa is None or len(justificativa) < JUSTIFICATIVA_MIN_LEN:
+            raise AppError(
+                "Informe uma justificativa com pelo menos "
+                f"{JUSTIFICATIVA_MIN_LEN} caracteres"
+            )
+
+        self._mark_inscricao_reprovada(inscricao, justificativa=justificativa)
+        await self._session.commit()
+        return await self._inscrito_response(curso, inscricao, participante)
 
     async def cancelar(
         self,
@@ -619,6 +688,54 @@ class CursoService:
             raise NotFoundError("Curso não encontrado")
         return curso
 
+    async def _get_inscricao_or_404(
+        self,
+        curso_id: UUID,
+        participante_id: UUID,
+        *,
+        actor: Usuario,
+    ) -> tuple[Curso, Inscricao]:
+        curso = await self._get_or_404(curso_id, actor=actor)
+        inscricao = await self._inscricoes.get_by_participante_curso(
+            instituicao_id=curso.instituicao_id,
+            participante_id=participante_id,
+            curso_id=curso.id,
+        )
+        if inscricao is None:
+            raise NotFoundError("Inscrição não encontrada")
+        return curso, inscricao
+
+    async def _inscrito_response(
+        self,
+        curso: Curso,
+        inscricao: Inscricao,
+        participante: Participante,
+    ) -> InscritoResponse:
+        certificado = await self._certificados.get_active_by_participante_curso(
+            instituicao_id=curso.instituicao_id,
+            participante_id=participante.id,
+            curso_id=curso.id,
+        )
+        return InscritoResponse(
+            id=participante.id,
+            nome=participante.nome,
+            email=participante.email,
+            documento=participante.documento,
+            status=participante.status,
+            inscrito_em=inscricao.created_at,
+            ja_emitido=certificado is not None
+            and certificado.status == CertificadoStatus.ACTIVE,
+            certificado_id=certificado.id if certificado else None,
+            certificado_status=certificado.status if certificado else None,
+            numero_certificado=(
+                certificado.numero_certificado if certificado else None
+            ),
+            inscricao_cancelada=inscricao.cancelada,
+            cancelada_justificativa=inscricao.cancelada_justificativa,
+            inscricao_reprovada=inscricao.reprovada,
+            reprovada_justificativa=inscricao.reprovada_justificativa,
+        )
+
     @staticmethod
     def _normalize_justificativa(value: str | None) -> str | None:
         if value is None:
@@ -642,3 +759,20 @@ class CursoService:
         inscricao.cancelada = False
         inscricao.cancelada_em = None
         inscricao.cancelada_justificativa = None
+
+    @staticmethod
+    def _mark_inscricao_reprovada(
+        inscricao: Inscricao,
+        *,
+        justificativa: str,
+        when: datetime | None = None,
+    ) -> None:
+        inscricao.reprovada = True
+        inscricao.reprovada_em = when or datetime.now(timezone.utc)
+        inscricao.reprovada_justificativa = justificativa
+
+    @staticmethod
+    def _clear_inscricao_reprovada(inscricao: Inscricao) -> None:
+        inscricao.reprovada = False
+        inscricao.reprovada_em = None
+        inscricao.reprovada_justificativa = None
