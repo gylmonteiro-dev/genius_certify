@@ -34,6 +34,7 @@ from app.services.certificate_templates import (
     resolve_template_id,
 )
 from app.services.pdf_service import CertificateRenderData, PdfService
+from app.services.vagas import lock_and_assert_vaga
 
 
 class CertificadoService:
@@ -153,6 +154,12 @@ class CertificadoService:
                 )
                 raise AppError(motivo)
             return
+        await lock_and_assert_vaga(
+            self._cursos,
+            self._inscricoes,
+            curso_id,
+            instituicao_id=instituicao_id,
+        )
         await self._inscricoes.create(
             instituicao_id=instituicao_id,
             participante_id=participante_id,

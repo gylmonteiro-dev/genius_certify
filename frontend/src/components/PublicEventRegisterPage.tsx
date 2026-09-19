@@ -93,6 +93,10 @@ export const PublicEventRegisterPage: React.FC<PublicEventRegisterPageProps> = (
         data_nascimento: form.birthDate,
         ...(form.password ? { senha: form.password } : {}),
       });
+      setEvent((current) => {
+        if (!current || typeof current.spotsLeft !== 'number') return current;
+        return { ...current, spotsLeft: Math.max(0, current.spotsLeft - 1) };
+      });
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : t('public.registerFallbackError');
@@ -110,6 +114,10 @@ export const PublicEventRegisterPage: React.FC<PublicEventRegisterPageProps> = (
     try {
       await inscreverCursoAutenticado(token, event.id);
       setAlreadyEnrolled(true);
+      setEvent((current) => {
+        if (!current || typeof current.spotsLeft !== 'number') return current;
+        return { ...current, spotsLeft: Math.max(0, current.spotsLeft - 1) };
+      });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setAlreadyEnrolled(true);

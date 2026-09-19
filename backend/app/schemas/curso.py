@@ -28,6 +28,7 @@ class CursoCreate(BaseModel):
     verso_parcerias: str | None = None
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
+    limite_participantes: int | None = Field(default=None, ge=1)
     # Obrigatório para SuperAdmin; ignorado para admin da instituição (usa o JWT)
     instituicao_id: UUID | None = None
 
@@ -50,6 +51,7 @@ class CursoUpdate(BaseModel):
     verso_parcerias: str | None = None
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
+    limite_participantes: int | None = Field(default=None, ge=1)
     atualizar_certificados_emitidos: bool = False
 
 
@@ -76,6 +78,7 @@ class CursoResponse(BaseModel):
     verso_parcerias: str | None = None
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
+    limite_participantes: int | None = None
     cancelamento_justificativa: str | None = None
     cancelado_em: datetime | None = None
     created_at: datetime
@@ -101,6 +104,8 @@ class CursoPublicResponse(BaseModel):
     verso_parcerias: str | None = None
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
+    limite_participantes: int | None = None
+    vagas_disponiveis: int | None = None
 
 
 class InscritoResponse(BaseModel):

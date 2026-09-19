@@ -72,6 +72,9 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       : '',
   );
   const [durationHours, setDurationHours] = useState<number>(initialEvent?.durationHours ?? 8);
+  const [participantLimit, setParticipantLimit] = useState(
+    initialEvent?.limiteParticipantes != null ? String(initialEvent.limiteParticipantes) : '',
+  );
   const [instructor, setInstructor] = useState(initialEvent?.instructor ?? '');
   const [description, setDescription] = useState(
     initialEvent && initialEvent.description !== '—' ? initialEvent.description : '',
@@ -231,12 +234,20 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       setCurrentStep(1);
       return;
     }
+    const trimmedLimit = participantLimit.trim();
+    const parsedLimit = trimmedLimit === '' ? null : Number(trimmedLimit);
+    if (trimmedLimit !== '' && (!Number.isInteger(parsedLimit) || parsedLimit < 1)) {
+      setFormError(t('createEvent.participantLimitInvalid'));
+      setCurrentStep(1);
+      return;
+    }
 
     const payload: CursoCreatePayload & { atualizar_certificados_emitidos?: boolean } = {
       titulo: eventName.trim(),
       descricao: description.trim(),
       carga_horaria: Number(durationHours) || 0,
       instrutor: instructor.trim(),
+      limite_participantes: parsedLimit,
       status,
       data_evento: eventDate || null,
       categoria: categoria || null,
@@ -458,6 +469,24 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                       className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                    {t('createEvent.participantLimit')}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    inputMode="numeric"
+                    value={participantLimit}
+                    onChange={(e) => setParticipantLimit(e.target.value)}
+                    placeholder={t('createEvent.participantLimitUnlimited')}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {t('createEvent.participantLimitHint')}
+                  </p>
                 </div>
 
                 {/* Lead Instructor / Speaker */}
@@ -818,6 +847,12 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
                   <span className="text-slate-400 font-medium">{t('createEvent.durationHours')}:</span>
                   <span className="font-bold text-slate-800">{t('createEvent.durationValue', { hours: durationHours })}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-slate-200/60">
+                  <span className="text-slate-400 font-medium">{t('createEvent.participantLimit')}:</span>
+                  <span className="font-bold text-slate-800">
+                    {participantLimit.trim() || t('createEvent.participantLimitUnlimited')}
+                  </span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
                   <span className="text-slate-400 font-medium">{t('createEvent.status')}:</span>

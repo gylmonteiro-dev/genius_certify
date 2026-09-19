@@ -49,6 +49,7 @@ export interface EventItem {
   institutionId: string;
   institutionName: string;
   description: string;
+  limiteParticipantes?: number | null;
   spotsLeft?: number;
   closingSoon?: boolean;
   bannerImage?: string;

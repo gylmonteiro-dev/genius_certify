@@ -73,7 +73,8 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredEvents.map((evt) => {
           const cancelled = evt.status === 'Cancelled';
-          const canRegister = evt.status === 'Upcoming';
+          const soldOut = typeof evt.spotsLeft === 'number' && evt.spotsLeft <= 0;
+          const canOpen = evt.status === 'Upcoming';
           // Default banner images if missing
           const defaultBanner =
             'https://lh3.googleusercontent.com/aida-public/AB6AXuDHWNgAzdsDqjQxubvrpMFCHtJHUyl2441P5HrQIvlRqRObtSFi6cR45owJRXPBhKChYXReX3KSHk98estRq0Ma2oGKXDBRPenXesMktAgi3GIDy2093X2cFoeYbeE8A8xnL6Bsg0FnTOZxiW-E4JgnLp3ESiZ1QgIOmtzvFOTwXovUvwNHbhfy80h1VUNgKc2gwwXsQOk0ys_LEzzw_TXBcU3Sn1AL4ASjxP4OSrhQx9rDHa-AFsVdzw';
@@ -129,9 +130,17 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
 
                 {/* Bottom Bar */}
                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100">
-                  {evt.spotsLeft ? (
-                    <span className="text-xs font-semibold px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
-                      {t('catalog.spotsLeft', { count: evt.spotsLeft })}
+                  {typeof evt.spotsLeft === 'number' ? (
+                    <span
+                      className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                        soldOut
+                          ? 'bg-rose-50 text-rose-700 border-rose-200'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      }`}
+                    >
+                      {soldOut
+                        ? t('catalog.soldOut')
+                        : t('catalog.spotsLeft', { count: evt.spotsLeft })}
                     </span>
                   ) : evt.closingSoon ? (
                     <span className="text-xs font-semibold px-2.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full">
@@ -143,13 +152,17 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
                     </span>
                   )}
 
-                  {canRegister ? (
+                  {canOpen ? (
                     <button
                       type="button"
                       onClick={() => onSelectRegister(evt)}
-                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold text-xs transition-colors shadow-xs"
+                      className={`px-4 py-1.5 rounded-md font-bold text-xs transition-colors shadow-xs ${
+                        soldOut
+                          ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      }`}
                     >
-                      {t('catalog.register')}
+                      {soldOut ? t('catalog.soldOut') : t('catalog.register')}
                     </button>
                   ) : (
                     <span

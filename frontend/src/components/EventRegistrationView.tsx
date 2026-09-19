@@ -75,6 +75,8 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
   const confirmedDocument = loggedInAccount
     ? formatCpf(loggedInAccount.documento)
     : documentId;
+  const soldOut = typeof event.spotsLeft === 'number' && event.spotsLeft <= 0;
+  const canEnroll = !soldOut && !(alreadyEnrolled && loggedInAccount);
 
   return (
     <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-4 sm:p-6 md:p-8 bg-slate-50">
@@ -134,6 +136,30 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                       </p>
                     </div>
                   </div>
+
+                  {typeof event.spotsLeft === 'number' && (
+                    <div className="flex items-start">
+                      <span className="material-symbols-outlined text-blue-600 mr-3 mt-0.5">
+                        group
+                      </span>
+                      <div>
+                        <p
+                          className={`font-semibold text-base ${
+                            soldOut ? 'text-rose-700' : 'text-slate-900'
+                          }`}
+                        >
+                          {soldOut
+                            ? t('registration.soldOut')
+                            : t('catalog.spotsLeft', { count: event.spotsLeft })}
+                        </p>
+                        {event.limiteParticipantes != null && (
+                          <p className="text-slate-500 text-xs">
+                            {t('createEvent.participantLimit')}: {event.limiteParticipantes}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -170,7 +196,12 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                   </div>
                 )}
 
-                {alreadyEnrolled && loggedInAccount ? (
+                {soldOut && !alreadyEnrolled ? (
+                  <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-800">
+                    <p className="font-semibold">{t('registration.soldOut')}</p>
+                    <p className="mt-1">{t('registration.eventFull')}</p>
+                  </div>
+                ) : alreadyEnrolled && loggedInAccount ? (
                   <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
                     <p className="font-semibold">{t('registration.alreadyEnrolled')}</p>
                     <Link
@@ -295,13 +326,13 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                 )}
               </div>
 
-              {!(alreadyEnrolled && loggedInAccount) && (
+              {canEnroll && (
               <div className="mt-8 pt-4">
                 {loggedInAccount ? (
                   <button
                     type="button"
                     onClick={() => void handleAuthenticatedSubmit()}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || soldOut}
                     className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-md transition-colors shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
                   >
                     {isSubmitting
@@ -315,7 +346,7 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                   <button
                     type="submit"
                     form="regForm"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || soldOut}
                     className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-md transition-colors shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
                   >
                     {isSubmitting ? t('registration.registering') : t('registration.registerNow')}

@@ -27,6 +27,18 @@ class CursoRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_id_for_update(
+        self,
+        curso_id: UUID,
+        *,
+        instituicao_id: UUID | None = None,
+    ) -> Curso | None:
+        stmt = select(Curso).where(Curso.id == curso_id).with_for_update()
+        if instituicao_id is not None:
+            stmt = stmt.where(Curso.instituicao_id == instituicao_id)
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def list(
         self,
         *,

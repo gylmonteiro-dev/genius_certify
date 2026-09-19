@@ -559,6 +559,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         verso_parcerias: payload.verso_parcerias,
         verso_conteudos: payload.verso_conteudos,
         verso_observacoes: payload.verso_observacoes,
+        limite_participantes: payload.limite_participantes ?? null,
         atualizar_certificados_emitidos: payload.atualizar_certificados_emitidos === true,
       };
       const updated = await updateCurso(authToken, editingEvent.id, updatePayload);

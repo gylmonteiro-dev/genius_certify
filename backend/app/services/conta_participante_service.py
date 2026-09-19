@@ -37,6 +37,7 @@ from app.schemas.conta_participante import (
 )
 from app.services.email_service import EmailService
 from app.services.participante_service import resolve_or_create_participante
+from app.services.vagas import lock_and_assert_vaga
 
 
 RESET_TOKEN_TTL = timedelta(hours=1)
@@ -386,14 +387,20 @@ class ContaParticipanteService:
             participante_id=participante.id,
             curso_id=curso.id,
         )
+        if existing is not None and not existing.cancelada:
+            raise ConflictError("Já inscrito neste evento")
+
+        await lock_and_assert_vaga(
+            self._cursos,
+            self._inscricoes,
+            curso.id,
+            instituicao_id=curso.instituicao_id,
+        )
         if existing is not None:
-            if existing.cancelada:
-                existing.cancelada = False
-                existing.cancelada_em = None
-                existing.cancelada_justificativa = None
-                inscricao = existing
-            else:
-                raise ConflictError("Já inscrito neste evento")
+            existing.cancelada = False
+            existing.cancelada_em = None
+            existing.cancelada_justificativa = None
+            inscricao = existing
         else:
             inscricao = await self._inscricoes.create(
                 instituicao_id=curso.instituicao_id,

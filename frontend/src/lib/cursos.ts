@@ -26,6 +26,7 @@ export interface CursoApi {
   verso_parcerias?: string | null;
   verso_conteudos?: string | null;
   verso_observacoes?: string | null;
+  limite_participantes?: number | null;
   cancelamento_justificativa?: string | null;
   cancelado_em?: string | null;
   created_at: string;
@@ -48,6 +49,8 @@ export interface CursoPublicApi {
   verso_parcerias?: string | null;
   verso_conteudos?: string | null;
   verso_observacoes?: string | null;
+  limite_participantes?: number | null;
+  vagas_disponiveis?: number | null;
 }
 
 export interface CursoCreatePayload {
@@ -68,6 +71,7 @@ export interface CursoCreatePayload {
   verso_parcerias?: string | null;
   verso_conteudos?: string | null;
   verso_observacoes?: string | null;
+  limite_participantes?: number | null;
   instituicao_id?: string;
 }
 
@@ -136,6 +140,8 @@ function mapEventFields(item: {
   verso_parcerias?: string | null;
   verso_conteudos?: string | null;
   verso_observacoes?: string | null;
+  limite_participantes?: number | null;
+  vagas_disponiveis?: number | null;
   cancelamento_justificativa?: string | null;
   cancelado_em?: string | null;
 }): EventItem {
@@ -155,6 +161,9 @@ function mapEventFields(item: {
     institutionId: item.instituicaoId,
     institutionName: item.institutionName,
     description: item.descricao || '—',
+    limiteParticipantes: item.limite_participantes ?? null,
+    spotsLeft:
+      typeof item.vagas_disponiveis === 'number' ? item.vagas_disponiveis : undefined,
     status: API_TO_UI_STATUS[item.status],
     exigirConclusaoParaEmitir: item.exigir_conclusao_para_emitir ?? true,
     emissaoLiberada: item.emissao_liberada ?? false,

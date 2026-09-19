@@ -4,7 +4,7 @@ import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -62,6 +62,7 @@ class Curso(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     verso_parcerias: Mapped[str | None] = mapped_column(Text, nullable=True)
     verso_conteudos: Mapped[str | None] = mapped_column(Text, nullable=True)
     verso_observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    limite_participantes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     cancelamento_justificativa: Mapped[str | None] = mapped_column(Text, nullable=True)
     cancelado_em: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),

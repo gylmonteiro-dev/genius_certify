@@ -42,6 +42,7 @@ from app.services.certificate_templates import (
     resolve_template_id,
 )
 from app.services.certificado_service import CertificadoService
+from app.services.vagas import VAGAS_ESGOTADAS, assert_vaga_disponivel
 
 JUSTIFICATIVA_MIN_LEN = 10
 
@@ -167,6 +168,7 @@ class CursoService:
             verso_parcerias=self._normalize_optional_text(data.verso_parcerias),
             verso_conteudos=self._normalize_optional_text(data.verso_conteudos),
             verso_observacoes=self._normalize_optional_text(data.verso_observacoes),
+            limite_participantes=data.limite_participantes,
         )
         await self._session.commit()
         await self._session.refresh(curso)
@@ -347,8 +349,19 @@ class CursoService:
         curso = await self._get_or_404(curso_id, actor=actor)
         if curso.status == CursoStatus.CANCELLED:
             raise ConflictError("Não é possível inscrever em um evento cancelado")
+        locked = await self._cursos.get_by_id_for_update(
+            curso.id,
+            instituicao_id=curso.instituicao_id,
+        )
+        if locked is None:
+            raise NotFoundError("Curso não encontrado")
+        curso = locked
         instituicao_id = curso.instituicao_id
         unique_ids = list(dict.fromkeys(data.participante_ids))
+        ocupadas = await self._inscricoes.count_ativas_by_curso(
+            instituicao_id=instituicao_id,
+            curso_id=curso.id,
+        )
 
         enrolled = 0
         already_enrolled = 0
@@ -373,19 +386,31 @@ class CursoService:
                 participante_id=participante.id,
                 curso_id=curso.id,
             )
-            if existing is not None:
-                if existing.cancelada:
-                    self._reativar_inscricao(existing)
-                    enrolled += 1
-                    continue
+            if existing is not None and not existing.cancelada:
                 already_enrolled += 1
                 continue
 
-            await self._inscricoes.create(
-                instituicao_id=instituicao_id,
-                participante_id=participante.id,
-                curso_id=curso.id,
-            )
+            if curso.limite_participantes is not None:
+                try:
+                    assert_vaga_disponivel(curso, ocupadas)
+                except ConflictError:
+                    errors.append(
+                        InscricaoLoteErro(
+                            participante_id=participante.id,
+                            mensagem=VAGAS_ESGOTADAS,
+                        )
+                    )
+                    continue
+
+            if existing is not None:
+                self._reativar_inscricao(existing)
+            else:
+                await self._inscricoes.create(
+                    instituicao_id=instituicao_id,
+                    participante_id=participante.id,
+                    curso_id=curso.id,
+                )
+            ocupadas += 1
             enrolled += 1
 
         await self._session.commit()

@@ -110,6 +110,10 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
   const issuedCount = inscritos.filter((item) => item.ja_emitido).length;
   const issuanceOpen = canIssueOnEvent(event);
   const selectable = eventCancelled ? [] : activeEnrollments;
+  const remainingSpots =
+    event.limiteParticipantes == null
+      ? null
+      : Math.max(0, event.limiteParticipantes - activeEnrollments.length);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -207,6 +211,10 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
     }
     if (pickerSelected.size > ENROLL_LOTE_MAX) {
       setPickerError(t('eventIssue.enrollTooMany'));
+      return;
+    }
+    if (remainingSpots != null && pickerSelected.size > remainingSpots) {
+      setPickerError(t('eventIssue.enrollNoSpots', { count: remainingSpots }));
       return;
     }
     await onEnrollSelected([...pickerSelected]);
@@ -377,6 +385,14 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
               <span>{formatDisplayDate(event.date, dateLocale, event.date)}</span>
               <span>{event.durationHours}h</span>
               <span>{event.instructor || '—'}</span>
+              {event.limiteParticipantes != null && (
+                <span>
+                  {t('eventIssue.occupancy', {
+                    taken: activeEnrollments.length,
+                    limit: event.limiteParticipantes,
+                  })}
+                </span>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -437,6 +453,15 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                 total: inscritos.length,
                 issued: issuedCount,
               })}
+              {event.limiteParticipantes != null && (
+                <>
+                  {' · '}
+                  {t('eventIssue.occupancy', {
+                    taken: activeEnrollments.length,
+                    limit: event.limiteParticipantes,
+                  })}
+                </>
+              )}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -593,26 +618,34 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                       )}
                     </td>
                     {showActions && (
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1.5">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
                           {onApproveInscrito &&
                             !cancelled &&
                             (item.status !== 'verified' || rejected) && (
                             <button
                               type="button"
                               onClick={() => void onApproveInscrito(item.id)}
-                              className="px-2.5 py-1 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 text-[11px] font-semibold hover:bg-emerald-100"
+                              title={t('students.approve')}
+                              aria-label={t('students.approve')}
+                              className="p-1.5 rounded text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
                             >
-                              {t('students.approve')}
+                              <span className="material-symbols-outlined text-[20px]">
+                                check_circle
+                              </span>
                             </button>
                           )}
                           {onRejectInscrito && !cancelled && !rejected && (
                             <button
                               type="button"
                               onClick={() => openRejectModal(item)}
-                              className="px-2.5 py-1 rounded-md border border-rose-200 bg-rose-50 text-rose-700 text-[11px] font-semibold hover:bg-rose-100"
+                              title={t('students.reject')}
+                              aria-label={t('students.reject')}
+                              className="p-1.5 rounded text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition-colors"
                             >
-                              {t('students.reject')}
+                              <span className="material-symbols-outlined text-[20px]">
+                                cancel
+                              </span>
                             </button>
                           )}
                           {onRemoveInscrito && !cancelled && (
@@ -620,11 +653,17 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                               type="button"
                               disabled={removingId === item.id}
                               onClick={() => setConfirmTarget(item)}
-                              className="px-2.5 py-1 rounded-md border border-slate-200 bg-white text-slate-700 text-[11px] font-semibold hover:bg-slate-50 disabled:opacity-60"
+                              title={t('eventIssue.removeEnrollment')}
+                              aria-label={t('eventIssue.removeEnrollment')}
+                              className="p-1.5 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors disabled:opacity-60"
                             >
-                              {removingId === item.id
-                                ? t('common.loading')
-                                : t('eventIssue.removeEnrollment')}
+                              <span
+                                className={`material-symbols-outlined text-[20px] ${
+                                  removingId === item.id ? 'animate-spin' : ''
+                                }`}
+                              >
+                                {removingId === item.id ? 'progress_activity' : 'person_remove'}
+                              </span>
                             </button>
                           )}
                         </div>
@@ -901,6 +940,15 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
               </h3>
               <p className="text-xs text-slate-500 mt-1">
                 {t('eventIssue.enrollModalHint')}
+                {remainingSpots != null && (
+                  <>
+                    {' '}
+                    {t('eventIssue.occupancy', {
+                      taken: activeEnrollments.length,
+                      limit: event.limiteParticipantes ?? 0,
+                    })}
+                  </>
+                )}
               </p>
               <input
                 type="text"

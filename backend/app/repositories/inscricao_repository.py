@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -115,6 +115,41 @@ class InscricaoRepository:
         )
         result = await self._session.execute(stmt)
         return list(result.scalars().unique().all())
+
+    async def count_ativas_by_curso(
+        self,
+        *,
+        instituicao_id: UUID,
+        curso_id: UUID,
+    ) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(Inscricao)
+            .where(
+                Inscricao.instituicao_id == instituicao_id,
+                Inscricao.curso_id == curso_id,
+                Inscricao.cancelada.is_(False),
+            )
+        )
+        result = await self._session.execute(stmt)
+        return int(result.scalar_one())
+
+    async def count_ativas_by_curso_ids(
+        self,
+        curso_ids: list[UUID],
+    ) -> dict[UUID, int]:
+        if not curso_ids:
+            return {}
+        stmt = (
+            select(Inscricao.curso_id, func.count())
+            .where(
+                Inscricao.curso_id.in_(curso_ids),
+                Inscricao.cancelada.is_(False),
+            )
+            .group_by(Inscricao.curso_id)
+        )
+        result = await self._session.execute(stmt)
+        return {curso_id: int(n) for curso_id, n in result.all()}
 
     async def create(self, **fields: object) -> Inscricao:
         inscricao = Inscricao(**fields)

@@ -18,6 +18,7 @@ from app.schemas.participante import (
 )
 from app.services.conta_participante_service import ContaParticipanteService
 from app.services.participante_service import resolve_or_create_participante
+from app.services.vagas import lock_and_assert_vaga, vagas_disponiveis
 
 
 class PublicoService:
@@ -29,7 +30,7 @@ class PublicoService:
         self._certificados = CertificadoRepository(session)
 
     @staticmethod
-    def to_curso_public(curso: Curso) -> CursoPublicResponse:
+    def to_curso_public(curso: Curso, ocupadas: int = 0) -> CursoPublicResponse:
         instituicao_nome = (
             curso.instituicao.nome if curso.instituicao is not None else ""
         )
@@ -48,6 +49,8 @@ class PublicoService:
             verso_parcerias=curso.verso_parcerias,
             verso_conteudos=curso.verso_conteudos,
             verso_observacoes=curso.verso_observacoes,
+            limite_participantes=curso.limite_participantes,
+            vagas_disponiveis=vagas_disponiveis(curso.limite_participantes, ocupadas),
         )
 
     async def list_cursos(
@@ -57,13 +60,22 @@ class PublicoService:
         limit: int = 50,
     ) -> list[CursoPublicResponse]:
         items = await self._cursos.list_publico(skip=skip, limit=limit)
-        return [self.to_curso_public(item) for item in items]
+        counts = await self._inscricoes.count_ativas_by_curso_ids(
+            [item.id for item in items]
+        )
+        return [
+            self.to_curso_public(item, counts.get(item.id, 0)) for item in items
+        ]
 
     async def get_curso(self, curso_id: UUID) -> CursoPublicResponse:
         curso = await self._cursos.get_publico(curso_id)
         if curso is None:
             raise NotFoundError("Curso não encontrado")
-        return self.to_curso_public(curso)
+        ocupadas = await self._inscricoes.count_ativas_by_curso(
+            instituicao_id=curso.instituicao_id,
+            curso_id=curso.id,
+        )
+        return self.to_curso_public(curso, ocupadas)
 
     async def inscrever(
         self,
@@ -89,13 +101,19 @@ class PublicoService:
             participante_id=participante.id,
             curso_id=curso.id,
         )
+        if existing is not None and not existing.cancelada:
+            raise ConflictError("Já inscrito neste evento")
+
+        await lock_and_assert_vaga(
+            self._cursos,
+            self._inscricoes,
+            curso.id,
+            instituicao_id=curso.instituicao_id,
+        )
         if existing is not None:
-            if existing.cancelada:
-                existing.cancelada = False
-                existing.cancelada_em = None
-                existing.cancelada_justificativa = None
-            else:
-                raise ConflictError("Já inscrito neste evento")
+            existing.cancelada = False
+            existing.cancelada_em = None
+            existing.cancelada_justificativa = None
         else:
             await self._inscricoes.create(
                 instituicao_id=curso.instituicao_id,
