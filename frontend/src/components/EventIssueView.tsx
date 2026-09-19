@@ -3,7 +3,9 @@ import { EventItem, Participant } from '../types';
 import { InscritoApi } from '../lib/cursos';
 import { formatCpf } from '../lib/cpf';
 import { mapParticipanteStatus } from '../lib/participantes';
+import { usePagedList } from '../lib/pagination';
 import { formatDisplayDate, labelEventStatus, labelStudentStatus, useT } from '../i18n';
+import { TablePagination } from './TablePagination';
 
 const ENROLL_LOTE_MAX = 200;
 const JUSTIFICATIVA_MIN = 10;
@@ -114,6 +116,7 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
     event.limiteParticipantes == null
       ? null
       : Math.max(0, event.limiteParticipantes - activeEnrollments.length);
+  const paging = usePagedList(inscritos, event.id);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -565,7 +568,7 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {inscritos.map((item) => {
+                {paging.pageItems.map((item) => {
                   const cancelled = isEnrollmentCancelled(item);
                   const rejected = isEnrollmentRejected(item);
                   const canSelect = !eventCancelled && !cancelled && !rejected;
@@ -675,6 +678,18 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
               </tbody>
             </table>
           </div>
+        )}
+        {!isLoading && inscritos.length > 0 && (
+          <TablePagination
+            page={paging.page}
+            pageCount={paging.pageCount}
+            pageSize={paging.pageSize}
+            total={paging.total}
+            start={paging.start}
+            end={paging.end}
+            onPageChange={paging.setPage}
+            onPageSizeChange={paging.setPageSize}
+          />
         )}
       </div>
 

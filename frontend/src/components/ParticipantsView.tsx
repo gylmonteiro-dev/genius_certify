@@ -14,9 +14,11 @@ import {
   ParticipanteUpdatePayload,
 } from '../lib/participantes';
 import { digitsOnly, formatCpf, isValidCpf } from '../lib/cpf';
+import { usePagedList } from '../lib/pagination';
 import { ApiError } from '../lib/api';
 import { formatDisplayDate, labelEventStatus, labelStudentStatus, useT } from '../i18n';
 import { DateField } from './DateField';
+import { TablePagination } from './TablePagination';
 
 interface ParticipantsViewProps {
   participants: Participant[];
@@ -83,6 +85,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
       item.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.documentId.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+  const paging = usePagedList(filtered, searchTerm);
 
   const selectedItems = participants.filter((item) => selectedIds.has(item.id));
   const selectedInstitutionIds = Array.from(
@@ -507,7 +510,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {filtered.map((item) => (
+                {paging.pageItems.map((item) => (
                   <tr
                     key={item.id}
                     className={`border-b border-slate-100 hover:bg-slate-50/80 transition-colors ${
@@ -594,6 +597,18 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
               </tbody>
             </table>
           </div>
+        )}
+        {!isLoading && filtered.length > 0 && (
+          <TablePagination
+            page={paging.page}
+            pageCount={paging.pageCount}
+            pageSize={paging.pageSize}
+            total={paging.total}
+            start={paging.start}
+            end={paging.end}
+            onPageChange={paging.setPage}
+            onPageSizeChange={paging.setPageSize}
+          />
         )}
       </div>
 

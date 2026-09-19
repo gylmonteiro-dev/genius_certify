@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Certificate } from '../types';
 import { digitsOnly, formatCpf } from '../lib/cpf';
+import { usePagedList } from '../lib/pagination';
 import { formatDisplayDate, labelCertificateStatus, useT } from '../i18n';
+import { TablePagination } from './TablePagination';
 
 interface CertificatesViewProps {
   certificates: Certificate[];
@@ -50,6 +52,7 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
     const matchesStatus = statusFilter === 'All' || c.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+  const paging = usePagedList(filtered, `${searchTerm}|${statusFilter}`);
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,7 +193,7 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {filtered.map((cert) => (
+                {paging.pageItems.map((cert) => (
                   <tr
                     key={cert.id}
                     className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors"
@@ -265,6 +268,18 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
               </tbody>
             </table>
           </div>
+        )}
+        {!isLoading && filtered.length > 0 && (
+          <TablePagination
+            page={paging.page}
+            pageCount={paging.pageCount}
+            pageSize={paging.pageSize}
+            total={paging.total}
+            start={paging.start}
+            end={paging.end}
+            onPageChange={paging.setPage}
+            onPageSizeChange={paging.setPageSize}
+          />
         )}
       </div>
     </div>
