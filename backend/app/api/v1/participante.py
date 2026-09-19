@@ -125,6 +125,19 @@ async def list_minhas_inscricoes(
     return await ContaParticipanteService(session).list_inscricoes(conta)
 
 
+@router.post(
+    "/cursos/{curso_id}/inscrever",
+    response_model=ContaParticipanteInscricaoItem,
+    status_code=status.HTTP_201_CREATED,
+)
+async def inscrever_em_curso_autenticado(
+    curso_id: UUID,
+    session: AsyncSession = Depends(get_db),
+    conta: ContaParticipante = Depends(get_current_conta_participante),
+) -> ContaParticipanteInscricaoItem:
+    return await ContaParticipanteService(session).inscrever_em_curso(conta, curso_id)
+
+
 @router.delete("/inscricoes/{inscricao_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def cancelar_minha_inscricao(
     inscricao_id: UUID,

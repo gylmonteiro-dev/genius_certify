@@ -726,6 +726,15 @@ export const en: Messages = {
     completeFields: 'Please complete all registration fields.',
     registerNow: 'Register Now',
     registering: 'Registering...',
+    enrollWithAccount: 'Enroll in this event',
+    loggedInTitle: 'Enroll with your account',
+    loggedInHint:
+      'You are already signed in. Confirm this enrollment without filling the form again.',
+    loggedInAs: 'Your registration',
+    alreadyEnrolled: 'You are already enrolled in this event.',
+    viewMyEnrollments: 'View my enrollments',
+    loginToEnroll: 'Already have an account? Sign in to enroll in one click.',
+    confirmedLoggedInHint: 'This enrollment now appears in My enrollments.',
     terms: 'By registering, you agree to our Terms of Service and Privacy Policy.',
     passwordOptional: 'Password (optional)',
     passwordHint:

@@ -132,6 +132,17 @@ export async function listMinhasInscricoes(
   return apiRequest<MinhaInscricao[]>('/api/participante/inscricoes', { method: 'GET' }, token);
 }
 
+export async function inscreverCursoAutenticado(
+  token: string,
+  cursoId: string,
+): Promise<MinhaInscricao> {
+  return apiRequest<MinhaInscricao>(
+    `/api/participante/cursos/${cursoId}/inscrever`,
+    { method: 'POST' },
+    token,
+  );
+}
+
 export async function cancelarMinhaInscricao(
   token: string,
   inscricaoId: string,

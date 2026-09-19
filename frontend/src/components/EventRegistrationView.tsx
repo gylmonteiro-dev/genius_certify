@@ -1,23 +1,31 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { EventItem, RegistrationFormData } from '../types';
 import { digitsOnly, formatCpf, isValidCpf } from '../lib/cpf';
+import { ContaParticipante } from '../lib/participanteAuth';
 import { formatDisplayDate, useT } from '../i18n';
 import { DateField } from './DateField';
 
 interface EventRegistrationViewProps {
   event: EventItem;
   onSuccessRegister: (event: EventItem, formData: RegistrationFormData) => void | Promise<void>;
+  onAuthenticatedRegister?: () => void | Promise<void>;
   onBack: () => void;
   isSubmitting?: boolean;
   errorMessage?: string | null;
+  loggedInAccount?: ContaParticipante | null;
+  alreadyEnrolled?: boolean;
 }
 
 export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
   event,
   onSuccessRegister,
+  onAuthenticatedRegister,
   onBack,
   isSubmitting = false,
   errorMessage = null,
+  loggedInAccount = null,
+  alreadyEnrolled = false,
 }) => {
   const { t, dateLocale } = useT();
   const [fullName, setFullName] = useState('');
@@ -51,6 +59,22 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
       // parent shows errorMessage
     }
   };
+
+  const handleAuthenticatedSubmit = async () => {
+    if (!onAuthenticatedRegister) return;
+    try {
+      await onAuthenticatedRegister();
+      setIsSubmitted(true);
+    } catch {
+      // parent shows errorMessage
+    }
+  };
+
+  const confirmedName = loggedInAccount?.nome || fullName;
+  const confirmedEmail = loggedInAccount?.email || workEmail;
+  const confirmedDocument = loggedInAccount
+    ? formatCpf(loggedInAccount.documento)
+    : documentId;
 
   return (
     <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-4 sm:p-6 md:p-8 bg-slate-50">
@@ -135,7 +159,9 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
             <div className="bg-white border border-slate-200 rounded-xl p-6 sm:p-8 flex flex-col justify-between shadow-sm">
               <div>
                 <h2 className="text-xl font-bold text-slate-900 mb-6">
-                  {t('registration.secureSpot')}
+                  {loggedInAccount
+                    ? t('registration.loggedInTitle')
+                    : t('registration.secureSpot')}
                 </h2>
 
                 {errorMessage && (
@@ -143,6 +169,33 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                     {errorMessage}
                   </div>
                 )}
+
+                {alreadyEnrolled && loggedInAccount ? (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
+                    <p className="font-semibold">{t('registration.alreadyEnrolled')}</p>
+                    <Link
+                      to="/minhas-inscricoes"
+                      className="mt-3 inline-flex items-center gap-1 font-semibold text-emerald-700 hover:underline"
+                    >
+                      {t('registration.viewMyEnrollments')}
+                      <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                    </Link>
+                  </div>
+                ) : loggedInAccount ? (
+                  <div className="space-y-4">
+                    <p className="text-sm text-slate-500">{t('registration.loggedInHint')}</p>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2 text-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        {t('registration.loggedInAs')}
+                      </p>
+                      <p className="font-semibold text-slate-900">{loggedInAccount.nome}</p>
+                      <p className="text-slate-600">{loggedInAccount.email}</p>
+                      <p className="font-mono text-xs text-slate-500">
+                        {formatCpf(loggedInAccount.documento)}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
                 <form id="regForm" onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
                   <div>
                     <label
@@ -239,25 +292,55 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                     </p>
                   </div>
                 </form>
+                )}
               </div>
 
+              {!(alreadyEnrolled && loggedInAccount) && (
               <div className="mt-8 pt-4">
-                <button
-                  type="submit"
-                  form="regForm"
-                  disabled={isSubmitting}
-                  className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-md transition-colors shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
-                >
-                  {isSubmitting ? t('registration.registering') : t('registration.registerNow')}
-                  <span className="material-symbols-outlined text-[18px]">
-                    arrow_forward
-                  </span>
-                </button>
+                {loggedInAccount ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleAuthenticatedSubmit()}
+                    disabled={isSubmitting}
+                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-md transition-colors shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
+                  >
+                    {isSubmitting
+                      ? t('registration.registering')
+                      : t('registration.enrollWithAccount')}
+                    <span className="material-symbols-outlined text-[18px]">
+                      arrow_forward
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    form="regForm"
+                    disabled={isSubmitting}
+                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-md transition-colors shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
+                  >
+                    {isSubmitting ? t('registration.registering') : t('registration.registerNow')}
+                    <span className="material-symbols-outlined text-[18px]">
+                      arrow_forward
+                    </span>
+                  </button>
+                )}
+
+                {!loggedInAccount && (
+                  <p className="text-center text-xs text-slate-500 mt-3">
+                    <Link
+                      to={`/minhas-inscricoes/entrar?next=/eventos/${event.id}`}
+                      className="font-semibold text-blue-600 hover:underline"
+                    >
+                      {t('registration.loginToEnroll')}
+                    </Link>
+                  </p>
+                )}
 
                 <p className="text-center text-[11px] text-slate-400 mt-3">
                   {t('registration.terms')}
                 </p>
               </div>
+              )}
             </div>
           </div>
         ) : (
@@ -268,22 +351,34 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
             </div>
             <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('registration.confirmedTitle')}</h2>
             <p className="text-sm text-slate-500 mb-6">
-              {t('registration.confirmedBody', { name: fullName, title: event.title })}
+              {t('registration.confirmedBody', { name: confirmedName, title: event.title })}
             </p>
-            {password.trim() && (
+            {loggedInAccount ? (
+              <p className="text-sm text-slate-600 mb-6">
+                {t('registration.confirmedLoggedInHint')}
+              </p>
+            ) : password.trim() ? (
               <p className="text-sm text-slate-600 mb-6">
                 {t('registration.confirmedAccessHint')}
               </p>
-            )}
+            ) : null}
 
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs text-left space-y-2 mb-6 font-mono">
               <p><span className="text-slate-400">{t('registration.ticketRef')}</span> TKT-2024-8849</p>
-              <p><span className="text-gray-400">{t('registration.email')}</span> {workEmail}</p>
-              <p><span className="text-gray-400">{t('registration.idRecord')}</span> {documentId}</p>
+              <p><span className="text-gray-400">{t('registration.email')}</span> {confirmedEmail}</p>
+              <p><span className="text-gray-400">{t('registration.idRecord')}</span> {confirmedDocument}</p>
               <p className="truncate"><span className="text-slate-400">SHA256 KEY:</span> e3b0c44298fc1c149afbf4c8996fb92427ae41e4</p>
             </div>
 
             <div className="flex gap-3">
+              {loggedInAccount && (
+                <Link
+                  to="/minhas-inscricoes"
+                  className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 font-semibold text-xs rounded-md hover:bg-slate-50 transition-colors text-center"
+                >
+                  {t('registration.viewMyEnrollments')}
+                </Link>
+              )}
               <button
                 onClick={onBack}
                 className="flex-1 py-2.5 bg-blue-600 text-white font-semibold text-xs rounded-md hover:bg-blue-700 transition-colors shadow-sm"

@@ -7,11 +7,24 @@ import {
   inscreverCursoPublico,
   mapCursoPublicToUi,
 } from '../lib/cursos';
+import {
+  ContaParticipante,
+  inscreverCursoAutenticado,
+  listMinhasInscricoes,
+} from '../lib/participanteAuth';
 import { EventRegistrationView } from './EventRegistrationView';
 import { PublicLayout } from './PublicLayout';
 import { useT } from '../i18n';
 
-export const PublicEventRegisterPage: React.FC = () => {
+interface PublicEventRegisterPageProps {
+  conta?: ContaParticipante | null;
+  token?: string | null;
+}
+
+export const PublicEventRegisterPage: React.FC<PublicEventRegisterPageProps> = ({
+  conta = null,
+  token = null,
+}) => {
   const { t } = useT();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -20,6 +33,7 @@ export const PublicEventRegisterPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [alreadyEnrolled, setAlreadyEnrolled] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -42,7 +56,31 @@ export const PublicEventRegisterPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
+
+  useEffect(() => {
+    if (!id || !token) {
+      setAlreadyEnrolled(false);
+      return;
+    }
+    let cancelled = false;
+    const loadEnrollment = async () => {
+      try {
+        const items = await listMinhasInscricoes(token);
+        if (cancelled) return;
+        const match = items.find(
+          (item) => item.curso_id === id && !item.inscricao_cancelada,
+        );
+        setAlreadyEnrolled(Boolean(match));
+      } catch {
+        if (!cancelled) setAlreadyEnrolled(false);
+      }
+    };
+    void loadEnrollment();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, token]);
 
   const handleRegister = async (evt: EventItem, form: RegistrationFormData) => {
     setSubmitting(true);
@@ -56,6 +94,27 @@ export const PublicEventRegisterPage: React.FC = () => {
         ...(form.password ? { senha: form.password } : {}),
       });
     } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : t('public.registerFallbackError');
+      setSubmitError(message);
+      throw err;
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAuthenticatedRegister = async () => {
+    if (!event || !token) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await inscreverCursoAutenticado(token, event.id);
+      setAlreadyEnrolled(true);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setAlreadyEnrolled(true);
+        return;
+      }
       const message =
         err instanceof ApiError ? err.message : t('public.registerFallbackError');
       setSubmitError(message);
@@ -86,9 +145,12 @@ export const PublicEventRegisterPage: React.FC = () => {
         <EventRegistrationView
           event={event}
           onSuccessRegister={handleRegister}
+          onAuthenticatedRegister={conta && token ? handleAuthenticatedRegister : undefined}
           onBack={() => navigate('/eventos')}
           isSubmitting={submitting}
           errorMessage={submitError}
+          loggedInAccount={conta}
+          alreadyEnrolled={alreadyEnrolled}
         />
       )}
     </PublicLayout>

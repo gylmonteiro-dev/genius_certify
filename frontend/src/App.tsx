@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AdminApp } from './AdminApp';
 import { LoginView } from './components/LoginView';
 import { RecoverPasswordView } from './components/RecoverPasswordView';
@@ -36,6 +36,19 @@ import {
 } from './lib/participanteAuth';
 import { APP_NAME } from './lib/brand';
 import { useT } from './i18n';
+
+function safeInternalPath(value: string | null): string | null {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) {
+    return null;
+  }
+  return value;
+}
+
+function ParticipanteAuthenticatedRedirect() {
+  const location = useLocation();
+  const next = safeInternalPath(new URLSearchParams(location.search).get('next'));
+  return <Navigate to={next ?? '/minhas-inscricoes'} replace />;
+}
 
 export function App() {
   const { t } = useT();
@@ -230,7 +243,7 @@ export function App() {
           path="/minhas-inscricoes/entrar"
           element={
             isParticipanteAuthenticated ? (
-              <Navigate to="/minhas-inscricoes" replace />
+              <ParticipanteAuthenticatedRedirect />
             ) : (
               <ParticipanteLoginView
                 onSubmit={handleParticipanteLogin}
@@ -292,7 +305,15 @@ export function App() {
           }
         />
         <Route path="/eventos" element={<PublicEventsPage />} />
-        <Route path="/eventos/:id" element={<PublicEventRegisterPage />} />
+        <Route
+          path="/eventos/:id"
+          element={
+            <PublicEventRegisterPage
+              conta={participante}
+              token={participanteToken}
+            />
+          }
+        />
         <Route
           path="/app/*"
           element={

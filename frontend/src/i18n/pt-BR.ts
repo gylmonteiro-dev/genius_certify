@@ -725,6 +725,15 @@ export const ptBR = {
     completeFields: 'Preencha todos os campos da inscrição.',
     registerNow: 'Inscrever-se agora',
     registering: 'Inscrevendo...',
+    enrollWithAccount: 'Inscrever no evento',
+    loggedInTitle: 'Inscrever com seus dados',
+    loggedInHint:
+      'Você já está autenticado. Confirme a inscrição neste evento sem preencher o formulário novamente.',
+    loggedInAs: 'Dados do cadastro',
+    alreadyEnrolled: 'Você já está inscrito neste evento.',
+    viewMyEnrollments: 'Ver minhas inscrições',
+    loginToEnroll: 'Já tem cadastro? Entre para se inscrever com um clique.',
+    confirmedLoggedInHint: 'A inscrição já aparece em Minhas inscrições.',
     terms: 'Ao se inscrever, você concorda com os Termos de Uso e a Política de Privacidade.',
     passwordOptional: 'Senha (opcional)',
     passwordHint:

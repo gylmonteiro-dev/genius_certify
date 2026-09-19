@@ -25,6 +25,7 @@ from app.repositories.conta_participante_password_reset_repository import (
     ContaParticipantePasswordResetRepository,
 )
 from app.repositories.conta_participante_repository import ContaParticipanteRepository
+from app.repositories.curso_repository import CursoRepository
 from app.repositories.inscricao_repository import InscricaoRepository
 from app.repositories.participante_repository import ParticipanteRepository
 from app.schemas.auth import AlterarSenhaRequest, TokenResponse
@@ -35,6 +36,7 @@ from app.schemas.conta_participante import (
     ContaParticipanteResponse,
 )
 from app.services.email_service import EmailService
+from app.services.participante_service import resolve_or_create_participante
 
 
 RESET_TOKEN_TTL = timedelta(hours=1)
@@ -49,6 +51,7 @@ class ContaParticipanteService:
         self._session = session
         self._contas = ContaParticipanteRepository(session)
         self._participantes = ParticipanteRepository(session)
+        self._cursos = CursoRepository(session)
         self._inscricoes = InscricaoRepository(session)
         self._certificados = CertificadoRepository(session)
         self._auditoria = ContaParticipanteAuditoriaRepository(session)
@@ -356,6 +359,69 @@ class ContaParticipanteService:
                 )
             )
         return items
+
+    async def inscrever_em_curso(
+        self,
+        conta: ContaParticipante,
+        curso_id: UUID,
+    ) -> ContaParticipanteInscricaoItem:
+        """Inscreve a conta autenticada no evento com os dados já cadastrados."""
+        curso = await self._cursos.get_publico(curso_id)
+        if curso is None or curso.status != CursoStatus.UPCOMING:
+            raise NotFoundError("Curso não encontrado ou inscrições encerradas")
+
+        participante, _created = await resolve_or_create_participante(
+            self._participantes,
+            instituicao_id=curso.instituicao_id,
+            nome=conta.nome,
+            email=conta.email.lower(),
+            documento=conta.documento,
+            data_nascimento=conta.data_nascimento,
+        )
+
+        existing = await self._inscricoes.get_by_participante_curso(
+            instituicao_id=curso.instituicao_id,
+            participante_id=participante.id,
+            curso_id=curso.id,
+        )
+        if existing is not None:
+            if existing.cancelada:
+                existing.cancelada = False
+                existing.cancelada_em = None
+                existing.cancelada_justificativa = None
+                inscricao = existing
+            else:
+                raise ConflictError("Já inscrito neste evento")
+        else:
+            inscricao = await self._inscricoes.create(
+                instituicao_id=curso.instituicao_id,
+                participante_id=participante.id,
+                curso_id=curso.id,
+            )
+
+        await self._session.commit()
+        await self._session.refresh(inscricao)
+
+        instituicao_nome = (
+            curso.instituicao.nome if curso.instituicao is not None else ""
+        )
+        return ContaParticipanteInscricaoItem(
+            id=inscricao.id,
+            curso_id=curso.id,
+            curso_titulo=curso.titulo,
+            instituicao_nome=instituicao_nome,
+            data_evento=curso.data_evento,
+            curso_status=curso.status,
+            inscrito_em=inscricao.created_at,
+            pode_cancelar=True,
+            ja_emitido=False,
+            certificado_id=None,
+            certificado_status=None,
+            codigo_validacao=None,
+            numero_certificado=None,
+            inscricao_cancelada=False,
+            cancelada_justificativa=None,
+        )
 
     async def cancelar_inscricao(
         self,
