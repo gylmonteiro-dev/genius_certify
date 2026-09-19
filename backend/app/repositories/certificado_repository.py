@@ -2,6 +2,7 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.certificado import Certificado, CertificadoStatus
 
@@ -122,12 +123,16 @@ class CertificadoRepository:
         skip: int = 0,
         limit: int = 50,
     ) -> list[Certificado]:
-        stmt = select(Certificado).order_by(Certificado.created_at.desc())
+        stmt = (
+            select(Certificado)
+            .options(selectinload(Certificado.participante))
+            .order_by(Certificado.created_at.desc())
+        )
         if instituicao_id is not None:
             stmt = stmt.where(Certificado.instituicao_id == instituicao_id)
         stmt = stmt.offset(skip).limit(limit)
         result = await self._session.execute(stmt)
-        return list(result.scalars().all())
+        return list(result.scalars().unique().all())
 
     async def count_by_status(
         self,

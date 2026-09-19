@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Certificate } from '../types';
+import { digitsOnly, formatCpf } from '../lib/cpf';
 import { formatDisplayDate, labelCertificateStatus, useT } from '../i18n';
 
 interface CertificatesViewProps {
@@ -35,12 +36,17 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
   const [codigoInput, setCodigoInput] = useState('');
 
   const filtered = certificates.filter((c) => {
+    const term = searchTerm.trim().toLowerCase();
+    const searchDigits = digitsOnly(searchTerm);
+    const documentDigits = digitsOnly(c.studentDocument ?? '');
     const matchesSearch =
-      c.certificateNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.eventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.codigoValidacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.sha256.toLowerCase().includes(searchTerm.toLowerCase());
+      !term ||
+      c.certificateNumber.toLowerCase().includes(term) ||
+      c.studentName.toLowerCase().includes(term) ||
+      c.eventName.toLowerCase().includes(term) ||
+      c.codigoValidacao.toLowerCase().includes(term) ||
+      c.sha256.toLowerCase().includes(term) ||
+      (searchDigits.length >= 3 && documentDigits.includes(searchDigits));
     const matchesStatus = statusFilter === 'All' || c.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -194,6 +200,11 @@ export const CertificatesView: React.FC<CertificatesViewProps> = ({
                     </td>
                     <td className="py-4 px-5 font-semibold text-slate-800">
                       {cert.studentName}
+                      {cert.studentDocument ? (
+                        <span className="block text-xs font-mono font-normal text-slate-400">
+                          {formatCpf(cert.studentDocument)}
+                        </span>
+                      ) : null}
                     </td>
                     <td className="py-4 px-5 text-slate-800 max-w-xs truncate">
                       {cert.eventName}

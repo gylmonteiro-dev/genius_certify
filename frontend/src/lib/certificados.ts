@@ -11,6 +11,7 @@ export interface CertificadoApi {
   participante_id: string;
   numero_certificado: string;
   participante_nome: string;
+  participante_documento?: string | null;
   curso_titulo: string;
   instituicao_nome: string;
   carga_horaria: number;
@@ -53,6 +54,7 @@ export function mapCertificadoToUi(item: CertificadoApi): Certificate {
     codigoValidacao: item.codigo_validacao,
     certificateNumber: item.numero_certificado,
     studentName: item.participante_nome,
+    studentDocument: item.participante_documento ?? '',
     studentEmail: '—',
     eventName: item.curso_titulo,
     eventId: item.curso_id,
@@ -88,7 +90,7 @@ export function mapPublicCertificadoToUi(item: CertificadoPublicApi): Certificat
 }
 
 export async function listCertificados(token: string): Promise<CertificadoApi[]> {
-  return apiRequest<CertificadoApi[]>('/api/certificados', { method: 'GET' }, token);
+  return apiRequest<CertificadoApi[]>('/api/certificados?limit=1000', { method: 'GET' }, token);
 }
 
 export async function emitirCertificado(

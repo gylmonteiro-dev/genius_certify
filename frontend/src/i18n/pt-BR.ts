@@ -542,7 +542,7 @@ export const ptBR = {
     validate: 'Validar',
     validTitle: 'CERTIFICADO VÁLIDO',
     notFound: 'Certificado não encontrado ou inválido.',
-    searchPlaceholder: 'Buscar nº, destinatário ou UUID...',
+    searchPlaceholder: 'Buscar nº, destinatário, CPF ou UUID...',
     total: 'Total de certificados: {count}',
     loading: 'Carregando certificados...',
     empty: 'Nenhum certificado emitido ainda.',

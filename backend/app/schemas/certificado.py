@@ -38,6 +38,7 @@ class CertificadoResponse(BaseModel):
     participante_id: UUID
     numero_certificado: str
     participante_nome: str
+    participante_documento: str | None = None
     curso_titulo: str
     instituicao_nome: str
     carga_horaria: int

@@ -74,6 +74,14 @@ class CertificadoService:
         return actor.instituicao_id
 
     @staticmethod
+    def _to_response(certificado: Certificado) -> CertificadoResponse:
+        payload = CertificadoResponse.model_validate(certificado).model_dump()
+        participante = certificado.__dict__.get("participante")
+        if participante is not None:
+            payload["participante_documento"] = participante.documento
+        return CertificadoResponse.model_validate(payload)
+
+    @staticmethod
     def _build_numero(codigo_validacao: UUID) -> str:
         year = datetime.now(timezone.utc).year
         return f"CERT-{year}-{str(codigo_validacao).split('-')[0].upper()}"
@@ -413,11 +421,11 @@ class CertificadoService:
             skip=skip,
             limit=limit,
         )
-        return [CertificadoResponse.model_validate(item) for item in items]
+        return [self._to_response(item) for item in items]
 
     async def get(self, certificado_id: UUID, *, actor: Usuario) -> CertificadoResponse:
         certificado = await self._get_or_404(certificado_id, actor=actor)
-        return CertificadoResponse.model_validate(certificado)
+        return self._to_response(certificado)
 
     async def revogar(
         self,

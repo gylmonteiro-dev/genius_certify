@@ -72,6 +72,7 @@ export interface Certificate {
   codigoValidacao: string;
   certificateNumber: string;
   studentName: string;
+  studentDocument?: string;
   studentEmail: string;
   eventName: string;
   eventId: string;

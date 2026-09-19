@@ -542,7 +542,7 @@ export const en: Messages = {
     validate: 'Validate',
     validTitle: 'VALID CERTIFICATE',
     notFound: 'Certificate not found or invalid.',
-    searchPlaceholder: 'Search cert #, recipient, or UUID...',
+    searchPlaceholder: 'Search cert #, recipient, CPF, or UUID...',
     total: 'Total Certificates: {count}',
     loading: 'Loading certificates...',
     empty: 'No certificates issued yet.',

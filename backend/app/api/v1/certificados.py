@@ -86,7 +86,7 @@ async def emitir_certificados_lote(
 async def list_certificados(
     instituicao_id: UUID | None = Query(default=None),
     skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=50, ge=1, le=100),
+    limit: int = Query(default=200, ge=1, le=1000),
     session: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(RequireInstituicaoAdmin),
 ) -> list[CertificadoResponse]:
