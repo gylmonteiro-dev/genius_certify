@@ -10,9 +10,11 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.curso_colaborador import ExibicaoColaboradores
 from app.models.instituicao import Instituicao
 
 if TYPE_CHECKING:
+    from app.models.curso_colaborador import CursoColaborador
     from app.models.curso_data import CursoData
 
 
@@ -36,6 +38,16 @@ class Curso(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     descricao: Mapped[str] = mapped_column(Text, nullable=False, default="")
     carga_horaria: Mapped[int] = mapped_column(nullable=False, default=0)
     instrutor: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    exibicao_colaboradores: Mapped[ExibicaoColaboradores] = mapped_column(
+        Enum(
+            ExibicaoColaboradores,
+            name="exibicao_colaboradores",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        nullable=False,
+        default=ExibicaoColaboradores.AUTOMATICO,
+        server_default=ExibicaoColaboradores.AUTOMATICO.value,
+    )
     status: Mapped[CursoStatus] = mapped_column(
         Enum(
             CursoStatus,
@@ -81,6 +93,12 @@ class Curso(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         back_populates="curso",
         cascade="all, delete-orphan",
         order_by="CursoData.data",
+        lazy="selectin",
+    )
+    colaboradores: Mapped[list[CursoColaborador]] = relationship(
+        back_populates="curso",
+        cascade="all, delete-orphan",
+        order_by="CursoColaborador.ordem",
         lazy="selectin",
     )
 

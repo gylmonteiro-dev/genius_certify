@@ -9,7 +9,7 @@ from app.repositories.certificado_repository import CertificadoRepository
 from app.repositories.curso_repository import CursoRepository
 from app.repositories.inscricao_repository import InscricaoRepository
 from app.repositories.participante_repository import ParticipanteRepository
-from app.schemas.curso import CursoPublicResponse, InscricaoPublicaRequest
+from app.schemas.curso import ColaboradorResponse, CursoPublicResponse, InscricaoPublicaRequest
 from app.schemas.participante import (
     ConsultaCertificadoItem,
     ConsultaCertificadosRequest,
@@ -41,6 +41,10 @@ class PublicoService:
             descricao=curso.descricao,
             carga_horaria=curso.carga_horaria,
             instrutor=curso.instrutor,
+            colaboradores=[
+                ColaboradorResponse.model_validate(item) for item in curso.colaboradores
+            ],
+            exibicao_colaboradores=curso.exibicao_colaboradores,
             status=curso.status,
             instituicao_nome=instituicao_nome,
             data_evento=curso.data_evento,

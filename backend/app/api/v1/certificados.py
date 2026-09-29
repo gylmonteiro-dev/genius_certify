@@ -54,6 +54,12 @@ async def preview_certificate_template(
         datas_evento=body.datas_evento
         if body.datas_evento is not None
         else ([body.data_evento] if body.data_evento else []),
+        colaboradores=body.colaboradores,
+        exibicao_colaboradores=(
+            body.exibicao_colaboradores.value
+            if body.exibicao_colaboradores is not None
+            else None
+        ),
     )
     return HTMLResponse(content=html)
 

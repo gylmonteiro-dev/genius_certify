@@ -136,6 +136,30 @@
       color: #334155;
       white-space: pre-wrap;
     }
+    .verso-section p.colab-data {
+      margin: 8px 0 4px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: normal;
+      color: #0f172a;
+    }
+    .colab-list {
+      list-style: none;
+      margin: 0 0 8px;
+      padding: 0;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .colab-list.cols-2 {
+      column-count: 2;
+      column-gap: 28px;
+      font-size: 11px;
+    }
+    .colab-list li {
+      break-inside: avoid;
+      margin: 0 0 3px;
+      overflow-wrap: anywhere;
+    }
     .verso-footer {
       margin-top: auto;
       padding-top: 16px;
@@ -173,7 +197,9 @@
       {% endif %}
       <div class="meta">
         Carga horária: {{ carga_horaria }} horas<br />
-        Instrutor(a): {{ instrutor or "—" }}<br />
+        {% if frente_colaborador_nome %}
+        {{ frente_colaborador_nome }} — {{ frente_colaborador_funcao }}<br />
+        {% endif %}
         Emitido em: {{ emitido_em }}<br />
         Número: {{ numero_certificado }}
       </div>
@@ -196,7 +222,7 @@
       <p class="validate-url">Para validar este certificado, acesse: {{ url_validacao }}</p>
     </div>
   </div>
-  {% if verso_parcerias or verso_conteudos or verso_observacoes %}
+  {% if verso_parcerias or verso_conteudos or verso_observacoes or tem_colaboradores_verso %}
   <div class="page verso">
     <div class="frame verso-frame">
       <div class="eyebrow">Verso do certificado</div>
@@ -220,6 +246,7 @@
         <p>{{ verso_observacoes }}</p>
       </section>
       {% endif %}
+      {% include "_colaboradores_verso.html" %}
       <div class="verso-footer">
         {{ instituicao_nome }} · Código de validação: <span class="code">{{ codigo_validacao }}</span>
         <p class="validate-url">Para validar este certificado, acesse: {{ url_validacao }}</p>

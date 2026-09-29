@@ -8,6 +8,11 @@ from app.models.conta_participante_password_reset_token import (
     ContaParticipantePasswordResetToken,
 )
 from app.models.curso import Curso, CursoStatus
+from app.models.curso_colaborador import (
+    ColaboradorFuncao,
+    CursoColaborador,
+    ExibicaoColaboradores,
+)
 from app.models.curso_data import CursoData
 from app.models.inscricao import Inscricao
 from app.models.instituicao import Instituicao, InstituicaoStatus
@@ -26,9 +31,12 @@ __all__ = [
     "ContaParticipante",
     "ContaParticipanteAuditoria",
     "ContaParticipantePasswordResetToken",
+    "ColaboradorFuncao",
     "Curso",
+    "CursoColaborador",
     "CursoData",
     "CursoStatus",
+    "ExibicaoColaboradores",
     "Inscricao",
     "Instituicao",
     "InstituicaoStatus",

@@ -1,5 +1,6 @@
 import { Certificate } from '../types';
 import { apiRequest, apiRequestBlob, apiRequestText } from './api';
+import type { CollaboratorApi, CollaboratorDisplay } from './colaboradores';
 
 export type CertificadoApiStatus = 'active' | 'revoked' | 'expired';
 
@@ -229,6 +230,8 @@ export async function fetchCertificadoTemplatePreview(
     instituicaoId?: string;
     cargaHoraria?: number;
     instrutor?: string;
+    colaboradores?: CollaboratorApi[];
+    exibicaoColaboradores?: CollaboratorDisplay;
     versoParcerias?: string;
     versoConteudos?: string;
     versoObservacoes?: string;
@@ -250,6 +253,8 @@ export async function fetchCertificadoTemplatePreview(
         instituicao_nome: params.instituicaoNome ?? '',
         carga_horaria: params.cargaHoraria ?? 0,
         instrutor: params.instrutor ?? '',
+        colaboradores: params.colaboradores,
+        exibicao_colaboradores: params.exibicaoColaboradores ?? null,
         instituicao_id: params.instituicaoId || null,
         frente_tipo: params.frenteTipo || null,
         frente_titulo: params.frenteTitulo || null,

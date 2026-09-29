@@ -6,6 +6,7 @@ import { mapParticipanteStatus } from '../lib/participantes';
 import { usePagedList } from '../lib/pagination';
 import { formatDisplayDate, labelEventStatus, labelStudentStatus, useT } from '../i18n';
 import { formatEventDateSentence } from '../lib/eventDates';
+import { collaboratorNames } from '../lib/colaboradores';
 import { TablePagination } from './TablePagination';
 
 const ENROLL_LOTE_MAX = 200;
@@ -392,7 +393,7 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                   : '—'}
               </span>
               <span>{event.durationHours}h</span>
-              <span>{event.instructor || '—'}</span>
+              <span>{collaboratorNames(event.collaborators) || event.instructor || '—'}</span>
               {event.limiteParticipantes != null && (
                 <span>
                   {t('eventIssue.occupancy', {

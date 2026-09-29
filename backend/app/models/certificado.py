@@ -4,7 +4,7 @@ import uuid
 from datetime import date
 
 from sqlalchemy import Date, Enum, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.participante import Participante
@@ -56,6 +56,9 @@ class Certificado(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     instituicao_nome: Mapped[str] = mapped_column(String(255), nullable=False)
     carga_horaria: Mapped[int] = mapped_column(nullable=False)
     instrutor: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    # Snapshot estruturado na emissão. NULL mantém o texto legado de instrutor.
+    colaboradores: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
+    exibicao_colaboradores: Mapped[str | None] = mapped_column(String(32), nullable=True)
     template_id: Mapped[str] = mapped_column(String(64), nullable=False, default="classic")
     frente_tipo: Mapped[str | None] = mapped_column(String(32), nullable=True)
     frente_titulo: Mapped[str | None] = mapped_column(String(255), nullable=True)

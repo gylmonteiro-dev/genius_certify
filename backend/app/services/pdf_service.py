@@ -11,6 +11,12 @@ from weasyprint import HTML
 from app.core.config import get_settings
 from app.models.certificado import Certificado
 from app.services.certificate_templates import resolve_frente_copy, resolve_template_filename
+from app.services.colaboradores_evento import (
+    ColaboradorSpec,
+    exibicao_de_pessoas,
+    exibicao_legada,
+    specs_de_snapshot,
+)
 from app.services.evento_datas import formatar_datas_evento
 from app.services.storage_service import StorageService, get_storage_service
 
@@ -41,6 +47,8 @@ class CertificateRenderData:
     verso_parcerias: str | None = None
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
+    colaboradores: tuple[ColaboradorSpec, ...] | None = None
+    exibicao_colaboradores: str | None = None
 
 
 class PdfService:
@@ -114,6 +122,7 @@ class PdfService:
             verso_parcerias=data.verso_parcerias or "",
             verso_conteudos=data.verso_conteudos or "",
             verso_observacoes=data.verso_observacoes or "",
+            **self._contexto_colaboradores(data),
         )
 
     def render_certificado_html(self, data: CertificateRenderData) -> str:
@@ -155,7 +164,28 @@ class PdfService:
             verso_parcerias=certificado.verso_parcerias,
             verso_conteudos=certificado.verso_conteudos,
             verso_observacoes=certificado.verso_observacoes,
+            colaboradores=self._specs_do_certificado(certificado),
+            exibicao_colaboradores=certificado.exibicao_colaboradores,
         )
+
+    @staticmethod
+    def _specs_do_certificado(
+        certificado: Certificado,
+    ) -> tuple[ColaboradorSpec, ...] | None:
+        pessoas = specs_de_snapshot(certificado.colaboradores)
+        if pessoas is None:
+            return None
+        return tuple(pessoas)
+
+    def _contexto_colaboradores(self, data: CertificateRenderData) -> dict[str, object]:
+        if data.colaboradores is None:
+            exibicao = exibicao_legada(data.instrutor)
+        else:
+            exibicao = exibicao_de_pessoas(
+                list(data.colaboradores),
+                data.exibicao_colaboradores,
+            )
+        return exibicao.template_context()
 
     @staticmethod
     def preview_data(
@@ -175,6 +205,8 @@ class PdfService:
         verso_conteudos: str | None = None,
         verso_observacoes: str | None = None,
         datas_evento: list[date] | None = None,
+        colaboradores: tuple[ColaboradorSpec, ...] | None = None,
+        exibicao_colaboradores: str | None = None,
     ) -> CertificateRenderData:
         today = datetime.now().strftime("%d/%m/%Y")
         texto = formatar_datas_evento(datas_evento)
@@ -200,4 +232,6 @@ class PdfService:
             verso_parcerias=verso_parcerias,
             verso_conteudos=verso_conteudos,
             verso_observacoes=verso_observacoes,
+            colaboradores=colaboradores,
+            exibicao_colaboradores=exibicao_colaboradores,
         )

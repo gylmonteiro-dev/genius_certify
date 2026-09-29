@@ -1,17 +1,23 @@
 from __future__ import annotations
 
+from datetime import date
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from datetime import date
-
+from app.core.exceptions import AppError
 from app.models.certificado import Certificado
 from app.models.curso import Curso, CursoStatus
+from app.models.curso_colaborador import (
+    ColaboradorFuncao,
+    CursoColaborador,
+    curso_colaborador_datas,
+)
 from app.models.curso_data import CursoData
 from app.models.instituicao import Instituicao, InstituicaoStatus
+from app.services.colaboradores_evento import ColaboradorSpec, derivar_instrutor
 
 
 class CursoRepository:
@@ -117,7 +123,16 @@ class CursoRepository:
 
     async def replace_datas(self, curso: Curso, datas: list[date]) -> None:
         """Substitui a coleção inteira na transação corrente."""
-        await self._session.refresh(curso, attribute_names=["datas"])
+        await self._session.refresh(curso, attribute_names=["datas", "colaboradores"])
+        data_ids = [item.id for item in curso.datas]
+        if data_ids:
+            await self._session.execute(
+                delete(curso_colaborador_datas).where(
+                    curso_colaborador_datas.c.curso_data_id.in_(data_ids)
+                )
+            )
+        for colaborador in list(curso.colaboradores):
+            self._session.expire(colaborador, ["datas"])
         for item in list(curso.datas):
             await self._session.delete(item)
         curso.datas.clear()
@@ -125,6 +140,57 @@ class CursoRepository:
         for value in datas:
             curso.datas.append(CursoData(curso_id=curso.id, data=value))
         curso.data_evento = datas[0] if datas else None
+        await self._session.flush()
+
+    async def replace_colaboradores(
+        self,
+        curso: Curso,
+        pessoas: list[ColaboradorSpec],
+    ) -> None:
+        """Substitui os profissionais e recalcula o texto legado ``instrutor``."""
+        await self._session.refresh(curso, attribute_names=["colaboradores", "datas"])
+        for item in list(curso.colaboradores):
+            await self._session.delete(item)
+        curso.colaboradores.clear()
+        await self._session.flush()
+
+        por_dia = {item.data: item for item in curso.datas}
+        for pessoa in pessoas:
+            registro = CursoColaborador(
+                curso_id=curso.id,
+                nome=pessoa.nome,
+                funcao=ColaboradorFuncao(pessoa.funcao),
+                funcao_personalizada=pessoa.funcao_personalizada,
+                tema_atividade=pessoa.tema_atividade,
+                ordem=pessoa.ordem,
+            )
+            for dia in pessoa.datas_evento:
+                curso_data = por_dia.get(dia)
+                if curso_data is None:
+                    raise AppError(
+                        f"A data {dia.strftime('%d/%m/%Y')} de {pessoa.nome} "
+                        "não faz parte do evento."
+                    )
+                registro.datas.append(curso_data)
+            curso.colaboradores.append(registro)
+        curso.instrutor = derivar_instrutor(pessoas)
+        await self._session.flush()
+
+    async def realocar_datas_dos_colaboradores(
+        self,
+        curso: Curso,
+        vinculos: dict[UUID, list[date]],
+    ) -> None:
+        """Reaponta os dias que continuam no evento e solta os que foram removidos."""
+        await self._session.refresh(curso, attribute_names=["colaboradores", "datas"])
+        por_dia = {item.data: item for item in curso.datas}
+        for colaborador in curso.colaboradores:
+            await self._session.refresh(colaborador, attribute_names=["datas"])
+            colaborador.datas.clear()
+            for dia in vinculos.get(colaborador.id, []):
+                alvo = por_dia.get(dia)
+                if alvo is not None:
+                    colaborador.datas.append(alvo)
         await self._session.flush()
 
     async def save(self, curso: Curso) -> Curso:

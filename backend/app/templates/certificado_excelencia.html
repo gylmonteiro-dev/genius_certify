@@ -224,6 +224,10 @@
       text-align: center;
     }
 
+    .signature-empty {
+      visibility: hidden;
+    }
+
     .signature-image-wrap {
       height: 56px;
       display: flex;
@@ -263,6 +267,8 @@
       font-weight: 700;
       text-transform: uppercase;
       color: #44474e;
+      overflow-wrap: anywhere;
+      line-height: 1.35;
     }
 
     .signature-role {
@@ -376,6 +382,35 @@
       color: #1a1c1b;
       white-space: pre-wrap;
     }
+
+    .verso-section p.colab-data {
+      margin: 8px 0 4px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      white-space: normal;
+    }
+
+    .colab-list {
+      list-style: none;
+      margin: 0 0 10px;
+      padding: 0;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #1a1c1b;
+    }
+
+    .colab-list.cols-2 {
+      column-count: 2;
+      column-gap: 32px;
+      font-size: 11px;
+    }
+
+    .colab-list li {
+      break-inside: avoid;
+      margin: 0 0 4px;
+      overflow-wrap: anywhere;
+    }
   </style>
 </head>
 <body>
@@ -413,17 +448,13 @@
       </div>
 
       <div class="footer-row">
-        <div class="signature">
-          <div class="signature-image-wrap">
-            {% if assinatura_data_uri %}
-            <img src="{{ assinatura_data_uri }}" alt="Assinatura" />
-            {% elif instrutor %}
-            <span class="signature-script">{{ instrutor }}</span>
-            {% endif %}
-          </div>
+        <div class="signature{% if not frente_colaborador_nome %} signature-empty{% endif %}">
+          <div class="signature-image-wrap"></div>
+          {% if frente_colaborador_nome %}
           <div class="signature-line"></div>
-          <p class="signature-name">{{ instrutor or "—" }}</p>
-          <p class="signature-role">Instrutor(a)</p>
+          <p class="signature-name">{{ frente_colaborador_nome }}</p>
+          <p class="signature-role">{{ frente_colaborador_funcao }}</p>
+          {% endif %}
         </div>
 
         <div class="seal">
@@ -439,7 +470,11 @@
 
         <div class="signature">
           <div class="signature-image-wrap">
+            {% if assinatura_data_uri %}
+            <img src="{{ assinatura_data_uri }}" alt="Assinatura autorizada" />
+            {% else %}
             <span class="signature-script institution-signature">{{ instituicao_nome }}</span>
+            {% endif %}
           </div>
           <div class="signature-line"></div>
           <p class="signature-name">{{ instituicao_nome }}</p>
@@ -454,7 +489,7 @@
       <p class="validate-url">Para validar este certificado, acesse: {{ url_validacao }}</p>
     </div>
   </div>
-  {% if verso_parcerias or verso_conteudos or verso_observacoes %}
+  {% if verso_parcerias or verso_conteudos or verso_observacoes or tem_colaboradores_verso %}
   <div class="page verso">
     <div class="pattern"></div>
     <div class="glow-tl"></div>
@@ -487,6 +522,7 @@
           <p>{{ verso_observacoes }}</p>
         </section>
         {% endif %}
+        {% include "_colaboradores_verso.html" %}
       </div>
       <p class="fine-print">
         {{ instituicao_nome }} · Código de verificação: {{ codigo_validacao }}

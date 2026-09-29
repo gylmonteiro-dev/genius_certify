@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CatalogoEventoItem, catalogByKind, catalogLabel } from '../lib/catalogoEventos';
 import { EventItem } from '../types';
 import { labelEventModality, labelEventStatus, labelEventType, useT } from '../i18n';
+import { collaboratorNames } from '../lib/colaboradores';
 import { formatEventDateCompact } from '../lib/eventDates';
 
 interface EventsCatalogViewProps {
@@ -127,9 +128,14 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
                   {evt.title}
                 </h3>
 
-                <p className="text-sm text-slate-500 mb-4 flex-1">
+                <p className="text-sm text-slate-500 mb-1 flex-1">
                   {evt.institutionName}
                 </p>
+                {(collaboratorNames(evt.collaborators) || evt.instructor) && (
+                  <p className="text-xs text-slate-500 mb-4 line-clamp-2">
+                    {collaboratorNames(evt.collaborators) || evt.instructor}
+                  </p>
+                )}
 
                 {/* Bottom Bar */}
                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100">

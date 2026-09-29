@@ -33,6 +33,13 @@ from app.services.certificate_templates import (
     resolve_frente_copy,
     resolve_template_id,
 )
+from app.services.colaboradores_evento import (
+    ColaboradorSpec,
+    canonico_para_hash,
+    normalizar_colaboradores,
+    snapshot_de_specs,
+    specs_do_curso,
+)
 from app.services.evento_datas import datas_do_curso
 from app.services.pdf_service import CertificateRenderData, PdfService
 from app.services.vagas import lock_and_assert_vaga
@@ -48,6 +55,15 @@ class CertificadoService:
         self._instituicoes = InstituicaoRepository(session)
         self._inscricoes = InscricaoRepository(session)
         self._pdf = PdfService()
+
+    async def _pessoas_carregadas(self, curso: Curso) -> list[ColaboradorSpec]:
+        await self._session.refresh(
+            curso,
+            attribute_names=["colaboradores", "exibicao_colaboradores", "instrutor"],
+        )
+        for item in curso.colaboradores:
+            await self._session.refresh(item, attribute_names=["datas"])
+        return specs_do_curso(curso)
 
     def _tenant_id_for_queries(self, actor: Usuario) -> UUID | None:
         if actor.role == UsuarioRole.SUPER_ADMIN:
@@ -103,6 +119,7 @@ class CertificadoService:
         frente_titulo: str | None = None,
         frente_atestacao: str | None = None,
         datas_evento: list[date] | None = None,
+        colaboradores_canonico: str = "",
     ) -> str:
         datas = ",".join(item.isoformat() for item in sorted(datas_evento or []))
         payload = "|".join(
@@ -120,6 +137,7 @@ class CertificadoService:
                 frente_titulo or "",
                 frente_atestacao or "",
                 datas,
+                colaboradores_canonico,
             ]
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -195,6 +213,14 @@ class CertificadoService:
             frente_atestacao=curso.frente_atestacao,
         )
         datas_evento = datas_do_curso(curso)
+        pessoas = await self._pessoas_carregadas(curso)
+        modo = (
+            curso.exibicao_colaboradores.value
+            if hasattr(curso.exibicao_colaboradores, "value")
+            else str(curso.exibicao_colaboradores)
+        )
+        snapshot = snapshot_de_specs(pessoas)
+        canonico = canonico_para_hash(pessoas, modo)
         sha256 = self._compute_sha256(
             codigo_validacao=codigo_validacao,
             numero=numero,
@@ -209,6 +235,7 @@ class CertificadoService:
             frente_titulo=frente_titulo,
             frente_atestacao=frente_atestacao,
             datas_evento=datas_evento,
+            colaboradores_canonico=canonico,
         )
         return await self._certificados.create(
             codigo_validacao=codigo_validacao,
@@ -221,6 +248,8 @@ class CertificadoService:
             instituicao_nome=instituicao.nome,
             carga_horaria=curso.carga_horaria,
             instrutor=curso.instrutor,
+            colaboradores=snapshot,
+            exibicao_colaboradores=modo,
             template_id=resolve_template_id(curso.template_id),
             frente_tipo=frente_tipo,
             frente_titulo=frente_titulo,
@@ -249,11 +278,21 @@ class CertificadoService:
         )
         template_id = resolve_template_id(curso.template_id)
         datas_evento = datas_do_curso(curso)
+        pessoas = await self._pessoas_carregadas(curso)
+        modo = (
+            curso.exibicao_colaboradores.value
+            if hasattr(curso.exibicao_colaboradores, "value")
+            else str(curso.exibicao_colaboradores)
+        )
+        snapshot = snapshot_de_specs(pessoas)
+        canonico = canonico_para_hash(pessoas, modo)
 
         for certificado in ativos:
             certificado.curso_titulo = curso.titulo
             certificado.carga_horaria = curso.carga_horaria
             certificado.instrutor = curso.instrutor
+            certificado.colaboradores = snapshot
+            certificado.exibicao_colaboradores = modo
             certificado.template_id = template_id
             certificado.frente_tipo = frente_tipo
             certificado.frente_titulo = frente_titulo
@@ -276,6 +315,7 @@ class CertificadoService:
                 frente_titulo=frente_titulo,
                 frente_atestacao=frente_atestacao,
                 datas_evento=datas_evento,
+                colaboradores_canonico=canonico,
             )
 
         await self._session.flush()
@@ -509,6 +549,8 @@ class CertificadoService:
         frente_titulo: str | None = None,
         frente_atestacao: str | None = None,
         datas_evento: list[date] | None = None,
+        colaboradores: list[object] | None = None,
+        exibicao_colaboradores: str | None = None,
     ) -> str:
         if not is_valid_template_id(template_id):
             raise NotFoundError("Modelo de certificado não encontrado")
@@ -529,6 +571,14 @@ class CertificadoService:
             if not resolved_nome:
                 resolved_nome = instituicao.nome
 
+        pessoas = None
+        if colaboradores is not None:
+            pessoas = tuple(
+                normalizar_colaboradores(
+                    colaboradores,
+                    datas_validas=set(datas_evento or []),
+                )
+            )
         data = PdfService.preview_data(
             template_id=template_id,
             participante_nome=participante_nome.strip() or "Nome do Participante",
@@ -545,6 +595,8 @@ class CertificadoService:
             frente_titulo=frente_titulo,
             frente_atestacao=frente_atestacao,
             datas_evento=datas_evento,
+            colaboradores=pessoas,
+            exibicao_colaboradores=exibicao_colaboradores,
         )
         return self._pdf.render_certificado_html(data)
 

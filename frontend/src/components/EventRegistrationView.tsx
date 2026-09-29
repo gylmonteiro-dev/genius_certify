@@ -4,6 +4,8 @@ import { EventItem, RegistrationFormData } from '../types';
 import { digitsOnly, formatCpf, isValidCpf } from '../lib/cpf';
 import { ContaParticipante } from '../lib/participanteAuth';
 import { useT } from '../i18n';
+import { roleLabel } from '../lib/colaboradores';
+import { formatDateBr } from '../lib/dateBr';
 import { formatEventDateSentence } from '../lib/eventDates';
 import { DateField } from './DateField';
 
@@ -35,6 +37,21 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
   const [birthDate, setBirthDate] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const people =
+    event.collaborators.length > 0
+      ? event.collaborators
+      : event.instructor.trim()
+        ? [
+            {
+              nome: event.instructor,
+              funcao: 'instrutor' as const,
+              funcaoPersonalizada: '',
+              temaAtividade: '',
+              ordem: 0,
+              datasEvento: [] as string[],
+            },
+          ]
+        : [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,13 +147,23 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                     <span className="material-symbols-outlined text-blue-600 mr-3 mt-0.5">
                       person
                     </span>
-                    <div>
-                      <p className="font-semibold text-base text-slate-900">
-                        {event.instructor}
-                      </p>
-                      <p className="text-slate-500 text-xs">
-                        {event.instructorRole || t('registration.leadInstructor')}
-                      </p>
+                    <div className="space-y-2">
+                      {people.length === 0 ? (
+                        <p className="text-slate-500 text-sm">{t('collaborators.summaryNone')}</p>
+                      ) : (
+                        people.map((person, index) => (
+                          <div key={`${person.nome}-${index}`}>
+                            <p className="font-semibold text-base text-slate-900">{person.nome}</p>
+                            <p className="text-slate-500 text-xs">
+                              {roleLabel(t, person)}
+                              {person.temaAtividade ? ` · ${person.temaAtividade}` : ''}
+                              {person.datasEvento.length > 0
+                                ? ` · ${person.datasEvento.map((day) => formatDateBr(day)).join(', ')}`
+                                : ''}
+                            </p>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
 

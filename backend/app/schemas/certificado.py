@@ -4,6 +4,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.certificado import CertificadoStatus
+from app.models.curso_colaborador import ExibicaoColaboradores
+from app.schemas.curso import ColaboradorInput
 
 
 class CertificadoEmitRequest(BaseModel):
@@ -81,6 +83,8 @@ class CertificadoPreviewRequest(BaseModel):
     instituicao_nome: str = ""
     carga_horaria: int = Field(default=0, ge=0)
     instrutor: str = ""
+    colaboradores: list[ColaboradorInput] | None = Field(default=None, max_length=40)
+    exibicao_colaboradores: ExibicaoColaboradores | None = None
     instituicao_id: UUID | None = None
     frente_tipo: str | None = None
     frente_titulo: str | None = None

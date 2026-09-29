@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +41,14 @@ from app.services.certificate_templates import (
     resolve_frente_tipo,
     resolve_template_id,
 )
-from app.services.evento_datas import resolver_datas_escrita
+from app.services.colaboradores_evento import (
+    ColaboradorSpec,
+    assert_cabe_no_certificado,
+    normalizar_colaboradores,
+    spec_legado,
+    specs_do_curso,
+)
+from app.services.evento_datas import datas_do_curso, resolver_datas_escrita
 from app.services.certificado_service import CertificadoService
 from app.services.vagas import VAGAS_ESGOTADAS, assert_vaga_disponivel
 
@@ -149,13 +156,35 @@ class CursoService:
             kind=CatalogoEventoKind.TIPO,
             value=data.tipo,
         )
+        datas = resolver_datas_escrita(
+            datas_evento=data.datas_evento,
+            datas_informadas=data.datas_evento is not None,
+            data_evento=data.data_evento,
+            data_informada=data.data_evento is not None,
+        ) or []
+        specs = self._specs_da_escrita(
+            colaboradores=data.colaboradores,
+            colaboradores_informados=data.colaboradores is not None,
+            instrutor=data.instrutor,
+            instrutor_informado=True,
+            datas_validas=set(datas),
+        )
+        assert specs is not None
+        assert_cabe_no_certificado(
+            specs,
+            data.exibicao_colaboradores,
+            verso_parcerias=self._normalize_optional_text(data.verso_parcerias),
+            verso_conteudos=self._normalize_optional_text(data.verso_conteudos),
+            verso_observacoes=self._normalize_optional_text(data.verso_observacoes),
+        )
 
         curso = await self._cursos.create(
             instituicao_id=instituicao_id,
             titulo=data.titulo.strip(),
             descricao=data.descricao,
             carga_horaria=data.carga_horaria,
-            instrutor=data.instrutor.strip(),
+            instrutor="",
+            exibicao_colaboradores=data.exibicao_colaboradores,
             status=data.status,
             categoria=categoria,
             modalidade=modalidade,
@@ -170,13 +199,8 @@ class CursoService:
             verso_observacoes=self._normalize_optional_text(data.verso_observacoes),
             limite_participantes=data.limite_participantes,
         )
-        datas = resolver_datas_escrita(
-            datas_evento=data.datas_evento,
-            datas_informadas=data.datas_evento is not None,
-            data_evento=data.data_evento,
-            data_informada=data.data_evento is not None,
-        )
-        await self._cursos.replace_datas(curso, datas or [])
+        await self._cursos.replace_datas(curso, datas)
+        await self._cursos.replace_colaboradores(curso, specs)
         await self._session.commit()
         return CursoResponse.model_validate(await self._reload(curso))
 
@@ -225,14 +249,18 @@ class CursoService:
         data_informada = "data_evento" in payload
         datas_evento = payload.pop("datas_evento", None)
         data_evento = payload.pop("data_evento", None)
+        colaboradores_informados = "colaboradores" in payload
+        colaboradores_entrada = payload.pop("colaboradores", None)
+        instrutor_informado = "instrutor" in payload
+        instrutor_entrada = payload.pop("instrutor", None)
+        exibicao_informada = "exibicao_colaboradores" in payload
+        exibicao_entrada = payload.pop("exibicao_colaboradores", None)
 
         if payload.get("status") == CursoStatus.CANCELLED:
             raise AppError("Use o cancelamento dedicado para cancelar um evento")
 
         if "titulo" in payload and payload["titulo"] is not None:
             payload["titulo"] = payload["titulo"].strip()
-        if "instrutor" in payload and payload["instrutor"] is not None:
-            payload["instrutor"] = payload["instrutor"].strip()
         if "categoria" in payload:
             payload["categoria"] = await self._assert_catalog_value(
                 field="categoria",
@@ -277,8 +305,38 @@ class CursoService:
             data_evento=data_evento,
             data_informada=data_informada,
         )
+        datas_efetivas = (
+            novas_datas if novas_datas is not None else datas_do_curso(curso)
+        )
+        if exibicao_informada:
+            curso.exibicao_colaboradores = exibicao_entrada
+        specs = self._specs_da_escrita(
+            colaboradores=colaboradores_entrada,
+            colaboradores_informados=colaboradores_informados,
+            instrutor=instrutor_entrada,
+            instrutor_informado=instrutor_informado,
+            datas_validas=set(datas_efetivas),
+        )
+        pessoas = specs if specs is not None else self._specs_com_datas_validas(
+            specs_do_curso(curso),
+            set(datas_efetivas),
+        )
+        assert_cabe_no_certificado(
+            pessoas,
+            curso.exibicao_colaboradores,
+            verso_parcerias=curso.verso_parcerias,
+            verso_conteudos=curso.verso_conteudos,
+            verso_observacoes=curso.verso_observacoes,
+        )
         if novas_datas is not None:
+            vinculos = {
+                item.id: list(item.datas_evento) for item in curso.colaboradores
+            }
             await self._cursos.replace_datas(curso, novas_datas)
+            if specs is None:
+                await self._cursos.realocar_datas_dos_colaboradores(curso, vinculos)
+        if specs is not None:
+            await self._cursos.replace_colaboradores(curso, specs)
 
         await self._cursos.save(curso)
         certificados_atualizados = 0
@@ -722,6 +780,47 @@ class CursoService:
         await self._cursos.save(curso)
         await self._session.commit()
         return CursoResponse.model_validate(await self._reload(curso))
+
+    @staticmethod
+    def _specs_da_escrita(
+        *,
+        colaboradores: list[object] | None,
+        colaboradores_informados: bool,
+        instrutor: str | None,
+        instrutor_informado: bool,
+        datas_validas: set[date],
+    ) -> list[ColaboradorSpec] | None:
+        if colaboradores_informados:
+            return normalizar_colaboradores(
+                list(colaboradores or []),
+                datas_validas=datas_validas,
+            )
+        if instrutor_informado:
+            texto = (instrutor or "").strip()
+            if not texto:
+                return []
+            return [spec_legado(texto)]
+        return None
+
+    @staticmethod
+    def _specs_com_datas_validas(
+        pessoas: list[ColaboradorSpec],
+        datas_validas: set[date],
+    ) -> list[ColaboradorSpec]:
+        ajustadas: list[ColaboradorSpec] = []
+        for pessoa in pessoas:
+            datas = tuple(dia for dia in pessoa.datas_evento if dia in datas_validas)
+            ajustadas.append(
+                ColaboradorSpec(
+                    nome=pessoa.nome,
+                    funcao=pessoa.funcao,
+                    funcao_personalizada=pessoa.funcao_personalizada,
+                    tema_atividade=pessoa.tema_atividade,
+                    ordem=pessoa.ordem,
+                    datas_evento=datas,
+                )
+            )
+        return ajustadas
 
     async def _reload(self, curso: Curso) -> Curso:
         reloaded = await self._cursos.get_by_id(curso.id)

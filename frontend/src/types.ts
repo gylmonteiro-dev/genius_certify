@@ -1,3 +1,5 @@
+import type { CollaboratorDisplay, EventCollaborator } from './lib/colaboradores';
+
 export type NavTab = 
   | 'dashboard'
   | 'institutions'
@@ -46,6 +48,8 @@ export interface EventItem {
   time: string; // e.g., "09:00 AM - 05:00 PM EST"
   durationHours: number;
   instructor: string;
+  collaborators: EventCollaborator[];
+  collaboratorDisplay: CollaboratorDisplay;
   instructorRole?: string;
   institutionId: string;
   institutionName: string;

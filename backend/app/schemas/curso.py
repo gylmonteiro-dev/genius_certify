@@ -8,8 +8,30 @@ from app.core.data_nascimento import validate_data_nascimento
 from app.core.exceptions import AppError
 from app.models.certificado import CertificadoStatus
 from app.models.curso import CursoStatus
+from app.models.curso_colaborador import ColaboradorFuncao, ExibicaoColaboradores
 from app.models.participante import ParticipanteStatus
 from app.services.evento_datas import normalizar_datas_evento
+
+
+class ColaboradorInput(BaseModel):
+    nome: str = Field(min_length=1, max_length=255)
+    funcao: ColaboradorFuncao
+    funcao_personalizada: str | None = Field(default=None, max_length=80)
+    tema_atividade: str | None = Field(default=None, max_length=180)
+    ordem: int | None = Field(default=None, ge=0)
+    datas_evento: list[date] = Field(default_factory=list)
+
+
+class ColaboradorResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    nome: str
+    funcao: ColaboradorFuncao
+    funcao_personalizada: str | None = None
+    tema_atividade: str | None = None
+    ordem: int
+    datas_evento: list[date] = Field(default_factory=list)
 
 
 def _validar_datas_evento(value: list[date] | None) -> list[date] | None:
@@ -26,6 +48,8 @@ class CursoCreate(BaseModel):
     descricao: str = ""
     carga_horaria: int = Field(default=0, ge=0)
     instrutor: str = Field(default="", max_length=255)
+    colaboradores: list[ColaboradorInput] | None = Field(default=None, max_length=40)
+    exibicao_colaboradores: ExibicaoColaboradores = ExibicaoColaboradores.AUTOMATICO
     status: CursoStatus = CursoStatus.DRAFT
     data_evento: date | None = None
     datas_evento: list[date] | None = None
@@ -55,6 +79,8 @@ class CursoUpdate(BaseModel):
     descricao: str | None = None
     carga_horaria: int | None = Field(default=None, ge=0)
     instrutor: str | None = Field(default=None, max_length=255)
+    colaboradores: list[ColaboradorInput] | None = Field(default=None, max_length=40)
+    exibicao_colaboradores: ExibicaoColaboradores | None = None
     status: CursoStatus | None = None
     data_evento: date | None = None
     datas_evento: list[date] | None = None
@@ -87,6 +113,8 @@ class CursoResponse(BaseModel):
     descricao: str
     carga_horaria: int
     instrutor: str
+    colaboradores: list[ColaboradorResponse] = Field(default_factory=list)
+    exibicao_colaboradores: ExibicaoColaboradores = ExibicaoColaboradores.AUTOMATICO
     status: CursoStatus
     data_evento: date | None = None
     datas_evento: list[date] = Field(default_factory=list)
@@ -119,6 +147,8 @@ class CursoPublicResponse(BaseModel):
     descricao: str
     carga_horaria: int
     instrutor: str
+    colaboradores: list[ColaboradorResponse] = Field(default_factory=list)
+    exibicao_colaboradores: ExibicaoColaboradores = ExibicaoColaboradores.AUTOMATICO
     status: CursoStatus
     instituicao_nome: str
     data_evento: date | None = None

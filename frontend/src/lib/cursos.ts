@@ -1,5 +1,10 @@
 import { EventItem, Institution } from '../types';
 import { apiRequest } from './api';
+import {
+  CollaboratorApi,
+  CollaboratorDisplay,
+  collaboratorsFromApi,
+} from './colaboradores';
 import { normalizeEventDates } from './eventDates';
 import { ParticipanteApiStatus } from './participantes';
 import { CertificadoApiStatus } from './certificados';
@@ -13,6 +18,8 @@ export interface CursoApi {
   descricao: string;
   carga_horaria: number;
   instrutor: string;
+  colaboradores?: CollaboratorApi[];
+  exibicao_colaboradores?: CollaboratorDisplay;
   status: CursoApiStatus;
   data_evento: string | null;
   datas_evento?: string[];
@@ -42,6 +49,8 @@ export interface CursoPublicApi {
   descricao: string;
   carga_horaria: number;
   instrutor: string;
+  colaboradores?: CollaboratorApi[];
+  exibicao_colaboradores?: CollaboratorDisplay;
   status: CursoApiStatus;
   instituicao_nome: string;
   data_evento: string | null;
@@ -61,6 +70,8 @@ export interface CursoCreatePayload {
   descricao?: string;
   carga_horaria: number;
   instrutor?: string;
+  colaboradores?: CollaboratorApi[];
+  exibicao_colaboradores?: CollaboratorDisplay;
   status?: CursoApiStatus;
   data_evento?: string | null;
   datas_evento?: string[];
@@ -127,6 +138,8 @@ function mapEventFields(item: {
   descricao: string;
   carga_horaria: number;
   instrutor: string;
+  colaboradores?: CollaboratorApi[];
+  exibicao_colaboradores?: CollaboratorDisplay;
   status: CursoApiStatus;
   data_evento: string | null;
   datas_evento?: string[];
@@ -167,6 +180,8 @@ function mapEventFields(item: {
     time: '',
     durationHours: item.carga_horaria,
     instructor: item.instrutor,
+    collaborators: collaboratorsFromApi(item.colaboradores, item.instrutor),
+    collaboratorDisplay: item.exibicao_colaboradores ?? 'automatico',
     institutionId: item.instituicaoId,
     institutionName: item.institutionName,
     description: item.descricao || '—',

@@ -10,9 +10,19 @@ import {
 import { catalogByKind, CatalogoEventoItem, catalogLabel } from '../lib/catalogoEventos';
 import { certificateHtmlForPage, fetchCertificadoTemplatePreview } from '../lib/certificados';
 import { frentePreset } from '../lib/certificateFront';
+import {
+  CollaboratorDisplay,
+  EventCollaborator,
+  collaboratorsOnCertificateBack,
+  collaboratorsToApi,
+  pruneCollaboratorDates,
+  roleLabel,
+  validateCollaborators,
+} from '../lib/colaboradores';
 import { labelEventStatus, useT } from '../i18n';
 import { formatEventDateSentence } from '../lib/eventDates';
 import { CertificateHtmlViewer } from './CertificateHtmlViewer';
+import { EventCollaboratorsField } from './EventCollaboratorsField';
 import { EventDatesField } from './EventDatesField';
 
 const CERTIFICATE_TEMPLATES = [
@@ -74,7 +84,15 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   const [participantLimit, setParticipantLimit] = useState(
     initialEvent?.limiteParticipantes != null ? String(initialEvent.limiteParticipantes) : '',
   );
-  const [instructor, setInstructor] = useState(initialEvent?.instructor ?? '');
+  const [collaborators, setCollaborators] = useState<EventCollaborator[]>(
+    initialEvent?.collaborators ?? [],
+  );
+  const [collaboratorDisplay, setCollaboratorDisplay] = useState<CollaboratorDisplay>(
+    initialEvent?.collaboratorDisplay ?? 'automatico',
+  );
+  const [collaboratorErrors, setCollaboratorErrors] = useState<
+    ReturnType<typeof validateCollaborators>
+  >({});
   const [description, setDescription] = useState(
     initialEvent && initialEvent.description !== '—' ? initialEvent.description : '',
   );
@@ -136,7 +154,10 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewError, setPreviewError] = useState<string | null>(null);
   const hasVerso = Boolean(
-    versoParcerias.trim() || versoConteudos.trim() || versoObservacoes.trim(),
+    versoParcerias.trim() ||
+      versoConteudos.trim() ||
+      versoObservacoes.trim() ||
+      collaboratorsOnCertificateBack(collaborators, collaboratorDisplay),
   );
 
   useEffect(() => {
@@ -144,6 +165,10 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
     if (!modalidade && modalidadeOptions[0]) setModalidade(modalidadeOptions[0].slug);
     if (!tipo && tipoOptions[0]) setTipo(tipoOptions[0].slug);
   }, [categoria, modalidade, tipo, categoriaOptions, modalidadeOptions, tipoOptions]);
+
+  useEffect(() => {
+    setCollaborators((current) => pruneCollaboratorDates(current, eventDates));
+  }, [eventDates]);
 
   useEffect(() => {
     if (!hasVerso && previewPage === 'verso') {
@@ -179,7 +204,8 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
             instituicaoNome: selectedInstitution?.name ?? '',
             instituicaoId: instituicaoId || undefined,
             cargaHoraria: Number(durationHours) || 0,
-            instrutor: instructor,
+            colaboradores: collaboratorsToApi(collaborators),
+            exibicaoColaboradores: collaboratorDisplay,
             versoParcerias,
             versoConteudos,
             versoObservacoes,
@@ -204,7 +230,8 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
     selectedInstitution?.name,
     instituicaoId,
     durationHours,
-    instructor,
+    collaborators,
+    collaboratorDisplay,
     versoParcerias,
     versoConteudos,
     versoObservacoes,
@@ -240,12 +267,22 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       setCurrentStep(1);
       return;
     }
+    const peopleErrors = validateCollaborators(collaborators, eventDates, t);
+    if (Object.keys(peopleErrors).length > 0) {
+      setCollaboratorErrors(peopleErrors);
+      const first = Object.values(peopleErrors)[0];
+      setFormError(first?.nome || first?.funcaoPersonalizada || t('collaborators.nameRequired'));
+      setCurrentStep(1);
+      return;
+    }
+    setCollaboratorErrors({});
 
     const payload: CursoCreatePayload & { atualizar_certificados_emitidos?: boolean } = {
       titulo: eventName.trim(),
       descricao: description.trim(),
       carga_horaria: Number(durationHours) || 0,
-      instrutor: instructor.trim(),
+      colaboradores: collaboratorsToApi(collaborators),
+      exibicao_colaboradores: collaboratorDisplay,
       limite_participantes: parsedLimit,
       status,
       data_evento: eventDates[0] ?? null,
@@ -482,19 +519,18 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                   </p>
                 </div>
 
-                {/* Lead Instructor / Speaker */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                    {t('createEvent.instructor')}
-                  </label>
-                  <input
-                    type="text"
-                    value={instructor}
-                    onChange={(e) => setInstructor(e.target.value)}
-                    placeholder="Dr. Sarah Jenkins"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
+                <EventCollaboratorsField
+                  people={collaborators}
+                  eventDates={eventDates}
+                  display={collaboratorDisplay}
+                  errors={collaboratorErrors}
+                  disabled={isCancelled}
+                  onPeopleChange={(next) => {
+                    setCollaborators(next);
+                    setCollaboratorErrors({});
+                  }}
+                  onDisplayChange={setCollaboratorDisplay}
+                />
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
@@ -614,7 +650,22 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setCurrentStep(2)}
+                  onClick={() => {
+                    const peopleErrors = validateCollaborators(collaborators, eventDates, t);
+                    if (Object.keys(peopleErrors).length > 0) {
+                      setCollaboratorErrors(peopleErrors);
+                      const first = Object.values(peopleErrors)[0];
+                      setFormError(
+                        first?.nome ||
+                          first?.funcaoPersonalizada ||
+                          t('collaborators.nameRequired'),
+                      );
+                      return;
+                    }
+                    setCollaboratorErrors({});
+                    setFormError(null);
+                    setCurrentStep(2);
+                  }}
                   className="px-6 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2"
                 >
                   {t('createEvent.nextStep')}
@@ -862,9 +913,24 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                     )}
                   </span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-400 font-medium">{t('createEvent.instructor')}:</span>
-                  <span className="font-bold text-slate-800">{instructor}</span>
+                <div className="py-1 border-b border-slate-200/60">
+                  <span className="text-slate-400 font-medium block mb-1">
+                    {t('collaborators.section')}:
+                  </span>
+                  {collaborators.filter((person) => person.nome.trim()).length === 0 ? (
+                    <span className="font-bold text-slate-800">{t('collaborators.summaryNone')}</span>
+                  ) : (
+                    <ul className="space-y-1">
+                      {collaborators
+                        .filter((person) => person.nome.trim())
+                        .map((person, index) => (
+                          <li key={`${person.nome}-${index}`} className="font-bold text-slate-800 text-right">
+                            {person.nome.trim()} — {roleLabel(t, person)}
+                            {person.temaAtividade.trim() ? ` · ${person.temaAtividade.trim()}` : ''}
+                          </li>
+                        ))}
+                    </ul>
+                  )}
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
                   <span className="text-slate-400 font-medium">{t('createEvent.stepTemplate')}:</span>

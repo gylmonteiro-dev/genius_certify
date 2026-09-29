@@ -1,0 +1,15 @@
+{% if tem_colaboradores_verso %}
+<section class="verso-section colaboradores">
+  <h3>Instrutores e palestrantes</h3>
+  {% for grupo in colaboradores_grupos %}
+    {% if grupo.data_label %}
+    <p class="colab-data">{{ grupo.data_label }}</p>
+    {% endif %}
+    <ul class="colab-list{% if colaboradores_colunas == 2 %} cols-2{% endif %}">
+      {% for linha in grupo.linhas %}
+      <li>{{ linha }}</li>
+      {% endfor %}
+    </ul>
+  {% endfor %}
+</section>
+{% endif %}

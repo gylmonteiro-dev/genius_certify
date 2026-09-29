@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { EventItem, Institution } from '../types';
 import { EventPublicVisibility, getEventPublicVisibility } from '../lib/cursos';
 import { formatMonthLabel, labelEventStatus, useT } from '../i18n';
+import { collaboratorNames } from '../lib/colaboradores';
 import { formatEventDateCompact } from '../lib/eventDates';
 
 interface EventsDirectoryViewProps {
@@ -56,9 +57,14 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   const filtered = events.filter((evt) => {
+    const names = collaboratorNames(evt.collaborators);
     const matchesSearch =
       evt.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       evt.instructor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      names.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      evt.collaborators.some((person) =>
+        person.temaAtividade.toLowerCase().includes(searchTerm.toLowerCase()),
+      ) ||
       evt.institutionName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All' || evt.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -193,7 +199,7 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-[16px]">person</span>
-                      {evt.instructor || '—'}
+                      {collaboratorNames(evt.collaborators) || evt.instructor || '—'}
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-[16px]">schedule</span>

@@ -15,6 +15,7 @@ from app.models import (  # noqa: F401
     ContaParticipanteAuditoria,
     ContaParticipantePasswordResetToken,
     Curso,
+    CursoColaborador,
     CursoData,
     Inscricao,
     Instituicao,
