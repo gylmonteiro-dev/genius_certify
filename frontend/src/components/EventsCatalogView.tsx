@@ -4,6 +4,7 @@ import { EventItem } from '../types';
 import { labelEventModality, labelEventStatus, labelEventType, useT } from '../i18n';
 import { collaboratorNames } from '../lib/colaboradores';
 import { formatEventDateCompact } from '../lib/eventDates';
+import { EventCoverImage } from './EventCoverImage';
 
 interface EventsCatalogViewProps {
   events: EventItem[];
@@ -73,13 +74,10 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
         </div>
       ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredEvents.map((evt) => {
+        {filteredEvents.map((evt, index) => {
           const cancelled = evt.status === 'Cancelled';
           const soldOut = typeof evt.spotsLeft === 'number' && evt.spotsLeft <= 0;
           const canOpen = evt.status === 'Upcoming';
-          // Default banner images if missing
-          const defaultBanner =
-            'https://lh3.googleusercontent.com/aida-public/AB6AXuDHWNgAzdsDqjQxubvrpMFCHtJHUyl2441P5HrQIvlRqRObtSFi6cR45owJRXPBhKChYXReX3KSHk98estRq0Ma2oGKXDBRPenXesMktAgi3GIDy2093X2cFoeYbeE8A8xnL6Bsg0FnTOZxiW-E4JgnLp3ESiZ1QgIOmtzvFOTwXovUvwNHbhfy80h1VUNgKc2gwwXsQOk0ys_LEzzw_TXBcU3Sn1AL4ASjxP4OSrhQx9rDHa-AFsVdzw';
 
           return (
             <div
@@ -88,14 +86,14 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
                 cancelled ? 'border-rose-200' : 'border-slate-200'
               }`}
             >
-              {/* Image Banner Header */}
-              <div
-                className="h-32 bg-slate-100 relative overflow-hidden bg-cover bg-center"
-                style={{
-                  backgroundImage: `url('${evt.bannerImage || defaultBanner}')`,
-                }}
+              <EventCoverImage
+                url={evt.coverCardUrl || evt.bannerImage}
+                focusX={evt.coverFocusX}
+                focusY={evt.coverFocusY}
+                priority={index < 3}
+                alt=""
               >
-                <div className="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent" />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent" />
 
                 {!cancelled && (
                   <div className="absolute top-3 left-3 px-2.5 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wider shadow-xs bg-white/90 text-slate-700">
@@ -111,7 +109,7 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
                     ? t('catalog.cancelled')
                     : labelEventType(t, evt.type, catalogItems, locale)}
                 </div>
-              </div>
+              </EventCoverImage>
 
               {/* Body */}
               <div className="p-5 flex flex-col flex-1">

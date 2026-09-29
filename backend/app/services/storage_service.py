@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from functools import lru_cache
 from uuid import UUID
 
@@ -13,6 +14,13 @@ from app.core.config import Settings, get_settings
 from app.core.exceptions import AppError
 
 logger = logging.getLogger(__name__)
+
+CAPA_CACHE_CONTROL = "public, max-age=31536000, immutable"
+_CAPA_VERSION = re.compile(r"^[0-9a-f]{12}$")
+_CAPA_KEY = re.compile(
+    r"^instituicoes/(?P<inst>[0-9a-fA-F-]{36})/eventos/"
+    r"(?P<evento>[0-9a-fA-F-]{36})/capa-(?:card|detail)-[0-9a-f]{12}\.webp$"
+)
 
 
 class StorageService:
@@ -76,14 +84,73 @@ class StorageService:
         data: bytes,
         key: str,
         content_type: str,
+        cache_control: str | None = None,
     ) -> str:
-        self._client.put_object(
-            Bucket=self._bucket,
-            Key=key,
-            Body=data,
-            ContentType=content_type,
-        )
+        params: dict[str, object] = {
+            "Bucket": self._bucket,
+            "Key": key,
+            "Body": data,
+            "ContentType": content_type,
+        }
+        if cache_control:
+            params["CacheControl"] = cache_control
+        self._client.put_object(**params)
         return f"{self.public_base_url}/{key}"
+
+    def delete_keys(self, keys: list[str]) -> None:
+        """Remove objetos já substituídos. Chave insegura é ignorada."""
+        for key in keys:
+            if not self.is_safe_object_key(key):
+                logger.warning("Recusa de exclusão de chave insegura: %s", key)
+                continue
+            try:
+                self._client.delete_object(Bucket=self._bucket, Key=key)
+            except ClientError as exc:
+                logger.warning("Falha ao excluir objeto %s: %s", key, exc)
+
+    def key_from_url(self, url: str | None) -> str | None:
+        if not url:
+            return None
+        return self.key_from_public_url(
+            url,
+            bucket=self._bucket,
+            public_base=self.public_base_url,
+        )
+
+    @staticmethod
+    def build_evento_capa_key(
+        instituicao_id: UUID,
+        evento_id: UUID,
+        kind: str,
+        version: str,
+    ) -> str:
+        if kind not in {"card", "detail"}:
+            raise AppError("Tipo de capa inválido")
+        if _CAPA_VERSION.fullmatch(version) is None:
+            raise AppError("Versão de capa inválida")
+        return (
+            f"instituicoes/{instituicao_id}/eventos/{evento_id}/"
+            f"capa-{kind}-{version}.webp"
+        )
+
+    @staticmethod
+    def is_safe_object_key(key: str) -> bool:
+        if not key or key.startswith("/") or "\\" in key:
+            return False
+        parts = key.split("/")
+        if any(part in {"", ".", ".."} for part in parts):
+            return False
+        return key.startswith("instituicoes/")
+
+    @staticmethod
+    def is_evento_capa_key(key: str, instituicao_id: UUID, evento_id: UUID) -> bool:
+        match = _CAPA_KEY.fullmatch(key)
+        if match is None:
+            return False
+        return (
+            match.group("inst").lower() == str(instituicao_id).lower()
+            and match.group("evento").lower() == str(evento_id).lower()
+        )
 
     def download_bytes(self, key: str) -> tuple[bytes, str]:
         response = self._client.get_object(Bucket=self._bucket, Key=key)

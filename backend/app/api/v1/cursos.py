@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -186,6 +186,35 @@ async def liberar_emissao(
     current_user: Usuario = Depends(RequireInstituicaoAdmin),
 ) -> CursoResponse:
     return await CursoService(session).liberar_emissao(curso_id, actor=current_user)
+
+
+@router.post("/{curso_id}/capa", response_model=CursoResponse)
+async def upload_curso_capa(
+    curso_id: UUID,
+    file: UploadFile = File(...),
+    foco_x: float | None = Form(default=None),
+    foco_y: float | None = Form(default=None),
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> CursoResponse:
+    """Processa e publica a capa do evento. A instituição vem do registro encontrado."""
+    return await CursoService(session).upload_capa(
+        curso_id,
+        actor=current_user,
+        file=file,
+        foco_x=foco_x,
+        foco_y=foco_y,
+    )
+
+
+@router.delete("/{curso_id}/capa", response_model=CursoResponse)
+async def delete_curso_capa(
+    curso_id: UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(RequireInstituicaoAdmin),
+) -> CursoResponse:
+    """Remove a capa personalizada e restaura o fallback visual."""
+    return await CursoService(session).delete_capa(curso_id, actor=current_user)
 
 
 @router.get("/{curso_id}", response_model=CursoResponse)

@@ -10,6 +10,7 @@ bcrypt==4.0.1
 email-validator==2.2.0
 python-multipart==0.0.20
 boto3==1.37.34
+pillow==11.2.1
 jinja2==3.1.6
 weasyprint==65.1
 pydantic-settings==2.8.1

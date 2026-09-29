@@ -5,7 +5,7 @@ import uuid
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -80,6 +80,10 @@ class Curso(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     verso_conteudos: Mapped[str | None] = mapped_column(Text, nullable=True)
     verso_observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
     limite_participantes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    capa_card_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    capa_detail_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    capa_foco_x: Mapped[float | None] = mapped_column(Float, nullable=True)
+    capa_foco_y: Mapped[float | None] = mapped_column(Float, nullable=True)
     cancelamento_justificativa: Mapped[str | None] = mapped_column(Text, nullable=True)
     cancelado_em: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),

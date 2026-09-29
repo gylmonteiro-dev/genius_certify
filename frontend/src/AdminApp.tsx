@@ -41,6 +41,7 @@ import {
   uploadInstituicaoAsset,
 } from './lib/instituicoes';
 import {
+  CursoApi,
   CursoCreatePayload,
   CursoUpdatePayload,
   InscritoApi,
@@ -515,21 +516,18 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
     }
   };
 
-  const handleCreateEvent = async (payload: CursoCreatePayload) => {
-    if (!authToken) return;
+  const handleCreateEvent = async (payload: CursoCreatePayload): Promise<CursoApi> => {
+    if (!authToken) throw new Error(t('errors.createEvent'));
     setCreateEventLoading(true);
     setCreateEventError(null);
     try {
       const created = await createCurso(authToken, payload);
       setEvents((prev) => [mapCursoToUi(created, institutions), ...prev]);
-      showToast(t('toasts.eventPublished', { title: created.titulo }));
-      setEditingEvent(null);
-      setCurrentTab('events');
-      void refreshDashboardResumo();
+      return created;
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : t('errors.createEvent');
+      const message = err instanceof ApiError ? err.message : t('errors.createEvent');
       setCreateEventError(message);
+      throw err;
     } finally {
       setCreateEventLoading(false);
     }
@@ -537,8 +535,8 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
 
   const handleUpdateEvent = async (
     payload: CursoCreatePayload & { atualizar_certificados_emitidos?: boolean },
-  ) => {
-    if (!authToken || !editingEvent) return;
+  ): Promise<CursoApi> => {
+    if (!authToken || !editingEvent) throw new Error(t('errors.updateEvent'));
     setCreateEventLoading(true);
     setCreateEventError(null);
     try {
@@ -566,46 +564,55 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
       };
       const updated = await updateCurso(authToken, editingEvent.id, updatePayload);
       setEvents((prev) =>
-        prev.map((evt) =>
-          evt.id === updated.id ? mapCursoToUi(updated, institutions) : evt,
-        ),
+        prev.map((evt) => (evt.id === updated.id ? mapCursoToUi(updated, institutions) : evt)),
       );
-      if (
-        payload.atualizar_certificados_emitidos &&
-        (updated.certificados_atualizados ?? 0) > 0
-      ) {
+      return updated;
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : t('errors.updateEvent');
+      setCreateEventError(message);
+      throw err;
+    } finally {
+      setCreateEventLoading(false);
+    }
+  };
+
+  const handleEventSaved = (curso: CursoApi) => {
+    const mapped = mapCursoToUi(curso, institutions);
+    setEvents((prev) => {
+      const exists = prev.some((evt) => evt.id === curso.id);
+      return exists ? prev.map((evt) => (evt.id === curso.id ? mapped : evt)) : [mapped, ...prev];
+    });
+    const updatedCount = curso.certificados_atualizados ?? 0;
+    if (editingEvent) {
+      if (updatedCount > 0) {
         setCertificates((prev) =>
           prev.map((cert) =>
-            cert.eventId === updated.id && cert.status === 'Active'
+            cert.eventId === curso.id && cert.status === 'Active'
               ? {
                   ...cert,
-                  eventName: updated.titulo,
-                  durationHours: updated.carga_horaria,
-                  instructor: updated.instrutor ?? cert.instructor,
+                  eventName: curso.titulo,
+                  durationHours: curso.carga_horaria,
+                  instructor: curso.instrutor ?? cert.instructor,
                 }
               : cert,
           ),
         );
       }
-      const updatedCount = updated.certificados_atualizados ?? 0;
       showToast(
         updatedCount > 0
           ? t('toasts.eventUpdatedWithCertificates', {
-              title: updated.titulo,
+              title: curso.titulo,
               count: updatedCount,
             })
-          : t('toasts.eventUpdated', { title: updated.titulo }),
+          : t('toasts.eventUpdated', { title: curso.titulo }),
       );
-      setEditingEvent(null);
-      setCurrentTab('events');
-      void refreshDashboardResumo();
-    } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : t('errors.updateEvent');
-      setCreateEventError(message);
-    } finally {
-      setCreateEventLoading(false);
+    } else {
+      showToast(t('toasts.eventPublished', { title: curso.titulo }));
     }
+    setEditingEvent(null);
+    setCreateEventError(null);
+    setCurrentTab('events');
+    void refreshDashboardResumo();
   };
 
   const handleSetParticipantStatus = async (
@@ -1161,6 +1168,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
             initialEvent={editingEvent}
             authToken={authToken}
             onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent}
+            onSaved={handleEventSaved}
             onCancel={() => {
               setEditingEvent(null);
               setCurrentTab('events');

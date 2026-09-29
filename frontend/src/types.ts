@@ -58,6 +58,10 @@ export interface EventItem {
   spotsLeft?: number;
   closingSoon?: boolean;
   bannerImage?: string;
+  coverCardUrl?: string | null;
+  coverDetailUrl?: string | null;
+  coverFocusX?: number | null;
+  coverFocusY?: number | null;
   status: 'Upcoming' | 'Completed' | 'Draft' | 'Cancelled';
   exigirConclusaoParaEmitir: boolean;
   emissaoLiberada: boolean;

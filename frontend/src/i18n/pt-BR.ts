@@ -420,6 +420,22 @@ export const ptBR = {
     updateIssuedCertificates: 'Atualizar certificados já emitidos',
     updateIssuedCertificatesHint:
       'Copia os dados deste evento para os certificados ativos. Código de validação e número permanecem os mesmos; o próximo download já sai com o texto novo. Certificados revogados não são alterados.',
+    cover: {
+      title: 'Capa do evento',
+      hint: 'Opcional. JPEG, PNG ou WebP até 5 MB. Mínimo de 800 × 450. A imagem é recortada em 16:9 e não entra no certificado.',
+      select: 'Selecionar imagem',
+      replace: 'Substituir',
+      remove: 'Remover capa',
+      cancelSelection: 'Cancelar seleção',
+      empty: 'Sem capa personalizada. O diretório usa a imagem padrão.',
+      focusHint: 'Clique na prévia para definir o ponto de foco do recorte.',
+      invalidType: 'Use JPEG, PNG ou WebP.',
+      tooLarge: 'O arquivo excede o limite de 5 MB.',
+      uploadFailed:
+        'O evento foi salvo, mas a capa não foi enviada. Ele continua com a capa padrão.',
+      retry: 'Tentar enviar a capa novamente',
+      previewAlt: 'Prévia da capa do evento',
+    },
   },
   eventTypes: {
     title: 'Catálogo de eventos',

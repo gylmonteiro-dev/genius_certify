@@ -131,6 +131,10 @@ class CursoResponse(BaseModel):
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
     limite_participantes: int | None = None
+    capa_card_url: str | None = None
+    capa_detail_url: str | None = None
+    capa_foco_x: float | None = None
+    capa_foco_y: float | None = None
     cancelamento_justificativa: str | None = None
     cancelado_em: datetime | None = None
     created_at: datetime
@@ -161,6 +165,10 @@ class CursoPublicResponse(BaseModel):
     verso_observacoes: str | None = None
     limite_participantes: int | None = None
     vagas_disponiveis: int | None = None
+    capa_card_url: str | None = None
+    capa_detail_url: str | None = None
+    capa_foco_x: float | None = None
+    capa_foco_y: float | None = None
 
 
 class InscritoResponse(BaseModel):

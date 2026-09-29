@@ -4,6 +4,7 @@ import { EventPublicVisibility, getEventPublicVisibility } from '../lib/cursos';
 import { formatMonthLabel, labelEventStatus, useT } from '../i18n';
 import { collaboratorNames } from '../lib/colaboradores';
 import { formatEventDateCompact } from '../lib/eventDates';
+import { EventCoverImage } from './EventCoverImage';
 
 interface EventsDirectoryViewProps {
   events: EventItem[];
@@ -149,6 +150,13 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
               const visibility = getEventPublicVisibility(evt.status, institution?.status);
               return (
               <div key={evt.id} className="p-5 flex flex-col md:flex-row gap-4">
+                <EventCoverImage
+                  url={evt.coverCardUrl || evt.bannerImage}
+                  focusX={evt.coverFocusX}
+                  focusY={evt.coverFocusY}
+                  alt=""
+                  className="md:w-40 shrink-0 rounded-md"
+                />
                 <div
                   className={`md:w-36 shrink-0 flex flex-col items-center justify-center rounded-lg p-4 border text-center ${
                     evt.status === 'Cancelled'

@@ -420,6 +420,22 @@ export const en: Messages = {
     updateIssuedCertificates: 'Update already issued certificates',
     updateIssuedCertificatesHint:
       'Copies this event’s data onto active certificates. Validation code and number stay the same; the next download uses the new text. Revoked certificates are not changed.',
+    cover: {
+      title: 'Event cover',
+      hint: 'Optional. JPEG, PNG or WebP up to 5 MB. Minimum 800 × 450. The image is cropped to 16:9 and is not printed on the certificate.',
+      select: 'Choose image',
+      replace: 'Replace',
+      remove: 'Remove cover',
+      cancelSelection: 'Cancel selection',
+      empty: 'No custom cover. The directory uses the default image.',
+      focusHint: 'Click the preview to set the crop focus.',
+      invalidType: 'Use JPEG, PNG or WebP.',
+      tooLarge: 'The file exceeds the 5 MB limit.',
+      uploadFailed:
+        'The event was saved, but the cover was not uploaded. It keeps the default cover.',
+      retry: 'Try uploading the cover again',
+      previewAlt: 'Event cover preview',
+    },
   },
   eventTypes: {
     title: 'Event catalog',

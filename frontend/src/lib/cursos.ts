@@ -36,6 +36,10 @@ export interface CursoApi {
   verso_conteudos?: string | null;
   verso_observacoes?: string | null;
   limite_participantes?: number | null;
+  capa_card_url?: string | null;
+  capa_detail_url?: string | null;
+  capa_foco_x?: number | null;
+  capa_foco_y?: number | null;
   cancelamento_justificativa?: string | null;
   cancelado_em?: string | null;
   created_at: string;
@@ -63,6 +67,10 @@ export interface CursoPublicApi {
   verso_observacoes?: string | null;
   limite_participantes?: number | null;
   vagas_disponiveis?: number | null;
+  capa_card_url?: string | null;
+  capa_detail_url?: string | null;
+  capa_foco_x?: number | null;
+  capa_foco_y?: number | null;
 }
 
 export interface CursoCreatePayload {
@@ -160,6 +168,10 @@ function mapEventFields(item: {
   verso_observacoes?: string | null;
   limite_participantes?: number | null;
   vagas_disponiveis?: number | null;
+  capa_card_url?: string | null;
+  capa_detail_url?: string | null;
+  capa_foco_x?: number | null;
+  capa_foco_y?: number | null;
   cancelamento_justificativa?: string | null;
   cancelado_em?: string | null;
 }): EventItem {
@@ -186,6 +198,11 @@ function mapEventFields(item: {
     institutionName: item.institutionName,
     description: item.descricao || '—',
     limiteParticipantes: item.limite_participantes ?? null,
+    bannerImage: item.capa_card_url || undefined,
+    coverCardUrl: item.capa_card_url ?? null,
+    coverDetailUrl: item.capa_detail_url ?? null,
+    coverFocusX: item.capa_foco_x ?? null,
+    coverFocusY: item.capa_foco_y ?? null,
     spotsLeft:
       typeof item.vagas_disponiveis === 'number' ? item.vagas_disponiveis : undefined,
     status: API_TO_UI_STATUS[item.status],
@@ -243,6 +260,24 @@ export function getEventPublicVisibility(
   if (institutionStatus !== 'Active') return 'hidden_institution';
   if (apiStatus === 'completed') return 'hidden_completed';
   return 'open';
+}
+
+export async function uploadCursoCapa(
+  token: string,
+  cursoId: string,
+  file: File,
+  focoX: number,
+  focoY: number,
+): Promise<CursoApi> {
+  const body = new FormData();
+  body.append('file', file);
+  body.append('foco_x', String(focoX));
+  body.append('foco_y', String(focoY));
+  return apiRequest<CursoApi>(`/api/cursos/${cursoId}/capa`, { method: 'POST', body }, token);
+}
+
+export async function deleteCursoCapa(token: string, cursoId: string): Promise<CursoApi> {
+  return apiRequest<CursoApi>(`/api/cursos/${cursoId}/capa`, { method: 'DELETE' }, token);
 }
 
 export async function listCursos(token: string): Promise<CursoApi[]> {

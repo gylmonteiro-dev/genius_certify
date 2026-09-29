@@ -1,12 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { EventItem, Institution } from '../types';
 import {
+  CursoApi,
   CursoApiStatus,
   CursoCreatePayload,
   EventPublicVisibility,
+  deleteCursoCapa,
   getEventPublicVisibility,
   toCursoApiStatus,
+  uploadCursoCapa,
 } from '../lib/cursos';
+import { applyCoverAfterSave } from '../lib/eventCover';
 import { catalogByKind, CatalogoEventoItem, catalogLabel } from '../lib/catalogoEventos';
 import { certificateHtmlForPage, fetchCertificadoTemplatePreview } from '../lib/certificados';
 import { frentePreset } from '../lib/certificateFront';
@@ -23,6 +27,7 @@ import { labelEventStatus, useT } from '../i18n';
 import { formatEventDateSentence } from '../lib/eventDates';
 import { CertificateHtmlViewer } from './CertificateHtmlViewer';
 import { EventCollaboratorsField } from './EventCollaboratorsField';
+import { EventCoverField } from './EventCoverField';
 import { EventDatesField } from './EventDatesField';
 
 const CERTIFICATE_TEMPLATES = [
@@ -31,7 +36,10 @@ const CERTIFICATE_TEMPLATES = [
 ] as const;
 
 interface CreateEventViewProps {
-  onSubmit: (payload: CursoCreatePayload & { atualizar_certificados_emitidos?: boolean }) => Promise<void>;
+  onSubmit: (
+    payload: CursoCreatePayload & { atualizar_certificados_emitidos?: boolean },
+  ) => Promise<CursoApi>;
+  onSaved: (curso: CursoApi) => void;
   onCancel: () => void;
   institutions: Institution[];
   isSuperAdmin: boolean;
@@ -61,6 +69,7 @@ function visibilityMessageKey(
 
 export const CreateEventView: React.FC<CreateEventViewProps> = ({
   onSubmit,
+  onSaved,
   onCancel,
   institutions,
   isSuperAdmin,
@@ -153,6 +162,16 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   const [atualizarCertificadosEmitidos, setAtualizarCertificadosEmitidos] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverRemoved, setCoverRemoved] = useState(false);
+  const [coverFocus, setCoverFocus] = useState({
+    x: initialEvent?.coverFocusX ?? 0.5,
+    y: initialEvent?.coverFocusY ?? 0.5,
+  });
+  const [coverError, setCoverError] = useState<string | null>(null);
+  const [savedCurso, setSavedCurso] = useState<CursoApi | null>(null);
+  const [coverBusy, setCoverBusy] = useState(false);
+  const busy = isSubmitting || coverBusy;
   const hasVerso = Boolean(
     versoParcerias.trim() ||
       versoConteudos.trim() ||
@@ -304,7 +323,58 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
     if (isEdit) {
       payload.atualizar_certificados_emitidos = atualizarCertificadosEmitidos;
     }
-    await onSubmit(payload);
+
+    setCoverBusy(true);
+    setCoverError(null);
+    try {
+      let curso = savedCurso;
+      const skipCreate = !isEdit && savedCurso != null;
+      if (!skipCreate) {
+        curso = await onSubmit(payload);
+        setSavedCurso(curso);
+      }
+      if (!curso) return;
+      const result = await applyCoverAfterSave({
+        saved: curso,
+        file: coverFile,
+        removeRequested: coverRemoved,
+        hasExisting: Boolean(initialEvent?.coverCardUrl || initialEvent?.coverDetailUrl),
+        upload: (id, file) => uploadCursoCapa(authToken, id, file, coverFocus.x, coverFocus.y),
+        removeCover: (id) => deleteCursoCapa(authToken, id),
+      });
+      if (result.coverFailed) {
+        setCoverError(t('createEvent.cover.uploadFailed'));
+        return;
+      }
+      onSaved(result.curso);
+    } catch {
+      // o pai registra a mensagem do evento; a capa ainda não foi enviada
+    } finally {
+      setCoverBusy(false);
+    }
+  };
+
+  const retryCover = async () => {
+    if (!savedCurso || !coverFile) return;
+    setCoverBusy(true);
+    setCoverError(null);
+    try {
+      const result = await applyCoverAfterSave({
+        saved: savedCurso,
+        file: coverFile,
+        removeRequested: false,
+        hasExisting: false,
+        upload: (id, file) => uploadCursoCapa(authToken, id, file, coverFocus.x, coverFocus.y),
+        removeCover: (id) => deleteCursoCapa(authToken, id),
+      });
+      if (result.coverFailed) {
+        setCoverError(t('createEvent.cover.uploadFailed'));
+        return;
+      }
+      onSaved(result.curso);
+    } finally {
+      setCoverBusy(false);
+    }
   };
 
   const visibilityBanner = (
@@ -336,6 +406,21 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
         {isCancelled && (
           <div className="mt-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
             {t('createEvent.cancelledReadOnly')}
+          </div>
+        )}
+        {coverError && (
+          <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p>{coverError}</p>
+            {savedCurso && coverFile && (
+              <button
+                type="button"
+                onClick={() => void retryCover()}
+                disabled={busy}
+                className="mt-2 text-xs font-semibold text-amber-950 underline disabled:opacity-60"
+              >
+                {t('createEvent.cover.retry')}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -637,6 +722,30 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                     className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                   />
                 </div>
+
+                <EventCoverField
+                  existingUrl={initialEvent?.coverDetailUrl || initialEvent?.coverCardUrl}
+                  file={coverFile}
+                  removed={coverRemoved}
+                  focusX={coverFocus.x}
+                  focusY={coverFocus.y}
+                  disabled={isCancelled || busy}
+                  onFile={(file) => {
+                    setCoverFile(file);
+                    setCoverRemoved(false);
+                    setFormError(null);
+                  }}
+                  onInvalid={(message) => {
+                    setFormError(message);
+                    setCurrentStep(1);
+                  }}
+                  onRemove={() => {
+                    setCoverFile(null);
+                    setCoverRemoved(true);
+                  }}
+                  onCancelSelection={() => setCoverFile(null)}
+                  onFocus={(x, y) => setCoverFocus({ x, y })}
+                />
               </div>
 
               {/* Step 1 Actions */}
@@ -1004,6 +1113,12 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 </label>
               )}
 
+              {coverError && (
+                <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  {coverError}
+                </div>
+              )}
+
               {/* Step 3 Actions */}
               <div className="flex justify-between gap-3 pt-6 border-t border-slate-200 mt-8">
                 <button
@@ -1016,13 +1131,13 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                 <button
                   type="button"
                   onClick={() => void handleFinish()}
-                  disabled={isSubmitting || isCancelled}
+                  disabled={busy || isCancelled}
                   className="px-6 py-2.5 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shadow-md flex items-center gap-2 transition-colors disabled:opacity-60"
                 >
                   <span className="material-symbols-outlined text-[18px]">
-                    {isSubmitting ? 'progress_activity' : isEdit ? 'save' : 'publish'}
+                    {busy ? 'progress_activity' : isEdit ? 'save' : 'publish'}
                   </span>
-                  {isSubmitting
+                  {busy
                     ? isEdit
                       ? t('createEvent.saving')
                       : t('createEvent.publishing')

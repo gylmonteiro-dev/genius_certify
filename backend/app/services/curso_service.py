@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, timezone
 from uuid import UUID
 
+from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppError, ConflictError, ForbiddenError, NotFoundError
@@ -36,6 +38,13 @@ from app.schemas.curso import (
     RevogarCertificadosLoteRequest,
     RevogarCertificadosLoteResponse,
 )
+from app.services.capa_evento import (
+    CapaStorage,
+    chaves_capa_do_evento,
+    publicar_capa,
+    remover_capa,
+)
+from app.services.capa_imagem import MAX_CAPA_BYTES
 from app.services.certificate_templates import (
     is_valid_template_id,
     resolve_frente_tipo,
@@ -50,14 +59,37 @@ from app.services.colaboradores_evento import (
 )
 from app.services.evento_datas import datas_do_curso, resolver_datas_escrita
 from app.services.certificado_service import CertificadoService
+from app.services.storage_service import get_storage_service
 from app.services.vagas import VAGAS_ESGOTADAS, assert_vaga_disponivel
 
+logger = logging.getLogger(__name__)
+
 JUSTIFICATIVA_MIN_LEN = 10
+_CAPA_READ_CHUNK = 1024 * 1024
+
+
+async def _ler_capa(file: UploadFile) -> bytes:
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(_CAPA_READ_CHUNK)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_CAPA_BYTES:
+            raise AppError("Arquivo excede o limite de 5 MB")
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 class CursoService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        storage: CapaStorage | None = None,
+    ) -> None:
         self._session = session
+        self._storage = storage
         self._cursos = CursoRepository(session)
         self._instituicoes = InstituicaoRepository(session)
         self._inscricoes = InscricaoRepository(session)
@@ -359,8 +391,12 @@ class CursoService:
                 "Curso possui certificados emitidos e não pode ser excluído"
             )
 
+        capa_urls = (curso.capa_card_url, curso.capa_detail_url)
+        instituicao_id = curso.instituicao_id
+        evento_id = curso.id
         await self._cursos.delete(curso)
         await self._session.commit()
+        self._descartar_capas(capa_urls, instituicao_id=instituicao_id, evento_id=evento_id)
 
     async def list_inscritos(
         self,
@@ -821,6 +857,63 @@ class CursoService:
                 )
             )
         return ajustadas
+
+    async def upload_capa(
+        self,
+        curso_id: UUID,
+        *,
+        actor: Usuario,
+        file: UploadFile,
+        foco_x: float | None = None,
+        foco_y: float | None = None,
+    ) -> CursoResponse:
+        curso = await self._get_or_404(curso_id, actor=actor)
+        data = await _ler_capa(file)
+        await publicar_capa(
+            curso,
+            data=data,
+            filename=file.filename,
+            content_type=file.content_type,
+            foco_x=foco_x,
+            foco_y=foco_y,
+            storage=self._storage_or_default(),
+            session=self._session,
+        )
+        return CursoResponse.model_validate(await self._reload(curso))
+
+    async def delete_capa(self, curso_id: UUID, *, actor: Usuario) -> CursoResponse:
+        curso = await self._get_or_404(curso_id, actor=actor)
+        await remover_capa(
+            curso,
+            storage=self._storage_or_default(),
+            session=self._session,
+        )
+        return CursoResponse.model_validate(await self._reload(curso))
+
+    def _storage_or_default(self) -> CapaStorage:
+        return self._storage or get_storage_service()
+
+    def _descartar_capas(
+        self,
+        urls: tuple[str | None, str | None],
+        *,
+        instituicao_id: UUID,
+        evento_id: UUID,
+    ) -> None:
+        if not any(urls):
+            return
+        try:
+            storage = self._storage_or_default()
+        except AppError:
+            logger.warning("Capa do evento %s não foi removida: storage indisponível", evento_id)
+            return
+        keys = chaves_capa_do_evento(
+            storage,
+            urls,
+            instituicao_id=instituicao_id,
+            evento_id=evento_id,
+        )
+        storage.delete_keys(keys)
 
     async def _reload(self, curso: Curso) -> Curso:
         reloaded = await self._cursos.get_by_id(curso.id)

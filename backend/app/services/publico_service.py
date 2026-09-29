@@ -57,6 +57,10 @@ class PublicoService:
             verso_observacoes=curso.verso_observacoes,
             limite_participantes=curso.limite_participantes,
             vagas_disponiveis=vagas_disponiveis(curso.limite_participantes, ocupadas),
+            capa_card_url=curso.capa_card_url,
+            capa_detail_url=curso.capa_detail_url,
+            capa_foco_x=curso.capa_foco_x,
+            capa_foco_y=curso.capa_foco_y,
         )
 
     async def list_cursos(
