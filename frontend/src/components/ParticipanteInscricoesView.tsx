@@ -7,7 +7,8 @@ import {
   cancelarMinhaInscricao,
   listMinhasInscricoes,
 } from '../lib/participanteAuth';
-import { formatDisplayDate, labelEventStatus, useT } from '../i18n';
+import { labelEventStatus, useT } from '../i18n';
+import { formatEventDateCompact, normalizeEventDates } from '../lib/eventDates';
 import { PublicLayout } from './PublicLayout';
 import { EventItem } from '../types';
 
@@ -29,7 +30,7 @@ export const ParticipanteInscricoesView: React.FC<ParticipanteInscricoesViewProp
   token,
   onLogout,
 }) => {
-  const { t, dateLocale } = useT();
+  const { t } = useT();
   const [items, setItems] = useState<MinhaInscricao[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -151,9 +152,11 @@ export const ParticipanteInscricoesView: React.FC<ParticipanteInscricoesViewProp
                       </td>
                       <td className="py-3 px-5 text-slate-600">{item.instituicao_nome}</td>
                       <td className="py-3 px-5 text-slate-500 text-xs">
-                        {item.data_evento
-                          ? formatDisplayDate(item.data_evento, dateLocale, item.data_evento)
-                          : '—'}
+                        {formatEventDateCompact(
+                          normalizeEventDates(
+                            item.datas_evento?.length ? item.datas_evento : [item.data_evento],
+                          ),
+                        ) || '—'}
                       </td>
                       <td className="py-3 px-5 text-slate-600 text-xs">
                         <div className="flex flex-col gap-1">

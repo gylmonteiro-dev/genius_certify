@@ -24,6 +24,7 @@ export interface MinhaInscricao {
   curso_titulo: string;
   instituicao_nome: string;
   data_evento: string | null;
+  datas_evento?: string[];
   curso_status: CursoApiStatus;
   inscrito_em: string;
   pode_cancelar: boolean;

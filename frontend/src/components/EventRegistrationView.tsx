@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { EventItem, RegistrationFormData } from '../types';
 import { digitsOnly, formatCpf, isValidCpf } from '../lib/cpf';
 import { ContaParticipante } from '../lib/participanteAuth';
-import { formatDisplayDate, useT } from '../i18n';
+import { useT } from '../i18n';
+import { formatEventDateSentence } from '../lib/eventDates';
 import { DateField } from './DateField';
 
 interface EventRegistrationViewProps {
@@ -27,7 +28,7 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
   loggedInAccount = null,
   alreadyEnrolled = false,
 }) => {
-  const { t, dateLocale } = useT();
+  const { t, locale } = useT();
   const [fullName, setFullName] = useState('');
   const [workEmail, setWorkEmail] = useState('');
   const [documentId, setDocumentId] = useState('');
@@ -117,7 +118,9 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                     </span>
                     <div>
                       <p className="font-semibold text-base text-slate-900">
-                        {formatDisplayDate(event.date, dateLocale, event.date)}
+                        {event.eventDates.length > 0
+                          ? formatEventDateSentence(event.eventDates, locale)
+                          : '—'}
                       </p>
                       <p className="text-slate-500 text-xs">{event.time}</p>
                     </div>

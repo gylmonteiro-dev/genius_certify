@@ -51,7 +51,9 @@ async def preview_certificate_template(
         frente_tipo=body.frente_tipo,
         frente_titulo=body.frente_titulo,
         frente_atestacao=body.frente_atestacao,
-        data_evento=body.data_evento,
+        datas_evento=body.datas_evento
+        if body.datas_evento is not None
+        else ([body.data_evento] if body.data_evento else []),
     )
     return HTMLResponse(content=html)
 

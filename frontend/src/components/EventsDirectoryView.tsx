@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { EventItem, Institution } from '../types';
 import { EventPublicVisibility, getEventPublicVisibility } from '../lib/cursos';
 import { formatMonthLabel, labelEventStatus, useT } from '../i18n';
+import { formatEventDateCompact } from '../lib/eventDates';
 
 interface EventsDirectoryViewProps {
   events: EventItem[];
@@ -149,16 +150,24 @@ export const EventsDirectoryView: React.FC<EventsDirectoryViewProps> = ({
                       : 'bg-slate-50 border-slate-200'
                   }`}
                 >
-                  <span
-                    className={`text-xs font-bold tracking-widest uppercase mb-1 ${
-                      evt.status === 'Cancelled' ? 'text-rose-600' : 'text-blue-600'
-                    }`}
-                  >
-                    {formatMonthLabel(evt.date, dateLocale)}
-                  </span>
-                  <span className="text-3xl font-bold text-slate-900 leading-none">
-                    {evt.dateDay}
-                  </span>
+                  {evt.eventDates.length > 1 ? (
+                    <span className="text-sm font-bold text-slate-900 leading-snug">
+                      {formatEventDateCompact(evt.eventDates)}
+                    </span>
+                  ) : (
+                    <>
+                      <span
+                        className={`text-xs font-bold tracking-widest uppercase mb-1 ${
+                          evt.status === 'Cancelled' ? 'text-rose-600' : 'text-blue-600'
+                        }`}
+                      >
+                        {formatMonthLabel(evt.date, dateLocale)}
+                      </span>
+                      <span className="text-3xl font-bold text-slate-900 leading-none">
+                        {evt.dateDay}
+                      </span>
+                    </>
+                  )}
                   <span
                     className={`text-[10px] mt-1 font-semibold ${
                       evt.status === 'Cancelled' ? 'text-rose-700' : 'text-slate-400'

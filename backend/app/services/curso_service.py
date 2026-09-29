@@ -41,6 +41,7 @@ from app.services.certificate_templates import (
     resolve_frente_tipo,
     resolve_template_id,
 )
+from app.services.evento_datas import resolver_datas_escrita
 from app.services.certificado_service import CertificadoService
 from app.services.vagas import VAGAS_ESGOTADAS, assert_vaga_disponivel
 
@@ -156,7 +157,6 @@ class CursoService:
             carga_horaria=data.carga_horaria,
             instrutor=data.instrutor.strip(),
             status=data.status,
-            data_evento=data.data_evento,
             categoria=categoria,
             modalidade=modalidade,
             tipo=tipo,
@@ -170,9 +170,15 @@ class CursoService:
             verso_observacoes=self._normalize_optional_text(data.verso_observacoes),
             limite_participantes=data.limite_participantes,
         )
+        datas = resolver_datas_escrita(
+            datas_evento=data.datas_evento,
+            datas_informadas=data.datas_evento is not None,
+            data_evento=data.data_evento,
+            data_informada=data.data_evento is not None,
+        )
+        await self._cursos.replace_datas(curso, datas or [])
         await self._session.commit()
-        await self._session.refresh(curso)
-        return CursoResponse.model_validate(curso)
+        return CursoResponse.model_validate(await self._reload(curso))
 
     async def list(
         self,
@@ -215,6 +221,10 @@ class CursoService:
             raise ConflictError("Evento cancelado não pode ser editado")
         payload = data.model_dump(exclude_unset=True)
         atualizar_certificados = bool(payload.pop("atualizar_certificados_emitidos", False))
+        datas_informadas = "datas_evento" in payload
+        data_informada = "data_evento" in payload
+        datas_evento = payload.pop("datas_evento", None)
+        data_evento = payload.pop("data_evento", None)
 
         if payload.get("status") == CursoStatus.CANCELLED:
             raise AppError("Use o cancelamento dedicado para cancelar um evento")
@@ -261,6 +271,15 @@ class CursoService:
         for field, value in payload.items():
             setattr(curso, field, value)
 
+        novas_datas = resolver_datas_escrita(
+            datas_evento=datas_evento,
+            datas_informadas=datas_informadas,
+            data_evento=data_evento,
+            data_informada=data_informada,
+        )
+        if novas_datas is not None:
+            await self._cursos.replace_datas(curso, novas_datas)
+
         await self._cursos.save(curso)
         certificados_atualizados = 0
         if atualizar_certificados:
@@ -268,9 +287,9 @@ class CursoService:
                 self._session
             ).sincronizar_snapshot_do_curso(curso)
         await self._session.commit()
-        await self._session.refresh(curso)
+        atualizado = await self._reload(curso)
         return CursoUpdateResponse(
-            **CursoResponse.model_validate(curso).model_dump(),
+            **CursoResponse.model_validate(atualizado).model_dump(),
             certificados_atualizados=certificados_atualizados,
         )
 
@@ -566,8 +585,7 @@ class CursoService:
         curso.cancelado_em = now
         await self._cursos.save(curso)
         await self._session.commit()
-        await self._session.refresh(curso)
-        return CursoResponse.model_validate(curso)
+        return CursoResponse.model_validate(await self._reload(curso))
 
     async def revogar_certificados_lote(
         self,
@@ -703,8 +721,13 @@ class CursoService:
         curso.emissao_liberada = True
         await self._cursos.save(curso)
         await self._session.commit()
-        await self._session.refresh(curso)
-        return CursoResponse.model_validate(curso)
+        return CursoResponse.model_validate(await self._reload(curso))
+
+    async def _reload(self, curso: Curso) -> Curso:
+        reloaded = await self._cursos.get_by_id(curso.id)
+        if reloaded is None:
+            raise NotFoundError("Curso não encontrado")
+        return reloaded
 
     async def _get_or_404(self, curso_id: UUID, *, actor: Usuario) -> Curso:
         tenant = self._tenant_id_for_queries(actor)

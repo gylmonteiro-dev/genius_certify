@@ -10,9 +10,10 @@ import {
 import { catalogByKind, CatalogoEventoItem, catalogLabel } from '../lib/catalogoEventos';
 import { certificateHtmlForPage, fetchCertificadoTemplatePreview } from '../lib/certificados';
 import { frentePreset } from '../lib/certificateFront';
-import { formatDisplayDate, labelEventStatus, useT } from '../i18n';
+import { labelEventStatus, useT } from '../i18n';
+import { formatEventDateSentence } from '../lib/eventDates';
 import { CertificateHtmlViewer } from './CertificateHtmlViewer';
-import { DateField } from './DateField';
+import { EventDatesField } from './EventDatesField';
 
 const CERTIFICATE_TEMPLATES = [
   { id: 'excelencia', nameKey: 'createEvent.templateExcelencia', hintKey: 'createEvent.templateExcelenciaHint' },
@@ -61,15 +62,13 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   initialEvent = null,
   catalogItems = [],
 }) => {
-  const { t, dateLocale, locale } = useT();
+  const { t, locale } = useT();
   const isEdit = mode === 'edit';
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
   const [eventName, setEventName] = useState(initialEvent?.title ?? '');
-  const [eventDate, setEventDate] = useState(
-    initialEvent?.date && /^\d{4}-\d{2}-\d{2}$/.test(initialEvent.date)
-      ? initialEvent.date
-      : '',
+  const [eventDates, setEventDates] = useState<string[]>(
+    initialEvent?.eventDates?.length ? initialEvent.eventDates : [],
   );
   const [durationHours, setDurationHours] = useState<number>(initialEvent?.durationHours ?? 8);
   const [participantLimit, setParticipantLimit] = useState(
@@ -186,7 +185,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
             versoObservacoes,
             frenteTitulo: frentePersonalizada ? frenteTitulo : undefined,
             frenteAtestacao: frentePersonalizada ? frenteAtestacao : undefined,
-            dataEvento: eventDate || null,
+            datasEvento: eventDates,
           });
           setPreviewHtml(html);
           setPreviewError(null);
@@ -212,14 +211,14 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
     frentePersonalizada,
     frenteTitulo,
     frenteAtestacao,
-    eventDate,
+    eventDates,
     t,
   ]);
 
   const formattedDateDisplay = React.useMemo(() => {
-    if (!eventDate) return t('createEvent.dateFallback');
-    return formatDisplayDate(eventDate, dateLocale, eventDate);
-  }, [eventDate, dateLocale, t]);
+    if (eventDates.length === 0) return t('createEvent.noDates');
+    return formatEventDateSentence(eventDates, locale);
+  }, [eventDates, locale, t]);
 
   const handleFinish = async () => {
     if (isCancelled) return;
@@ -249,7 +248,8 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       instrutor: instructor.trim(),
       limite_participantes: parsedLimit,
       status,
-      data_evento: eventDate || null,
+      data_evento: eventDates[0] ?? null,
+      datas_evento: eventDates,
       categoria: categoria || null,
       modalidade: modalidade || null,
       tipo: tipo || null,
@@ -441,21 +441,14 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                   />
                 </div>
 
+                <EventDatesField
+                  dates={eventDates}
+                  onChange={setEventDates}
+                  disabled={isCancelled}
+                />
+
                 {/* Date & Duration */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                      {t('common.date')}
-                    </label>
-                    <div className="relative">
-                      <DateField
-                        value={eventDate}
-                        onChange={setEventDate}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-md px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                      />
-                    </div>
-                  </div>
-
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
                       {t('createEvent.durationHours')}
@@ -841,8 +834,8 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                   <span className="font-bold text-slate-800">{eventName}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-400 font-medium">{t('common.date')}:</span>
-                  <span className="font-bold text-slate-800">{formattedDateDisplay}</span>
+                  <span className="text-slate-400 font-medium">{t('createEvent.eventDates')}:</span>
+                  <span className="font-bold text-slate-800 text-right">{formattedDateDisplay}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
                   <span className="text-slate-400 font-medium">{t('createEvent.durationHours')}:</span>

@@ -6,8 +6,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from datetime import date
+
 from app.models.certificado import Certificado
 from app.models.curso import Curso, CursoStatus
+from app.models.curso_data import CursoData
 from app.models.instituicao import Instituicao, InstituicaoStatus
 
 
@@ -112,9 +115,21 @@ class CursoRepository:
         await self._session.refresh(curso)
         return curso
 
+    async def replace_datas(self, curso: Curso, datas: list[date]) -> None:
+        """Substitui a coleção inteira na transação corrente."""
+        await self._session.refresh(curso, attribute_names=["datas"])
+        for item in list(curso.datas):
+            await self._session.delete(item)
+        curso.datas.clear()
+        await self._session.flush()
+        for value in datas:
+            curso.datas.append(CursoData(curso_id=curso.id, data=value))
+        curso.data_evento = datas[0] if datas else None
+        await self._session.flush()
+
     async def save(self, curso: Curso) -> Curso:
         await self._session.flush()
-        await self._session.refresh(curso)
+        await self._session.refresh(curso, attribute_names=["updated_at"])
         return curso
 
     async def delete(self, curso: Curso) -> None:

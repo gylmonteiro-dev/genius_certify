@@ -5,6 +5,7 @@ import { formatCpf } from '../lib/cpf';
 import { mapParticipanteStatus } from '../lib/participantes';
 import { usePagedList } from '../lib/pagination';
 import { formatDisplayDate, labelEventStatus, labelStudentStatus, useT } from '../i18n';
+import { formatEventDateSentence } from '../lib/eventDates';
 import { TablePagination } from './TablePagination';
 
 const ENROLL_LOTE_MAX = 200;
@@ -72,7 +73,7 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
   onRevokeCertificatesLote,
   onCancelInscritosLote,
 }) => {
-  const { t, dateLocale } = useT();
+  const { t, dateLocale, locale } = useT();
   const eventCancelled = event.status === 'Cancelled';
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [formError, setFormError] = useState<string | null>(null);
@@ -385,7 +386,11 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
             <p className="text-sm text-slate-500 mt-1">{event.institutionName}</p>
             <div className="flex flex-wrap gap-3 text-xs text-slate-500 mt-3">
               <span>{labelEventStatus(t, event.status)}</span>
-              <span>{formatDisplayDate(event.date, dateLocale, event.date)}</span>
+              <span>
+                {event.eventDates.length > 0
+                  ? formatEventDateSentence(event.eventDates, locale)
+                  : '—'}
+              </span>
               <span>{event.durationHours}h</span>
               <span>{event.instructor || '—'}</span>
               {event.limiteParticipantes != null && (

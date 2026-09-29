@@ -5,9 +5,20 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.core.cpf import normalize_cpf
 from app.core.data_nascimento import validate_data_nascimento
+from app.core.exceptions import AppError
 from app.models.certificado import CertificadoStatus
 from app.models.curso import CursoStatus
 from app.models.participante import ParticipanteStatus
+from app.services.evento_datas import normalizar_datas_evento
+
+
+def _validar_datas_evento(value: list[date] | None) -> list[date] | None:
+    if value is None:
+        return None
+    try:
+        return normalizar_datas_evento(value)
+    except AppError as exc:
+        raise ValueError(exc.message) from exc
 
 
 class CursoCreate(BaseModel):
@@ -17,6 +28,7 @@ class CursoCreate(BaseModel):
     instrutor: str = Field(default="", max_length=255)
     status: CursoStatus = CursoStatus.DRAFT
     data_evento: date | None = None
+    datas_evento: list[date] | None = None
     categoria: str | None = Field(default=None, max_length=64)
     modalidade: str | None = Field(default=None, max_length=64)
     tipo: str | None = Field(default=None, max_length=64)
@@ -32,6 +44,11 @@ class CursoCreate(BaseModel):
     # Obrigatório para SuperAdmin; ignorado para admin da instituição (usa o JWT)
     instituicao_id: UUID | None = None
 
+    @field_validator("datas_evento")
+    @classmethod
+    def datas_sem_duplicata(cls, value: list[date] | None) -> list[date] | None:
+        return _validar_datas_evento(value)
+
 
 class CursoUpdate(BaseModel):
     titulo: str | None = Field(default=None, min_length=2, max_length=255)
@@ -40,6 +57,7 @@ class CursoUpdate(BaseModel):
     instrutor: str | None = Field(default=None, max_length=255)
     status: CursoStatus | None = None
     data_evento: date | None = None
+    datas_evento: list[date] | None = None
     categoria: str | None = Field(default=None, max_length=64)
     modalidade: str | None = Field(default=None, max_length=64)
     tipo: str | None = Field(default=None, max_length=64)
@@ -54,6 +72,11 @@ class CursoUpdate(BaseModel):
     limite_participantes: int | None = Field(default=None, ge=1)
     atualizar_certificados_emitidos: bool = False
 
+    @field_validator("datas_evento")
+    @classmethod
+    def datas_sem_duplicata(cls, value: list[date] | None) -> list[date] | None:
+        return _validar_datas_evento(value)
+
 
 class CursoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -66,6 +89,7 @@ class CursoResponse(BaseModel):
     instrutor: str
     status: CursoStatus
     data_evento: date | None = None
+    datas_evento: list[date] = Field(default_factory=list)
     categoria: str | None = None
     modalidade: str | None = None
     tipo: str | None = None
@@ -98,6 +122,7 @@ class CursoPublicResponse(BaseModel):
     status: CursoStatus
     instituicao_nome: str
     data_evento: date | None = None
+    datas_evento: list[date] = Field(default_factory=list)
     categoria: str | None = None
     modalidade: str | None = None
     tipo: str | None = None

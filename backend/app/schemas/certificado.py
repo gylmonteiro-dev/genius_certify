@@ -89,3 +89,4 @@ class CertificadoPreviewRequest(BaseModel):
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
     data_evento: date | None = None
+    datas_evento: list[date] | None = None

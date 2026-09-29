@@ -11,6 +11,7 @@ from weasyprint import HTML
 from app.core.config import get_settings
 from app.models.certificado import Certificado
 from app.services.certificate_templates import resolve_frente_copy, resolve_template_filename
+from app.services.evento_datas import formatar_datas_evento
 from app.services.storage_service import StorageService, get_storage_service
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -31,6 +32,7 @@ class CertificateRenderData:
     participante_cpf: str = ""
     url_validacao: str = ""
     data_evento: str = ""
+    texto_data_evento: str = ""
     logo_url: str | None = None
     assinatura_url: str | None = None
     frente_tipo: str | None = None
@@ -53,12 +55,6 @@ class PdfService:
     def validation_url(codigo: str) -> str:
         base = get_settings().public_app_url.rstrip("/")
         return f"{base}/validar/{codigo}"
-
-    @staticmethod
-    def format_data_evento(value: date | None) -> str:
-        if value is None:
-            return ""
-        return value.strftime("%d/%m/%Y")
 
     @staticmethod
     def format_cpf(value: str | None) -> str:
@@ -109,6 +105,7 @@ class PdfService:
             emitido_em=data.emitido_em,
             url_validacao=data.url_validacao or self.validation_url(data.codigo_validacao),
             data_evento=data.data_evento,
+            texto_data_evento=data.texto_data_evento,
             logo_data_uri=self._to_data_uri(data.logo_url),
             assinatura_data_uri=self._to_data_uri(data.assinatura_url),
             font_base=font_base,
@@ -133,8 +130,9 @@ class PdfService:
         participante_documento: str | None = None,
         logo_url: str | None = None,
         assinatura_url: str | None = None,
-        data_evento: date | None = None,
+        datas_evento: list[date] | None = None,
     ) -> CertificateRenderData:
+        texto = formatar_datas_evento(datas_evento)
         return CertificateRenderData(
             template_id=certificado.template_id,
             participante_nome=certificado.participante_nome,
@@ -148,7 +146,7 @@ class PdfService:
             sha256=certificado.sha256 or "",
             emitido_em=certificado.created_at.strftime("%d/%m/%Y"),
             url_validacao=self.validation_url(str(certificado.codigo_validacao)),
-            data_evento=self.format_data_evento(data_evento),
+            texto_data_evento=texto,
             logo_url=logo_url,
             assinatura_url=assinatura_url,
             frente_tipo=certificado.frente_tipo,
@@ -176,9 +174,10 @@ class PdfService:
         verso_parcerias: str | None = None,
         verso_conteudos: str | None = None,
         verso_observacoes: str | None = None,
-        data_evento: date | None = None,
+        datas_evento: list[date] | None = None,
     ) -> CertificateRenderData:
         today = datetime.now().strftime("%d/%m/%Y")
+        texto = formatar_datas_evento(datas_evento)
         return CertificateRenderData(
             template_id=template_id,
             participante_nome=participante_nome,
@@ -192,7 +191,7 @@ class PdfService:
             sha256="",
             emitido_em=today,
             url_validacao=PdfService.validation_url("prévia"),
-            data_evento=PdfService.format_data_evento(data_evento),
+            texto_data_evento=texto,
             logo_url=logo_url,
             assinatura_url=assinatura_url,
             frente_tipo=frente_tipo,

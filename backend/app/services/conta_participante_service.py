@@ -17,6 +17,7 @@ from app.models.certificado import Certificado, CertificadoStatus
 from app.models.conta_participante import ContaParticipante
 from app.models.curso import CursoStatus
 from app.models.participante import Participante
+from app.services.evento_datas import datas_do_curso
 from app.repositories.certificado_repository import CertificadoRepository
 from app.repositories.conta_participante_auditoria_repository import (
     ContaParticipanteAuditoriaRepository,
@@ -343,6 +344,7 @@ class ContaParticipanteService:
                     curso_titulo=curso.titulo,
                     instituicao_nome=instituicao_nome,
                     data_evento=curso.data_evento,
+                    datas_evento=datas_do_curso(curso),
                     curso_status=curso.status,
                     inscrito_em=inscricao.created_at,
                     pode_cancelar=pode_cancelar,
@@ -420,6 +422,7 @@ class ContaParticipanteService:
             curso_titulo=curso.titulo,
             instituicao_nome=instituicao_nome,
             data_evento=curso.data_evento,
+            datas_evento=datas_do_curso(curso),
             curso_status=curso.status,
             inscrito_em=inscricao.created_at,
             pode_cancelar=True,

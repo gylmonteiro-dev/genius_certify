@@ -14,6 +14,7 @@ from app.core.exceptions import AppError, ConflictError, ForbiddenError, NotFoun
 from app.models.certificado import CertificadoStatus
 from app.models.participante import Participante, ParticipanteStatus
 from app.models.usuario import Usuario, UsuarioRole
+from app.services.evento_datas import datas_do_curso
 from app.repositories.certificado_repository import CertificadoRepository
 from app.repositories.inscricao_repository import InscricaoRepository
 from app.repositories.instituicao_repository import InstituicaoRepository
@@ -427,6 +428,7 @@ class ParticipanteService:
                     curso_id=curso.id,
                     curso_titulo=curso.titulo,
                     data_evento=curso.data_evento,
+                    datas_evento=datas_do_curso(curso),
                     curso_status=curso.status,
                     inscrito_em=inscricao.created_at,
                     ja_emitido=certificado is not None

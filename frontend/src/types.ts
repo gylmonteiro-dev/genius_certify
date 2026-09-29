@@ -39,9 +39,10 @@ export interface EventItem {
   category: string;
   type: string;
   modality: string;
-  date: string; // e.g., "2024-10-24" or "Oct 15, 2024"
+  date: string; // primeira data, ou created_at no bloco visual quando não há data
   dateMonth: string; // e.g., "OCTOBER"
   dateDay: string; // e.g., "24"
+  eventDates: string[];
   time: string; // e.g., "09:00 AM - 05:00 PM EST"
   durationHours: number;
   instructor: string;

@@ -33,6 +33,7 @@ from app.services.certificate_templates import (
     resolve_frente_copy,
     resolve_template_id,
 )
+from app.services.evento_datas import datas_do_curso
 from app.services.pdf_service import CertificateRenderData, PdfService
 from app.services.vagas import lock_and_assert_vaga
 
@@ -101,7 +102,9 @@ class CertificadoService:
         frente_tipo: str | None = None,
         frente_titulo: str | None = None,
         frente_atestacao: str | None = None,
+        datas_evento: list[date] | None = None,
     ) -> str:
+        datas = ",".join(item.isoformat() for item in sorted(datas_evento or []))
         payload = "|".join(
             [
                 str(codigo_validacao),
@@ -116,6 +119,7 @@ class CertificadoService:
                 frente_tipo or "",
                 frente_titulo or "",
                 frente_atestacao or "",
+                datas,
             ]
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -190,6 +194,7 @@ class CertificadoService:
             frente_titulo=curso.frente_titulo,
             frente_atestacao=curso.frente_atestacao,
         )
+        datas_evento = datas_do_curso(curso)
         sha256 = self._compute_sha256(
             codigo_validacao=codigo_validacao,
             numero=numero,
@@ -203,6 +208,7 @@ class CertificadoService:
             frente_tipo=frente_tipo,
             frente_titulo=frente_titulo,
             frente_atestacao=frente_atestacao,
+            datas_evento=datas_evento,
         )
         return await self._certificados.create(
             codigo_validacao=codigo_validacao,
@@ -222,6 +228,7 @@ class CertificadoService:
             verso_parcerias=curso.verso_parcerias,
             verso_conteudos=curso.verso_conteudos,
             verso_observacoes=curso.verso_observacoes,
+            datas_evento=datas_evento,
             sha256=sha256,
             status=CertificadoStatus.ACTIVE,
         )
@@ -241,6 +248,7 @@ class CertificadoService:
             frente_atestacao=curso.frente_atestacao,
         )
         template_id = resolve_template_id(curso.template_id)
+        datas_evento = datas_do_curso(curso)
 
         for certificado in ativos:
             certificado.curso_titulo = curso.titulo
@@ -253,6 +261,7 @@ class CertificadoService:
             certificado.verso_parcerias = curso.verso_parcerias
             certificado.verso_conteudos = curso.verso_conteudos
             certificado.verso_observacoes = curso.verso_observacoes
+            certificado.datas_evento = list(datas_evento)
             certificado.sha256 = self._compute_sha256(
                 codigo_validacao=certificado.codigo_validacao,
                 numero=certificado.numero_certificado,
@@ -266,6 +275,7 @@ class CertificadoService:
                 frente_tipo=frente_tipo,
                 frente_titulo=frente_titulo,
                 frente_atestacao=frente_atestacao,
+                datas_evento=datas_evento,
             )
 
         await self._session.flush()
@@ -498,7 +508,7 @@ class CertificadoService:
         frente_tipo: str | None = None,
         frente_titulo: str | None = None,
         frente_atestacao: str | None = None,
-        data_evento: date | None = None,
+        datas_evento: list[date] | None = None,
     ) -> str:
         if not is_valid_template_id(template_id):
             raise NotFoundError("Modelo de certificado não encontrado")
@@ -534,13 +544,12 @@ class CertificadoService:
             frente_tipo=frente_tipo,
             frente_titulo=frente_titulo,
             frente_atestacao=frente_atestacao,
-            data_evento=data_evento,
+            datas_evento=datas_evento,
         )
         return self._pdf.render_certificado_html(data)
 
     async def _render_context(self, certificado: Certificado) -> CertificateRenderData:
         instituicao = await self._instituicoes.get_by_id(certificado.instituicao_id)
-        curso = await self._cursos.get_by_id(certificado.curso_id)
         participante = await self._participantes.get_by_id(
             certificado.participante_id,
             instituicao_id=certificado.instituicao_id,
@@ -550,7 +559,7 @@ class CertificadoService:
             participante_documento=participante.documento if participante else None,
             logo_url=instituicao.logo_url if instituicao else None,
             assinatura_url=instituicao.assinatura_url if instituicao else None,
-            data_evento=curso.data_evento if curso else None,
+            datas_evento=list(certificado.datas_evento or []),
         )
 
     async def _registrar_acesso(

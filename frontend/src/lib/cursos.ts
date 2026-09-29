@@ -1,5 +1,6 @@
 import { EventItem, Institution } from '../types';
 import { apiRequest } from './api';
+import { normalizeEventDates } from './eventDates';
 import { ParticipanteApiStatus } from './participantes';
 import { CertificadoApiStatus } from './certificados';
 
@@ -14,6 +15,7 @@ export interface CursoApi {
   instrutor: string;
   status: CursoApiStatus;
   data_evento: string | null;
+  datas_evento?: string[];
   categoria: string | null;
   modalidade: string | null;
   tipo: string | null;
@@ -43,6 +45,7 @@ export interface CursoPublicApi {
   status: CursoApiStatus;
   instituicao_nome: string;
   data_evento: string | null;
+  datas_evento?: string[];
   categoria: string | null;
   modalidade: string | null;
   tipo: string | null;
@@ -60,6 +63,7 @@ export interface CursoCreatePayload {
   instrutor?: string;
   status?: CursoApiStatus;
   data_evento?: string | null;
+  datas_evento?: string[];
   categoria?: string | null;
   modalidade?: string | null;
   tipo?: string | null;
@@ -125,6 +129,7 @@ function mapEventFields(item: {
   instrutor: string;
   status: CursoApiStatus;
   data_evento: string | null;
+  datas_evento?: string[];
   categoria: string | null;
   modalidade: string | null;
   tipo: string | null;
@@ -145,7 +150,10 @@ function mapEventFields(item: {
   cancelamento_justificativa?: string | null;
   cancelado_em?: string | null;
 }): EventItem {
-  const parts = dateParts(item.data_evento ?? item.created_at);
+  const eventDates = normalizeEventDates(
+    item.datas_evento?.length ? item.datas_evento : [item.data_evento],
+  );
+  const parts = dateParts(eventDates[0] ?? item.created_at);
   return {
     id: item.id,
     title: item.titulo,
@@ -155,6 +163,7 @@ function mapEventFields(item: {
     date: parts.date,
     dateMonth: parts.dateMonth,
     dateDay: parts.dateDay,
+    eventDates,
     time: '',
     durationHours: item.carga_horaria,
     instructor: item.instrutor,

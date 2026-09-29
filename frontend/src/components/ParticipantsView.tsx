@@ -17,6 +17,7 @@ import { digitsOnly, formatCpf, isValidCpf } from '../lib/cpf';
 import { usePagedList } from '../lib/pagination';
 import { ApiError } from '../lib/api';
 import { formatDisplayDate, labelEventStatus, labelStudentStatus, useT } from '../i18n';
+import { formatEventDateCompact, normalizeEventDates } from '../lib/eventDates';
 import { DateField } from './DateField';
 import { TablePagination } from './TablePagination';
 
@@ -708,9 +709,13 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
                         {evento.curso_titulo}
                       </td>
                       <td className="py-3 px-5 text-slate-500 text-xs">
-                        {evento.data_evento
-                          ? formatDisplayDate(evento.data_evento, dateLocale, evento.data_evento)
-                          : '—'}
+                        {formatEventDateCompact(
+                          normalizeEventDates(
+                            evento.datas_evento?.length
+                              ? evento.datas_evento
+                              : [evento.data_evento],
+                          ),
+                        ) || '—'}
                       </td>
                       <td className="py-3 px-5 text-slate-600">
                         {labelEventStatus(

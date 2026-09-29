@@ -69,6 +69,7 @@ class ParticipanteEventoResponse(BaseModel):
     curso_id: UUID
     curso_titulo: str
     data_evento: date | None = None
+    datas_evento: list[date] = Field(default_factory=list)
     curso_status: CursoStatus
     inscrito_em: datetime
     ja_emitido: bool

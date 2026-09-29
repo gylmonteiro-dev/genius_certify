@@ -17,6 +17,7 @@ from app.schemas.participante import (
     ParticipanteResponse,
 )
 from app.services.conta_participante_service import ContaParticipanteService
+from app.services.evento_datas import datas_do_curso
 from app.services.participante_service import resolve_or_create_participante
 from app.services.vagas import lock_and_assert_vaga, vagas_disponiveis
 
@@ -43,6 +44,7 @@ class PublicoService:
             status=curso.status,
             instituicao_nome=instituicao_nome,
             data_evento=curso.data_evento,
+            datas_evento=datas_do_curso(curso),
             categoria=curso.categoria,
             modalidade=curso.modalidade,
             tipo=curso.tipo,

@@ -1,8 +1,10 @@
 import enum
 import uuid
 
-from sqlalchemy import Enum, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from datetime import date
+
+from sqlalchemy import Date, Enum, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.participante import Participante
@@ -61,6 +63,13 @@ class Certificado(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     verso_parcerias: Mapped[str | None] = mapped_column(Text, nullable=True)
     verso_conteudos: Mapped[str | None] = mapped_column(Text, nullable=True)
     verso_observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Snapshot das datas na emissão. Edição do evento não altera este array.
+    datas_evento: Mapped[list[date]] = mapped_column(
+        ARRAY(Date()),
+        nullable=False,
+        default=list,
+        server_default="{}",
+    )
     sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[CertificadoStatus] = mapped_column(
         Enum(

@@ -549,6 +549,7 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         instrutor: payload.instrutor,
         status: payload.status,
         data_evento: payload.data_evento,
+        datas_evento: payload.datas_evento ?? [],
         categoria: payload.categoria,
         modalidade: payload.modalidade,
         tipo: payload.tipo,

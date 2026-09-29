@@ -125,6 +125,7 @@ export interface ParticipanteEventoApi {
   curso_id: string;
   curso_titulo: string;
   data_evento: string | null;
+  datas_evento?: string[];
   curso_status: 'draft' | 'upcoming' | 'completed' | 'cancelled';
   inscrito_em: string;
   ja_emitido: boolean;

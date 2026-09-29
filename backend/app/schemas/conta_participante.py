@@ -73,6 +73,7 @@ class ContaParticipanteInscricaoItem(BaseModel):
     curso_titulo: str
     instituicao_nome: str
     data_evento: date | None = None
+    datas_evento: list[date] = Field(default_factory=list)
     curso_status: CursoStatus
     inscrito_em: datetime
     pode_cancelar: bool
