@@ -130,14 +130,13 @@ class PublicoService:
                 participante_id=participante.id,
                 curso_id=curso.id,
             )
-        if data.senha:
-            await ContaParticipanteService(self._session).create_if_absent(
-                nome=participante.nome,
-                email=str(participante.email),
-                documento=participante.documento,
-                senha=data.senha,
-                data_nascimento=participante.data_nascimento,
-            )
+        await ContaParticipanteService(self._session).create_if_absent(
+            nome=participante.nome,
+            email=str(participante.email),
+            documento=participante.documento,
+            senha=data.senha,
+            data_nascimento=participante.data_nascimento,
+        )
         await self._session.commit()
         await self._session.refresh(participante)
         return ParticipanteResponse.model_validate(participante)

@@ -502,7 +502,7 @@ export async function inscreverCursoPublico(
     email: string;
     documento: string;
     data_nascimento: string;
-    senha?: string;
+    senha: string;
   },
 ): Promise<void> {
   await apiRequest(`/api/publico/cursos/${cursoId}/inscrever`, {

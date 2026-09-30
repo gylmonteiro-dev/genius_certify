@@ -91,7 +91,7 @@ export const PublicEventRegisterPage: React.FC<PublicEventRegisterPageProps> = (
         email: form.email,
         documento: form.documentId.replace(/\D/g, ''),
         data_nascimento: form.birthDate,
-        ...(form.password ? { senha: form.password } : {}),
+        senha: form.password,
       });
       setEvent((current) => {
         if (!current || typeof current.spotsLeft !== 'number') return current;

@@ -65,6 +65,10 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
       alert(t('registration.cpfInvalid'));
       return;
     }
+    if (password.trim().length < 8) {
+      alert(t('registration.passwordTooShort'));
+      return;
+    }
 
     try {
       await onSuccessRegister(event, {
@@ -72,7 +76,7 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
         email: workEmail,
         documentId: digitsOnly(documentId),
         birthDate,
-        password: password.trim() || undefined,
+        password: password.trim(),
       });
       setIsSubmitted(true);
     } catch {
@@ -269,6 +273,31 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                     </div>
                   </div>
                 ) : (
+                <div className="space-y-6">
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {t('registration.loginCardTitle')}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {t('registration.loginCardHint')}
+                    </p>
+                    <Link
+                      to={`/minhas-inscricoes/entrar?next=/eventos/${event.id}`}
+                      className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-blue-600 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+                    >
+                      {t('registration.loginCardAction')}
+                      <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                    </Link>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="h-px flex-1 bg-slate-200" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      {t('registration.newAccountDivider')}
+                    </span>
+                    <div className="h-px flex-1 bg-slate-200" />
+                  </div>
+
                 <form id="regForm" onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
                   <div>
                     <label
@@ -349,11 +378,12 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                       htmlFor="accessPassword"
                       className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1"
                     >
-                      {t('registration.passwordOptional')}
+                      {t('registration.password')}
                     </label>
                     <input
                       id="accessPassword"
                       type="password"
+                      required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       minLength={8}
@@ -365,6 +395,7 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                     </p>
                   </div>
                 </form>
+                </div>
                 )}
               </div>
 
@@ -398,17 +429,6 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                   </button>
                 )}
 
-                {!loggedInAccount && (
-                  <p className="text-center text-xs text-slate-500 mt-3">
-                    <Link
-                      to={`/minhas-inscricoes/entrar?next=/eventos/${event.id}`}
-                      className="font-semibold text-blue-600 hover:underline"
-                    >
-                      {t('registration.loginToEnroll')}
-                    </Link>
-                  </p>
-                )}
-
                 <p className="text-center text-[11px] text-slate-400 mt-3">
                   {t('registration.terms')}
                 </p>
@@ -430,11 +450,11 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
               <p className="text-sm text-slate-600 mb-6">
                 {t('registration.confirmedLoggedInHint')}
               </p>
-            ) : password.trim() ? (
+            ) : (
               <p className="text-sm text-slate-600 mb-6">
                 {t('registration.confirmedAccessHint')}
               </p>
-            ) : null}
+            )}
 
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs text-left space-y-2 mb-6 font-mono">
               <p><span className="text-slate-400">{t('registration.ticketRef')}</span> TKT-2024-8849</p>

@@ -208,7 +208,7 @@ class InscricaoPublicaRequest(BaseModel):
     email: EmailStr
     documento: str = Field(min_length=11, max_length=18)
     data_nascimento: date
-    senha: str | None = Field(default=None, max_length=128)
+    senha: str = Field(min_length=8, max_length=128)
 
     @field_validator("documento")
     @classmethod
@@ -222,12 +222,8 @@ class InscricaoPublicaRequest(BaseModel):
 
     @field_validator("senha")
     @classmethod
-    def validate_senha(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
+    def validate_senha(cls, value: str) -> str:
         stripped = value.strip()
-        if not stripped:
-            return None
         if len(stripped) < 8:
             raise ValueError("Senha deve ter pelo menos 8 caracteres")
         return stripped
