@@ -9,6 +9,7 @@ import { formatDateBr } from '../lib/dateBr';
 import { formatEventDateSentence } from '../lib/eventDates';
 import { DateField } from './DateField';
 import { EventCoverImage } from './EventCoverImage';
+import { ShareRegistrationLink } from './ShareRegistrationLink';
 
 interface EventRegistrationViewProps {
   event: EventItem;
@@ -100,14 +101,16 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
   return (
     <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-4 sm:p-6 md:p-8 bg-slate-50">
       <div className="w-full max-w-5xl mx-auto">
-        {/* Top Back Navigation */}
-        <button
-          onClick={onBack}
-          className="mb-4 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-          {t('registration.backToList')}
-        </button>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+            {t('registration.backToList')}
+          </button>
+          <ShareRegistrationLink title={event.title} />
+        </div>
 
         {!isSubmitted ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">

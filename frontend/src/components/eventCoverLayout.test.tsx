@@ -79,4 +79,36 @@ describe('layout do diretório', () => {
     expect(html).not.toContain('googleusercontent');
     expect(html).not.toContain('lh3.google');
   });
+
+  it('mostra o filtro de status e lista próximos antes dos concluídos', () => {
+    const events = [
+      event({
+        id: 'done',
+        title: 'Evento concluido',
+        status: 'Completed',
+        date: '2026-01-02',
+        eventDates: ['2026-01-02'],
+      }),
+      event({
+        id: 'next',
+        title: 'Evento proximo',
+        status: 'Upcoming',
+        date: '2026-12-01',
+        eventDates: ['2026-12-01'],
+      }),
+    ];
+
+    const html = renderToStaticMarkup(
+      <LocaleProvider>
+        <EventsCatalogView events={events} onSelectRegister={() => undefined} />
+      </LocaleProvider>,
+    );
+
+    expect(html.indexOf('Evento proximo')).toBeGreaterThan(-1);
+    expect(html.indexOf('Evento proximo')).toBeLessThan(html.indexOf('Evento concluido'));
+    expect(html).toContain('Status');
+    expect(html).toContain('Próximo');
+    expect(html).toContain('Concluído');
+    expect(html).not.toContain('Próximos (30 dias)');
+  });
 });

@@ -4,6 +4,7 @@ import { EventItem } from '../types';
 import { labelEventModality, labelEventStatus, labelEventType, useT } from '../i18n';
 import { collaboratorNames } from '../lib/colaboradores';
 import { formatEventDateCompact } from '../lib/eventDates';
+import { visibleCatalogEvents } from '../lib/publicEventOrder';
 import { EventCoverImage } from './EventCoverImage';
 
 interface EventsCatalogViewProps {
@@ -19,6 +20,7 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
 }) => {
   const { t, locale } = useT();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Upcoming' | 'Completed'>('all');
 
   const categories = [
     { id: 'all', label: t('catalog.filterAll') },
@@ -26,14 +28,15 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
       id: item.slug,
       label: catalogLabel(catalogItems, 'categoria', item.slug, locale),
     })),
-    { id: 'upcoming', label: t('catalog.filterUpcoming') },
   ];
 
-  const filteredEvents = events.filter((evt) => {
-    if (selectedCategory === 'all') return true;
-    if (selectedCategory === 'upcoming') return evt.status === 'Upcoming';
-    return evt.category === selectedCategory;
-  });
+  const statusOptions: { id: 'all' | 'Upcoming' | 'Completed'; label: string }[] = [
+    { id: 'all', label: t('catalog.statusAll') },
+    { id: 'Upcoming', label: t('status.event.upcoming') },
+    { id: 'Completed', label: t('status.event.completed') },
+  ];
+
+  const filteredEvents = visibleCatalogEvents(events, statusFilter, selectedCategory);
 
   return (
     <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-6">
@@ -45,6 +48,29 @@ export const EventsCatalogView: React.FC<EventsCatalogViewProps> = ({
         <p className="text-sm text-slate-500 mt-1">
           {t('catalog.subtitle')}
         </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          {t('catalog.statusLabel')}
+        </span>
+        {statusOptions.map((option) => {
+          const isActive = statusFilter === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setStatusFilter(option.id)}
+              className={`px-4 py-1.5 rounded-full font-bold text-xs uppercase tracking-wider transition-colors ${
+                isActive
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Category Pills Filter */}

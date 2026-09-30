@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import case, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -77,7 +77,22 @@ class CursoRepository:
                 Instituicao.status == InstituicaoStatus.ACTIVE,
             )
             .options(selectinload(Curso.instituicao))
-            .order_by(Curso.data_evento.asc().nulls_last(), Curso.titulo.asc())
+            .order_by(
+                case((Curso.status == CursoStatus.UPCOMING, 0), else_=1),
+                case(
+                    (Curso.status == CursoStatus.UPCOMING, Curso.data_evento),
+                    else_=None,
+                )
+                .asc()
+                .nulls_last(),
+                case(
+                    (Curso.status != CursoStatus.UPCOMING, Curso.data_evento),
+                    else_=None,
+                )
+                .desc()
+                .nulls_last(),
+                Curso.titulo.asc(),
+            )
             .offset(skip)
             .limit(limit)
         )
