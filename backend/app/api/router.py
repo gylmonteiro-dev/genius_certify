@@ -4,6 +4,7 @@ from app.api.v1 import (
     auth,
     catalogo_eventos,
     certificados,
+    curso_atividades,
     cursos,
     dashboard,
     instituicoes,
@@ -17,6 +18,7 @@ api_router.include_router(auth.router)
 api_router.include_router(instituicoes.router)
 api_router.include_router(catalogo_eventos.router)
 api_router.include_router(cursos.router)
+api_router.include_router(curso_atividades.router)
 api_router.include_router(participantes.router)
 api_router.include_router(participante.router)
 api_router.include_router(certificados.router)

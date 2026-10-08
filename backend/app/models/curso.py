@@ -80,6 +80,34 @@ class Curso(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     verso_conteudos: Mapped[str | None] = mapped_column(Text, nullable=True)
     verso_observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
     limite_participantes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    permite_varias_atividades: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+    atividade_obrigatoria: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+    permitir_selecao_participante: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default="true",
+    )
+    selecao_atividades_ate: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    certificado_exige_presenca_atividade: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
     capa_card_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     capa_detail_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     capa_foco_x: Mapped[float | None] = mapped_column(Float, nullable=True)

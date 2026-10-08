@@ -77,6 +77,21 @@ class CertificadoTemplateItem(BaseModel):
     id: str
 
 
+class AtividadePreviewResponsavel(BaseModel):
+    nome: str
+    funcao: str = "instrutor"
+    funcao_personalizada: str | None = None
+
+
+class AtividadePreviewItem(BaseModel):
+    titulo: str
+    tipo: str = "oficina"
+    tipo_personalizado: str | None = None
+    data: date | None = None
+    carga_horaria: int | None = None
+    responsaveis: list[AtividadePreviewResponsavel] = Field(default_factory=list)
+
+
 class CertificadoPreviewRequest(BaseModel):
     participante_nome: str = "Nome do Participante"
     curso_titulo: str = "Nome do evento"
@@ -94,3 +109,4 @@ class CertificadoPreviewRequest(BaseModel):
     verso_observacoes: str | None = None
     data_evento: date | None = None
     datas_evento: list[date] | None = None
+    atividades: list[AtividadePreviewItem] | None = None

@@ -37,6 +37,12 @@ export interface MinhaInscricao {
   cancelada_justificativa: string | null;
   inscricao_reprovada: boolean;
   reprovada_justificativa: string | null;
+  atividades?: Array<{
+    atividade_id: string;
+    titulo: string;
+    status: string;
+  }>;
+  pode_escolher_atividade?: boolean;
 }
 
 export function getStoredParticipanteToken(): string | null {
@@ -138,10 +144,17 @@ export async function listMinhasInscricoes(
 export async function inscreverCursoAutenticado(
   token: string,
   cursoId: string,
+  atividadeIds: string[] = [],
 ): Promise<MinhaInscricao> {
+  const body =
+    atividadeIds.length > 1
+      ? { atividade_ids: atividadeIds }
+      : atividadeIds.length === 1
+        ? { atividade_id: atividadeIds[0] }
+        : {};
   return apiRequest<MinhaInscricao>(
     `/api/participante/cursos/${cursoId}/inscrever`,
-    { method: 'POST' },
+    { method: 'POST', body: JSON.stringify(body) },
     token,
   );
 }

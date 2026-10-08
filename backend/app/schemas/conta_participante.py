@@ -7,6 +7,7 @@ from app.core.cpf import normalize_cpf
 from app.core.data_nascimento import validate_data_nascimento
 from app.models.certificado import CertificadoStatus
 from app.models.curso import CursoStatus
+from app.schemas.curso_atividade import InscritoAtividadeResumo
 
 
 class ContaParticipanteCadastrarRequest(BaseModel):
@@ -67,6 +68,11 @@ class ContaParticipanteResponse(BaseModel):
     is_active: bool
 
 
+class InscricaoParticipanteRequest(BaseModel):
+    atividade_id: UUID | None = None
+    atividade_ids: list[UUID] = Field(default_factory=list, max_length=20)
+
+
 class ContaParticipanteInscricaoItem(BaseModel):
     id: UUID
     curso_id: UUID
@@ -86,3 +92,5 @@ class ContaParticipanteInscricaoItem(BaseModel):
     cancelada_justificativa: str | None = None
     inscricao_reprovada: bool = False
     reprovada_justificativa: str | None = None
+    atividades: list[InscritoAtividadeResumo] = Field(default_factory=list)
+    pode_escolher_atividade: bool = False

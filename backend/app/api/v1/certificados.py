@@ -60,6 +60,11 @@ async def preview_certificate_template(
             if body.exibicao_colaboradores is not None
             else None
         ),
+        atividades=(
+            [item.model_dump() for item in body.atividades]
+            if body.atividades is not None
+            else None
+        ),
     )
     return HTMLResponse(content=html)
 

@@ -18,8 +18,14 @@ from app.schemas.conta_participante import (
     ContaParticipanteInscricaoItem,
     ContaParticipanteLoginRequest,
     ContaParticipanteResponse,
+    InscricaoParticipanteRequest,
+)
+from app.schemas.curso_atividade import (
+    AtividadesParticipanteResponse,
+    SelecionarAtividadesRequest,
 )
 from app.services.conta_participante_service import ContaParticipanteService
+from app.services.curso_atividade_service import CursoAtividadeService
 
 router = APIRouter(prefix="/participante", tags=["participante"])
 
@@ -132,10 +138,48 @@ async def list_minhas_inscricoes(
 )
 async def inscrever_em_curso_autenticado(
     curso_id: UUID,
+    body: InscricaoParticipanteRequest = InscricaoParticipanteRequest(),
     session: AsyncSession = Depends(get_db),
     conta: ContaParticipante = Depends(get_current_conta_participante),
 ) -> ContaParticipanteInscricaoItem:
-    return await ContaParticipanteService(session).inscrever_em_curso(conta, curso_id)
+    return await ContaParticipanteService(session).inscrever_em_curso(
+        conta,
+        curso_id,
+        atividade_id=body.atividade_id,
+        atividade_ids=body.atividade_ids,
+    )
+
+
+@router.get(
+    "/cursos/{curso_id}/atividades",
+    response_model=AtividadesParticipanteResponse,
+)
+async def list_atividades_do_participante(
+    curso_id: UUID,
+    session: AsyncSession = Depends(get_db),
+    conta: ContaParticipante = Depends(get_current_conta_participante),
+) -> AtividadesParticipanteResponse:
+    return await CursoAtividadeService(session).list_para_participante(conta, curso_id)
+
+
+@router.put(
+    "/cursos/{curso_id}/atividades",
+    response_model=AtividadesParticipanteResponse,
+)
+async def selecionar_atividades_do_participante(
+    curso_id: UUID,
+    body: SelecionarAtividadesRequest,
+    session: AsyncSession = Depends(get_db),
+    conta: ContaParticipante = Depends(get_current_conta_participante),
+) -> AtividadesParticipanteResponse:
+    service = CursoAtividadeService(session)
+    resposta = await service.selecionar_para_participante(
+        conta,
+        curso_id,
+        body.atividade_ids,
+    )
+    await session.commit()
+    return resposta
 
 
 @router.delete("/inscricoes/{inscricao_id}", status_code=status.HTTP_204_NO_CONTENT)

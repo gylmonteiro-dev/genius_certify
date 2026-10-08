@@ -8,9 +8,84 @@ import { formatDisplayDate, labelEventStatus, labelStudentStatus, useT } from '.
 import { formatEventDateSentence } from '../lib/eventDates';
 import { collaboratorNames } from '../lib/colaboradores';
 import { TablePagination } from './TablePagination';
+import { EventActivitiesSection } from './EventActivitiesSection';
+import {
+  ActivityApi,
+  atribuirAtividades,
+  registrarPresenca,
+} from '../lib/atividades';
+import { ApiError } from '../lib/api';
 
 const ENROLL_LOTE_MAX = 200;
 const JUSTIFICATIVA_MIN = 10;
+
+function ActivityAttendanceControls({
+  titulo,
+  status,
+  onPresent,
+  onAbsent,
+  onRemove,
+}: {
+  titulo: string;
+  status: string;
+  onPresent: () => void;
+  onAbsent: () => void;
+  onRemove: () => void;
+}) {
+  const { t } = useT();
+  const presente = status === 'presente';
+  const ausente = status === 'ausente';
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+      <span className="max-w-[140px] truncate text-[11px] font-normal text-slate-600" title={titulo}>
+        {titulo}
+      </span>
+      {presente ? (
+        <span
+          className="inline-flex h-6 w-6 items-center justify-center rounded bg-emerald-600 text-white"
+          title={t('activities.present')}
+          aria-label={t('activities.present')}
+        >
+          <span className="material-symbols-outlined text-[16px]">how_to_reg</span>
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={onPresent}
+          className="h-6 rounded bg-emerald-600 px-2 text-[11px] font-semibold leading-none text-white hover:bg-emerald-700"
+        >
+          {t('activities.present')}
+        </button>
+      )}
+      {ausente ? (
+        <span
+          className="inline-flex h-6 w-6 items-center justify-center rounded bg-rose-600 text-white"
+          title={t('activities.absent')}
+          aria-label={t('activities.absent')}
+        >
+          <span className="material-symbols-outlined text-[16px]">person_off</span>
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={onAbsent}
+          className="h-6 rounded bg-rose-600 px-2 text-[11px] font-semibold leading-none text-white hover:bg-rose-700"
+        >
+          {t('activities.absent')}
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        title={t('activities.remove')}
+        aria-label={t('activities.remove')}
+        className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:bg-rose-50 hover:text-rose-700"
+      >
+        <span className="material-symbols-outlined text-[16px]">person_remove</span>
+      </button>
+    </div>
+  );
+}
 
 interface EventIssueViewProps {
   event: EventItem;
@@ -36,6 +111,8 @@ interface EventIssueViewProps {
     participanteIds: string[],
     revogarCertificados: boolean,
   ) => Promise<void>;
+  authToken?: string;
+  onReloadInscritos?: () => Promise<void>;
 }
 
 function canIssueOnEvent(event: EventItem): boolean {
@@ -73,8 +150,13 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
   onCancelEvent,
   onRevokeCertificatesLote,
   onCancelInscritosLote,
+  authToken,
+  onReloadInscritos,
 }) => {
   const { t, dateLocale, locale } = useT();
+  const [activityOptions, setActivityOptions] = useState<ActivityApi[]>([]);
+  const [activityFilter, setActivityFilter] = useState('all');
+  const [activityError, setActivityError] = useState<string | null>(null);
   const eventCancelled = event.status === 'Cancelled';
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [formError, setFormError] = useState<string | null>(null);
@@ -118,7 +200,16 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
     event.limiteParticipantes == null
       ? null
       : Math.max(0, event.limiteParticipantes - activeEnrollments.length);
-  const paging = usePagedList(inscritos, event.id);
+  const visibleInscritos = useMemo(() => {
+    if (activityFilter === 'all') return inscritos;
+    if (activityFilter === 'none') {
+      return inscritos.filter((item) => !item.atividades || item.atividades.length === 0);
+    }
+    return inscritos.filter((item) =>
+      item.atividades?.some((atividade) => atividade.atividade_id === activityFilter),
+    );
+  }, [activityFilter, inscritos]);
+  const paging = usePagedList(visibleInscritos, `${event.id}:${activityFilter}`);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -377,6 +468,17 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
         {t('eventIssue.back')}
       </button>
 
+      {authToken && (
+        <EventActivitiesSection
+          token={authToken}
+          cursoId={event.id}
+          onActivitiesChange={setActivityOptions}
+        />
+      )}
+      {activityError && (
+        <p className="text-xs text-rose-700">{activityError}</p>
+      )}
+
       <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div>
@@ -550,6 +652,33 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
           </div>
         )}
 
+        {!isLoading && inscritos.length > 0 && activityOptions.length > 0 && (
+          <div className="px-4 pt-4">
+            <label className="text-xs text-slate-600">
+              {t('activities.title')}
+              <select
+                value={activityFilter}
+                onChange={(eventChange) => setActivityFilter(eventChange.target.value)}
+                className="mt-1 block max-w-xs rounded-md border border-slate-200 px-3 py-2 text-sm"
+              >
+                <option value="all">{t('activities.filterAll')}</option>
+                <option value="none">{t('activities.noneChosen')}</option>
+                {activityOptions.map((atividade) => (
+                  <option key={atividade.id} value={atividade.id}>
+                    {atividade.titulo}
+                    {atividade.limite_participantes
+                      ? ` (${t('activities.occupied', {
+                          taken: atividade.vagas_ocupadas,
+                          limit: atividade.limite_participantes,
+                        })})`
+                      : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+
         {!isLoading && inscritos.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -588,7 +717,73 @@ export const EventIssueView: React.FC<EventIssueViewProps> = ({
                         onChange={() => toggle(item.id)}
                       />
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-900">{item.nome}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">
+                      <div>{item.nome}</div>
+                      {(!item.atividades || item.atividades.length === 0) && (
+                        <p className="text-[11px] font-normal text-slate-500">{t('activities.noneChosen')}</p>
+                      )}
+                      {authToken && activityOptions.some((atividade) => atividade.status === 'ativa') && !cancelled && !rejected && (
+                        <select
+                          className="mt-1 max-w-[220px] rounded border border-slate-200 px-2 py-1 text-xs font-normal"
+                          value={
+                            event.permiteVariasAtividades
+                              ? ''
+                              : item.atividades?.[0]?.atividade_id ?? ''
+                          }
+                          onChange={(eventChange) => {
+                            const chosen = eventChange.target.value;
+                            if (!chosen && event.permiteVariasAtividades) return;
+                            const current = item.atividades?.map((atividade) => atividade.atividade_id) ?? [];
+                            const next = event.permiteVariasAtividades
+                              ? chosen
+                                ? [...current.filter((id) => id !== chosen), chosen]
+                                : current
+                              : chosen
+                                ? [chosen]
+                                : [];
+                            void atribuirAtividades(authToken, event.id, item.id, next)
+                              .then(() => onReloadInscritos?.())
+                              .catch((err: unknown) => {
+                                setActivityError(err instanceof ApiError ? err.message : t('activities.error'));
+                              });
+                          }}
+                        >
+                          <option value="">{t('activities.assign')}</option>
+                          {activityOptions
+                            .filter((atividade) => atividade.status === 'ativa' || item.atividades?.some((atual) => atual.atividade_id === atividade.id))
+                            .map((atividade) => (
+                              <option key={atividade.id} value={atividade.id} disabled={atividade.lotada && !item.atividades?.some((atual) => atual.atividade_id === atividade.id)}>
+                                {atividade.titulo}{atividade.lotada ? ` (${t('activities.full')})` : ''}
+                              </option>
+                            ))}
+                        </select>
+                      )}
+                      {authToken && item.atividades?.map((atividade) => (
+                        <ActivityAttendanceControls
+                          key={atividade.atividade_id}
+                          titulo={atividade.titulo}
+                          status={atividade.status}
+                          onPresent={() => {
+                            void registrarPresenca(authToken, event.id, atividade.atividade_id, item.id, 'presente')
+                              .then(() => onReloadInscritos?.())
+                              .catch((err: unknown) => setActivityError(err instanceof ApiError ? err.message : t('activities.error')));
+                          }}
+                          onAbsent={() => {
+                            void registrarPresenca(authToken, event.id, atividade.atividade_id, item.id, 'ausente')
+                              .then(() => onReloadInscritos?.())
+                              .catch((err: unknown) => setActivityError(err instanceof ApiError ? err.message : t('activities.error')));
+                          }}
+                          onRemove={() => {
+                            const next = (item.atividades ?? [])
+                              .map((atual) => atual.atividade_id)
+                              .filter((id) => id !== atividade.atividade_id);
+                            void atribuirAtividades(authToken, event.id, item.id, next)
+                              .then(() => onReloadInscritos?.())
+                              .catch((err: unknown) => setActivityError(err instanceof ApiError ? err.message : t('activities.error')));
+                          }}
+                        />
+                      ))}
+                    </td>
                     <td className="px-4 py-3">{item.email}</td>
                     <td className="px-4 py-3 font-mono text-xs">{formatCpf(item.documento)}</td>
                     <td className="px-4 py-3">

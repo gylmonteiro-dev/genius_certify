@@ -10,6 +10,7 @@ from app.repositories.curso_repository import CursoRepository
 from app.repositories.inscricao_repository import InscricaoRepository
 from app.repositories.participante_repository import ParticipanteRepository
 from app.schemas.curso import ColaboradorResponse, CursoPublicResponse, InscricaoPublicaRequest
+from app.schemas.curso_atividade import AtividadePublicResponse
 from app.schemas.participante import (
     ConsultaCertificadoItem,
     ConsultaCertificadosRequest,
@@ -17,6 +18,7 @@ from app.schemas.participante import (
     ParticipanteResponse,
 )
 from app.services.conta_participante_service import ContaParticipanteService
+from app.services.curso_atividade_service import CursoAtividadeService
 from app.services.evento_datas import datas_do_curso
 from app.services.participante_service import resolve_or_create_participante
 from app.services.vagas import lock_and_assert_vaga, vagas_disponiveis
@@ -31,10 +33,16 @@ class PublicoService:
         self._certificados = CertificadoRepository(session)
 
     @staticmethod
-    def to_curso_public(curso: Curso, ocupadas: int = 0) -> CursoPublicResponse:
+    def to_curso_public(
+        curso: Curso,
+        ocupadas: int = 0,
+        atividades: list[AtividadePublicResponse] | None = None,
+    ) -> CursoPublicResponse:
         instituicao_nome = (
             curso.instituicao.nome if curso.instituicao is not None else ""
         )
+        selecao_ate = curso.selecao_atividades_ate
+        permitir_selecao = curso.permitir_selecao_participante
         return CursoPublicResponse(
             id=curso.id,
             titulo=curso.titulo,
@@ -57,6 +65,14 @@ class PublicoService:
             verso_observacoes=curso.verso_observacoes,
             limite_participantes=curso.limite_participantes,
             vagas_disponiveis=vagas_disponiveis(curso.limite_participantes, ocupadas),
+            permite_varias_atividades=bool(curso.permite_varias_atividades),
+            atividade_obrigatoria=bool(curso.atividade_obrigatoria),
+            permitir_selecao_participante=True if permitir_selecao is None else permitir_selecao,
+            selecao_atividades_ate=selecao_ate,
+            certificado_exige_presenca_atividade=bool(
+                curso.certificado_exige_presenca_atividade
+            ),
+            atividades=atividades or [],
             capa_card_url=curso.capa_card_url,
             capa_detail_url=curso.capa_detail_url,
             capa_foco_x=curso.capa_foco_x,
@@ -85,7 +101,8 @@ class PublicoService:
             instituicao_id=curso.instituicao_id,
             curso_id=curso.id,
         )
-        return self.to_curso_public(curso, ocupadas)
+        atividades = await CursoAtividadeService(self._session).list_publicas(curso)
+        return self.to_curso_public(curso, ocupadas, atividades)
 
     async def inscrever(
         self,
@@ -124,12 +141,17 @@ class PublicoService:
             existing.cancelada = False
             existing.cancelada_em = None
             existing.cancelada_justificativa = None
+            inscricao = existing
         else:
-            await self._inscricoes.create(
+            inscricao = await self._inscricoes.create(
                 instituicao_id=curso.instituicao_id,
                 participante_id=participante.id,
                 curso_id=curso.id,
             )
+        await CursoAtividadeService(self._session).aplicar_na_inscricao_publica(
+            inscricao,
+            data.atividade_ids or ([data.atividade_id] if data.atividade_id else None),
+        )
         await ContaParticipanteService(self._session).create_if_absent(
             nome=participante.nome,
             email=str(participante.email),

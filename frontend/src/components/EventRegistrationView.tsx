@@ -10,16 +10,23 @@ import { formatEventDateSentence } from '../lib/eventDates';
 import { DateField } from './DateField';
 import { EventCoverImage } from './EventCoverImage';
 import { ShareRegistrationLink } from './ShareRegistrationLink';
+import {
+  ActivityEnrollmentEditor,
+  ActivityPicker,
+  ActivityProgram,
+  selectionWindowOpen,
+} from './EventActivityChoice';
 
 interface EventRegistrationViewProps {
   event: EventItem;
   onSuccessRegister: (event: EventItem, formData: RegistrationFormData) => void | Promise<void>;
-  onAuthenticatedRegister?: () => void | Promise<void>;
+  onAuthenticatedRegister?: (atividadeIds: string[]) => void | Promise<void>;
   onBack: () => void;
   isSubmitting?: boolean;
   errorMessage?: string | null;
   loggedInAccount?: ContaParticipante | null;
   alreadyEnrolled?: boolean;
+  participantToken?: string | null;
 }
 
 export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
@@ -31,6 +38,7 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
   errorMessage = null,
   loggedInAccount = null,
   alreadyEnrolled = false,
+  participantToken = null,
 }) => {
   const { t, locale } = useT();
   const [fullName, setFullName] = useState('');
@@ -38,6 +46,7 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
   const [documentId, setDocumentId] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [password, setPassword] = useState('');
+  const [atividadeIds, setAtividadeIds] = useState<string[]>([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const people =
     event.collaborators.length > 0
@@ -69,6 +78,10 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
       alert(t('registration.passwordTooShort'));
       return;
     }
+    if (selectionOpen && event.atividadeObrigatoria && atividadeIds.length === 0) {
+      alert(t('activities.choose'));
+      return;
+    }
 
     try {
       await onSuccessRegister(event, {
@@ -77,6 +90,8 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
         documentId: digitsOnly(documentId),
         birthDate,
         password: password.trim(),
+        atividadeId: atividadeIds[0] ?? null,
+        atividadeIds,
       });
       setIsSubmitted(true);
     } catch {
@@ -86,8 +101,12 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
 
   const handleAuthenticatedSubmit = async () => {
     if (!onAuthenticatedRegister) return;
+    if (selectionOpen && event.atividadeObrigatoria && atividadeIds.length === 0) {
+      alert(t('activities.choose'));
+      return;
+    }
     try {
-      await onAuthenticatedRegister();
+      await onAuthenticatedRegister(atividadeIds);
       setIsSubmitted(true);
     } catch {
       // parent shows errorMessage
@@ -101,6 +120,8 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
     : documentId;
   const soldOut = typeof event.spotsLeft === 'number' && event.spotsLeft <= 0;
   const canEnroll = !soldOut && !(alreadyEnrolled && loggedInAccount);
+  const program = event.atividades ?? [];
+  const selectionOpen = selectionWindowOpen(event) && program.length > 0;
 
   return (
     <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-4 sm:p-6 md:p-8 bg-slate-50">
@@ -224,6 +245,7 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                     </p>
                   </div>
                 </div>
+                <ActivityProgram activities={program} eventDates={event.eventDates} />
               </div>
             </div>
 
@@ -257,6 +279,9 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                       {t('registration.viewMyEnrollments')}
                       <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                     </Link>
+                    {participantToken && (
+                      <ActivityEnrollmentEditor token={participantToken} cursoId={event.id} />
+                    )}
                   </div>
                 ) : loggedInAccount ? (
                   <div className="space-y-4">
@@ -271,6 +296,17 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                         {formatCpf(loggedInAccount.documento)}
                       </p>
                     </div>
+                    {selectionOpen && (
+                      <ActivityPicker
+                        activities={program}
+                        eventDates={event.eventDates}
+                        permiteVarias={Boolean(event.permiteVariasAtividades)}
+                        obrigatoria={Boolean(event.atividadeObrigatoria)}
+                        selectedIds={atividadeIds}
+                        onChange={setAtividadeIds}
+                        disabled={isSubmitting}
+                      />
+                    )}
                   </div>
                 ) : (
                 <div className="space-y-6">
@@ -299,6 +335,17 @@ export const EventRegistrationView: React.FC<EventRegistrationViewProps> = ({
                   </div>
 
                 <form id="regForm" onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
+                  {selectionOpen && (
+                    <ActivityPicker
+                      activities={program}
+                      eventDates={event.eventDates}
+                      permiteVarias={Boolean(event.permiteVariasAtividades)}
+                      obrigatoria={Boolean(event.atividadeObrigatoria)}
+                      selectedIds={atividadeIds}
+                      onChange={setAtividadeIds}
+                      disabled={isSubmitting}
+                    />
+                  )}
                   <div>
                     <label
                       htmlFor="fullName"

@@ -10,6 +10,7 @@ from app.models.certificado import CertificadoStatus
 from app.models.curso import CursoStatus
 from app.models.curso_colaborador import ColaboradorFuncao, ExibicaoColaboradores
 from app.models.participante import ParticipanteStatus
+from app.schemas.curso_atividade import AtividadePublicResponse, InscritoAtividadeResumo
 from app.services.evento_datas import normalizar_datas_evento
 
 
@@ -65,6 +66,11 @@ class CursoCreate(BaseModel):
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
     limite_participantes: int | None = Field(default=None, ge=1)
+    permite_varias_atividades: bool = False
+    atividade_obrigatoria: bool = False
+    permitir_selecao_participante: bool = True
+    selecao_atividades_ate: datetime | None = None
+    certificado_exige_presenca_atividade: bool = False
     # Obrigatório para SuperAdmin; ignorado para admin da instituição (usa o JWT)
     instituicao_id: UUID | None = None
 
@@ -96,6 +102,11 @@ class CursoUpdate(BaseModel):
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
     limite_participantes: int | None = Field(default=None, ge=1)
+    permite_varias_atividades: bool | None = None
+    atividade_obrigatoria: bool | None = None
+    permitir_selecao_participante: bool | None = None
+    selecao_atividades_ate: datetime | None = None
+    certificado_exige_presenca_atividade: bool | None = None
     atualizar_certificados_emitidos: bool = False
 
     @field_validator("datas_evento")
@@ -131,6 +142,11 @@ class CursoResponse(BaseModel):
     verso_conteudos: str | None = None
     verso_observacoes: str | None = None
     limite_participantes: int | None = None
+    permite_varias_atividades: bool = False
+    atividade_obrigatoria: bool = False
+    permitir_selecao_participante: bool = True
+    selecao_atividades_ate: datetime | None = None
+    certificado_exige_presenca_atividade: bool = False
     capa_card_url: str | None = None
     capa_detail_url: str | None = None
     capa_foco_x: float | None = None
@@ -165,6 +181,12 @@ class CursoPublicResponse(BaseModel):
     verso_observacoes: str | None = None
     limite_participantes: int | None = None
     vagas_disponiveis: int | None = None
+    permite_varias_atividades: bool = False
+    atividade_obrigatoria: bool = False
+    permitir_selecao_participante: bool = True
+    selecao_atividades_ate: datetime | None = None
+    certificado_exige_presenca_atividade: bool = False
+    atividades: list[AtividadePublicResponse] = Field(default_factory=list)
     capa_card_url: str | None = None
     capa_detail_url: str | None = None
     capa_foco_x: float | None = None
@@ -186,6 +208,7 @@ class InscritoResponse(BaseModel):
     cancelada_justificativa: str | None = None
     inscricao_reprovada: bool = False
     reprovada_justificativa: str | None = None
+    atividades: list[InscritoAtividadeResumo] = Field(default_factory=list)
 
 
 class InscricaoLoteRequest(BaseModel):
@@ -209,6 +232,8 @@ class InscricaoPublicaRequest(BaseModel):
     documento: str = Field(min_length=11, max_length=18)
     data_nascimento: date
     senha: str = Field(min_length=8, max_length=128)
+    atividade_id: UUID | None = None
+    atividade_ids: list[UUID] = Field(default_factory=list, max_length=20)
 
     @field_validator("documento")
     @classmethod

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { EventItem, Institution } from '../types';
+import { ApiError } from '../lib/api';
 import {
   CursoApi,
   CursoApiStatus,
@@ -8,6 +9,7 @@ import {
   deleteCursoCapa,
   getEventPublicVisibility,
   toCursoApiStatus,
+  updateCurso,
   uploadCursoCapa,
 } from '../lib/cursos';
 import { applyCoverAfterSave } from '../lib/eventCover';
@@ -26,7 +28,10 @@ import {
 import { labelEventStatus, useT } from '../i18n';
 import { formatEventDateSentence } from '../lib/eventDates';
 import { CertificateHtmlViewer } from './CertificateHtmlViewer';
+import { DateField } from './DateField';
 import { EventCollaboratorsField } from './EventCollaboratorsField';
+import { EventActivitiesSection } from './EventActivitiesSection';
+import { ActivityApi } from '../lib/atividades';
 import { EventCoverField } from './EventCoverField';
 import { EventDatesField } from './EventDatesField';
 
@@ -34,6 +39,17 @@ const CERTIFICATE_TEMPLATES = [
   { id: 'excelencia', nameKey: 'createEvent.templateExcelencia', hintKey: 'createEvent.templateExcelenciaHint' },
   { id: 'classic', nameKey: 'createEvent.templateClassic', hintKey: 'createEvent.templateClassicHint' },
 ] as const;
+
+function deadlineParts(value: string | null | undefined): { data: string; hora: string } {
+  if (!value) return { data: '', hora: '' };
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return { data: '', hora: '' };
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return {
+    data: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    hora: `${pad(date.getHours())}:${pad(date.getMinutes())}`,
+  };
+}
 
 interface CreateEventViewProps {
   onSubmit: (
@@ -93,6 +109,20 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   const [participantLimit, setParticipantLimit] = useState(
     initialEvent?.limiteParticipantes != null ? String(initialEvent.limiteParticipantes) : '',
   );
+  const [permiteVarias, setPermiteVarias] = useState(initialEvent?.permiteVariasAtividades ?? false);
+  const [atividadeObrigatoria, setAtividadeObrigatoria] = useState(
+    initialEvent?.atividadeObrigatoria ?? false,
+  );
+  const [permitirSelecao, setPermitirSelecao] = useState(
+    initialEvent?.permitirSelecaoParticipante ?? true,
+  );
+  const prazoInicial = deadlineParts(initialEvent?.selecaoAtividadesAte);
+  const [selecaoData, setSelecaoData] = useState(prazoInicial.data);
+  const [selecaoHora, setSelecaoHora] = useState(prazoInicial.hora);
+  const [exigePresenca, setExigePresenca] = useState(
+    initialEvent?.certificadoExigePresencaAtividade ?? false,
+  );
+  const [previewActivities, setPreviewActivities] = useState<ActivityApi[]>([]);
   const [collaborators, setCollaborators] = useState<EventCollaborator[]>(
     initialEvent?.collaborators ?? [],
   );
@@ -170,13 +200,37 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
   });
   const [coverError, setCoverError] = useState<string | null>(null);
   const [savedCurso, setSavedCurso] = useState<CursoApi | null>(null);
+  const cursoSalvoId = isEdit ? initialEvent?.id ?? null : savedCurso?.id ?? null;
+
+  const salvarOpcoesAtividade = (next: {
+    permiteVarias?: boolean;
+    atividadeObrigatoria?: boolean;
+    permitirSelecao?: boolean;
+    exigePresenca?: boolean;
+    selecaoData?: string;
+    selecaoHora?: string;
+  }) => {
+    if (!cursoSalvoId) return;
+    const data = next.selecaoData ?? selecaoData;
+    const hora = next.selecaoHora ?? selecaoHora;
+    void updateCurso(authToken, cursoSalvoId, {
+      permite_varias_atividades: next.permiteVarias ?? permiteVarias,
+      atividade_obrigatoria: next.atividadeObrigatoria ?? atividadeObrigatoria,
+      permitir_selecao_participante: next.permitirSelecao ?? permitirSelecao,
+      certificado_exige_presenca_atividade: next.exigePresenca ?? exigePresenca,
+      selecao_atividades_ate: data ? new Date(`${data}T${hora || '23:59'}`).toISOString() : null,
+    }).catch((err: unknown) => {
+      setFormError(err instanceof ApiError ? err.message : t('activities.error'));
+    });
+  };
   const [coverBusy, setCoverBusy] = useState(false);
   const busy = isSubmitting || coverBusy;
   const hasVerso = Boolean(
     versoParcerias.trim() ||
       versoConteudos.trim() ||
       versoObservacoes.trim() ||
-      collaboratorsOnCertificateBack(collaborators, collaboratorDisplay),
+      collaboratorsOnCertificateBack(collaborators, collaboratorDisplay) ||
+      previewActivities.length > 0,
   );
 
   useEffect(() => {
@@ -231,6 +285,18 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
             frenteTitulo: frentePersonalizada ? frenteTitulo : undefined,
             frenteAtestacao: frentePersonalizada ? frenteAtestacao : undefined,
             datasEvento: eventDates,
+            atividades: previewActivities.map((item) => ({
+              titulo: item.titulo,
+              tipo: item.tipo,
+              tipo_personalizado: item.tipo_personalizado,
+              data: item.data,
+              carga_horaria: item.carga_horaria,
+              responsaveis: item.responsaveis.map((pessoa) => ({
+                nome: pessoa.nome,
+                funcao: pessoa.funcao,
+                funcao_personalizada: pessoa.funcao_personalizada,
+              })),
+            })),
           });
           setPreviewHtml(html);
           setPreviewError(null);
@@ -258,6 +324,7 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
     frenteTitulo,
     frenteAtestacao,
     eventDates,
+    previewActivities,
     t,
   ]);
 
@@ -303,6 +370,13 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
       colaboradores: collaboratorsToApi(collaborators),
       exibicao_colaboradores: collaboratorDisplay,
       limite_participantes: parsedLimit,
+      permite_varias_atividades: permiteVarias,
+      atividade_obrigatoria: atividadeObrigatoria,
+      permitir_selecao_participante: permitirSelecao,
+      selecao_atividades_ate: selecaoData
+        ? new Date(`${selecaoData}T${selecaoHora || '23:59'}`).toISOString()
+        : null,
+      certificado_exige_presenca_atividade: exigePresenca,
       status,
       data_evento: eventDates[0] ?? null,
       datas_evento: eventDates,
@@ -615,6 +689,84 @@ export const CreateEventView: React.FC<CreateEventViewProps> = ({
                     setCollaboratorErrors({});
                   }}
                   onDisplayChange={setCollaboratorDisplay}
+                />
+
+                <div className="space-y-2 rounded-lg border border-slate-200 p-3">
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={permiteVarias}
+                      onChange={(e) => {
+                        setPermiteVarias(e.target.checked);
+                        salvarOpcoesAtividade({ permiteVarias: e.target.checked });
+                      }}
+                    />
+                    {t('activities.allowSeveral')}
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={atividadeObrigatoria}
+                      onChange={(e) => {
+                        setAtividadeObrigatoria(e.target.checked);
+                        salvarOpcoesAtividade({ atividadeObrigatoria: e.target.checked });
+                      }}
+                    />
+                    {t('activities.required')}
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={permitirSelecao}
+                      onChange={(e) => {
+                        setPermitirSelecao(e.target.checked);
+                        salvarOpcoesAtividade({ permitirSelecao: e.target.checked });
+                      }}
+                    />
+                    {t('activities.allowParticipant')}
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={exigePresenca}
+                      onChange={(e) => {
+                        setExigePresenca(e.target.checked);
+                        salvarOpcoesAtividade({ exigePresenca: e.target.checked });
+                      }}
+                    />
+                    {t('activities.requireAttendance')}
+                  </label>
+                  <div>
+                    <p className="text-xs text-slate-600">{t('activities.deadline')}</p>
+                    <div className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8rem]">
+                      <DateField
+                        value={selecaoData}
+                        onChange={(value) => {
+                          setSelecaoData(value);
+                          if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                            salvarOpcoesAtividade({ selecaoData: value });
+                          }
+                        }}
+                        className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+                      />
+                      <input
+                        type="time"
+                        value={selecaoHora}
+                        onChange={(event) => {
+                          setSelecaoHora(event.target.value);
+                          salvarOpcoesAtividade({ selecaoHora: event.target.value });
+                        }}
+                        className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <span className="mt-1 block text-[11px] text-slate-500">{t('activities.deadlineHint')}</span>
+                  </div>
+                </div>
+
+                <EventActivitiesSection
+                  token={authToken}
+                  cursoId={isEdit ? initialEvent?.id ?? null : savedCurso?.id ?? null}
+                  onActivitiesChange={setPreviewActivities}
                 />
 
                 <div>

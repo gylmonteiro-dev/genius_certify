@@ -28,6 +28,7 @@ from app.schemas.certificado import (
     CertificadoPublicResponse,
     CertificadoResponse,
 )
+from app.services.atividades_certificado import canonico_atividades, linhas_de_snapshot
 from app.services.certificate_templates import (
     is_valid_template_id,
     resolve_frente_copy,
@@ -40,6 +41,8 @@ from app.services.colaboradores_evento import (
     snapshot_de_specs,
     specs_do_curso,
 )
+from app.services.atividades_certificado import canonico_atividades, linhas_de_snapshot
+from app.services.curso_atividade_service import CursoAtividadeService
 from app.services.evento_datas import datas_do_curso
 from app.services.pdf_service import CertificateRenderData, PdfService
 from app.services.vagas import lock_and_assert_vaga
@@ -120,26 +123,28 @@ class CertificadoService:
         frente_atestacao: str | None = None,
         datas_evento: list[date] | None = None,
         colaboradores_canonico: str = "",
+        atividades_canonico: str = "",
     ) -> str:
         datas = ",".join(item.isoformat() for item in sorted(datas_evento or []))
-        payload = "|".join(
-            [
-                str(codigo_validacao),
-                numero,
-                participante_nome,
-                curso_titulo,
-                instituicao_nome,
-                str(carga_horaria),
-                verso_parcerias or "",
-                verso_conteudos or "",
-                verso_observacoes or "",
-                frente_tipo or "",
-                frente_titulo or "",
-                frente_atestacao or "",
-                datas,
-                colaboradores_canonico,
-            ]
-        )
+        partes = [
+            str(codigo_validacao),
+            numero,
+            participante_nome,
+            curso_titulo,
+            instituicao_nome,
+            str(carga_horaria),
+            verso_parcerias or "",
+            verso_conteudos or "",
+            verso_observacoes or "",
+            frente_tipo or "",
+            frente_titulo or "",
+            frente_atestacao or "",
+            datas,
+            colaboradores_canonico,
+        ]
+        if atividades_canonico:
+            partes.append(atividades_canonico)
+        payload = "|".join(partes)
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     def _assert_can_emit(self, curso: Curso) -> None:
@@ -221,6 +226,11 @@ class CertificadoService:
         )
         snapshot = snapshot_de_specs(pessoas)
         canonico = canonico_para_hash(pessoas, modo)
+        atividades = await CursoAtividadeService(self._session).snapshot_do_participante(
+            curso,
+            participante_id,
+        )
+        atividades_canonico = canonico_atividades(atividades)
         sha256 = self._compute_sha256(
             codigo_validacao=codigo_validacao,
             numero=numero,
@@ -236,6 +246,7 @@ class CertificadoService:
             frente_atestacao=frente_atestacao,
             datas_evento=datas_evento,
             colaboradores_canonico=canonico,
+            atividades_canonico=atividades_canonico,
         )
         return await self._certificados.create(
             codigo_validacao=codigo_validacao,
@@ -258,6 +269,7 @@ class CertificadoService:
             verso_conteudos=curso.verso_conteudos,
             verso_observacoes=curso.verso_observacoes,
             datas_evento=datas_evento,
+            atividades=atividades,
             sha256=sha256,
             status=CertificadoStatus.ACTIVE,
         )
@@ -288,6 +300,10 @@ class CertificadoService:
         canonico = canonico_para_hash(pessoas, modo)
 
         for certificado in ativos:
+            atividades = await CursoAtividadeService(self._session).snapshot_do_participante(
+                curso,
+                certificado.participante_id,
+            )
             certificado.curso_titulo = curso.titulo
             certificado.carga_horaria = curso.carga_horaria
             certificado.instrutor = curso.instrutor
@@ -301,6 +317,7 @@ class CertificadoService:
             certificado.verso_conteudos = curso.verso_conteudos
             certificado.verso_observacoes = curso.verso_observacoes
             certificado.datas_evento = list(datas_evento)
+            certificado.atividades = atividades
             certificado.sha256 = self._compute_sha256(
                 codigo_validacao=certificado.codigo_validacao,
                 numero=certificado.numero_certificado,
@@ -316,6 +333,7 @@ class CertificadoService:
                 frente_atestacao=frente_atestacao,
                 datas_evento=datas_evento,
                 colaboradores_canonico=canonico,
+                atividades_canonico=canonico_atividades(atividades),
             )
 
         await self._session.flush()
@@ -551,6 +569,7 @@ class CertificadoService:
         datas_evento: list[date] | None = None,
         colaboradores: list[object] | None = None,
         exibicao_colaboradores: str | None = None,
+        atividades: list[dict] | None = None,
     ) -> str:
         if not is_valid_template_id(template_id):
             raise NotFoundError("Modelo de certificado não encontrado")
@@ -597,6 +616,8 @@ class CertificadoService:
             datas_evento=datas_evento,
             colaboradores=pessoas,
             exibicao_colaboradores=exibicao_colaboradores,
+            atividades_linhas=tuple(linhas_de_snapshot(atividades)),
+            atividades_exemplo=bool(atividades),
         )
         return self._pdf.render_certificado_html(data)
 

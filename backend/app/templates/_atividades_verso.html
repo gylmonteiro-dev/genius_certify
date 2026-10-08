@@ -1,0 +1,10 @@
+{% if tem_atividades_verso %}
+<section class="verso-section atividades">
+  <h3>{% if atividades_exemplo %}Atividades realizadas durante o evento (exemplo){% else %}Atividades realizadas durante o evento{% endif %}</h3>
+  <ul class="colab-list">
+    {% for linha in atividades_linhas %}
+    <li>{{ linha }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}

@@ -74,6 +74,29 @@ export interface EventItem {
   versoObservacoes: string;
   cancelamentoJustificativa: string;
   canceladoEm: string | null;
+  permiteVariasAtividades?: boolean;
+  atividadeObrigatoria?: boolean;
+  permitirSelecaoParticipante?: boolean;
+  selecaoAtividadesAte?: string | null;
+  certificadoExigePresencaAtividade?: boolean;
+  atividades?: EventActivityChoice[];
+}
+
+export interface EventActivityChoice {
+  id: string;
+  titulo: string;
+  descricao: string;
+  tipo: string;
+  tipoPersonalizado?: string | null;
+  data: string;
+  horaInicio?: string | null;
+  horaFim?: string | null;
+  cargaHoraria?: number | null;
+  local?: string | null;
+  limiteParticipantes?: number | null;
+  vagasDisponiveis?: number | null;
+  lotada: boolean;
+  responsaveis: string;
 }
 
 export interface Certificate {
@@ -114,4 +137,6 @@ export interface RegistrationFormData {
   documentId: string;
   birthDate: string;
   password: string;
+  atividadeId?: string | null;
+  atividadeIds?: string[];
 }

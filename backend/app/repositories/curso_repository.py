@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from app.core.exceptions import AppError
 from app.models.certificado import Certificado
 from app.models.curso import Curso, CursoStatus
+from app.models.curso_atividade import CursoAtividade, CursoAtividadeColaborador
 from app.models.curso_colaborador import (
     ColaboradorFuncao,
     CursoColaborador,
@@ -18,6 +19,11 @@ from app.models.curso_colaborador import (
 from app.models.curso_data import CursoData
 from app.models.instituicao import Instituicao, InstituicaoStatus
 from app.services.colaboradores_evento import ColaboradorSpec, derivar_instrutor
+
+
+def _chave_colaborador(nome: str, funcao: object, personalizada: str | None) -> tuple[str, str, str]:
+    valor = funcao.value if hasattr(funcao, "value") else str(funcao)
+    return (nome.strip(), valor, (personalizada or "").strip())
 
 
 class CursoRepository:
@@ -162,15 +168,108 @@ class CursoRepository:
         curso: Curso,
         pessoas: list[ColaboradorSpec],
     ) -> None:
-        """Substitui os profissionais e recalcula o texto legado ``instrutor``."""
+        """Substitui os profissionais e recalcula o texto legado ``instrutor``.
+
+        Quem já é responsável por uma atividade permanece com o mesmo id.
+        Remover essa pessoa é recusado até desvinculá-la da atividade.
+        """
         await self._session.refresh(curso, attribute_names=["colaboradores", "datas"])
+        linked_ids = await self._colaboradores_vinculados(curso.id)
+        if not linked_ids:
+            await self._substituir_colaboradores(curso, pessoas)
+            return
+        await self._substituir_preservando_vinculos(curso, pessoas, linked_ids)
+
+    async def _colaboradores_vinculados(self, curso_id: UUID) -> set[UUID]:
+        stmt = (
+            select(CursoAtividadeColaborador.colaborador_id)
+            .join(
+                CursoAtividade,
+                CursoAtividade.id == CursoAtividadeColaborador.curso_atividade_id,
+            )
+            .where(CursoAtividade.curso_id == curso_id)
+        )
+        result = await self._session.execute(stmt)
+        return set(result.scalars().all())
+
+    async def _substituir_colaboradores(
+        self,
+        curso: Curso,
+        pessoas: list[ColaboradorSpec],
+    ) -> None:
         for item in list(curso.colaboradores):
             await self._session.delete(item)
         curso.colaboradores.clear()
         await self._session.flush()
+        await self._anexar_colaboradores(curso, pessoas, pular=set())
+        curso.instrutor = derivar_instrutor(pessoas)
+        await self._session.flush()
+
+    async def _substituir_preservando_vinculos(
+        self,
+        curso: Curso,
+        pessoas: list[ColaboradorSpec],
+        linked_ids: set[UUID],
+    ) -> None:
+        usados: set[int] = set()
+        preservar: dict[UUID, ColaboradorSpec] = {}
+        for colaborador in curso.colaboradores:
+            if colaborador.id not in linked_ids:
+                continue
+            chave_atual = _chave_colaborador(
+                colaborador.nome,
+                colaborador.funcao,
+                colaborador.funcao_personalizada,
+            )
+            escolhido: int | None = None
+            for indice, pessoa in enumerate(pessoas):
+                if indice in usados:
+                    continue
+                if _chave_colaborador(
+                    pessoa.nome,
+                    pessoa.funcao,
+                    pessoa.funcao_personalizada,
+                ) == chave_atual:
+                    escolhido = indice
+                    break
+            if escolhido is None:
+                raise AppError(
+                    f"Não é possível remover {colaborador.nome}: "
+                    "a pessoa é responsável por uma atividade do evento."
+                )
+            usados.add(escolhido)
+            preservar[colaborador.id] = pessoas[escolhido]
 
         por_dia = {item.data: item for item in curso.datas}
-        for pessoa in pessoas:
+        for colaborador in list(curso.colaboradores):
+            spec = preservar.get(colaborador.id)
+            if spec is None:
+                curso.colaboradores.remove(colaborador)
+                await self._session.delete(colaborador)
+                continue
+            colaborador.nome = spec.nome.strip()
+            colaborador.funcao = ColaboradorFuncao(spec.funcao)
+            colaborador.funcao_personalizada = spec.funcao_personalizada
+            colaborador.tema_atividade = spec.tema_atividade
+            colaborador.ordem = spec.ordem
+            colaborador.datas.clear()
+            self._vincular_datas(colaborador, spec, por_dia)
+        await self._session.flush()
+        await self._anexar_colaboradores(curso, pessoas, pular=usados)
+        curso.instrutor = derivar_instrutor(pessoas)
+        await self._session.flush()
+
+    async def _anexar_colaboradores(
+        self,
+        curso: Curso,
+        pessoas: list[ColaboradorSpec],
+        *,
+        pular: set[int],
+    ) -> None:
+        por_dia = {item.data: item for item in curso.datas}
+        for indice, pessoa in enumerate(pessoas):
+            if indice in pular:
+                continue
             registro = CursoColaborador(
                 curso_id=curso.id,
                 nome=pessoa.nome,
@@ -179,17 +278,23 @@ class CursoRepository:
                 tema_atividade=pessoa.tema_atividade,
                 ordem=pessoa.ordem,
             )
-            for dia in pessoa.datas_evento:
-                curso_data = por_dia.get(dia)
-                if curso_data is None:
-                    raise AppError(
-                        f"A data {dia.strftime('%d/%m/%Y')} de {pessoa.nome} "
-                        "não faz parte do evento."
-                    )
-                registro.datas.append(curso_data)
+            self._vincular_datas(registro, pessoa, por_dia)
             curso.colaboradores.append(registro)
-        curso.instrutor = derivar_instrutor(pessoas)
-        await self._session.flush()
+
+    @staticmethod
+    def _vincular_datas(
+        registro: CursoColaborador,
+        pessoa: ColaboradorSpec,
+        por_dia: dict[date, CursoData],
+    ) -> None:
+        for dia in pessoa.datas_evento:
+            curso_data = por_dia.get(dia)
+            if curso_data is None:
+                raise AppError(
+                    f"A data {dia.strftime('%d/%m/%Y')} de {pessoa.nome} "
+                    "não faz parte do evento."
+                )
+            registro.datas.append(curso_data)
 
     async def realocar_datas_dos_colaboradores(
         self,

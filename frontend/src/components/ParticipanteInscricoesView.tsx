@@ -11,6 +11,7 @@ import { labelEventStatus, useT } from '../i18n';
 import { formatEventDateCompact, normalizeEventDates } from '../lib/eventDates';
 import { PublicLayout } from './PublicLayout';
 import { EventItem } from '../types';
+import { ActivityEnrollmentEditor } from './EventActivityChoice';
 
 interface ParticipanteInscricoesViewProps {
   conta: ContaParticipante;
@@ -35,6 +36,7 @@ export const ParticipanteInscricoesView: React.FC<ParticipanteInscricoesViewProp
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [leavingId, setLeavingId] = useState<string | null>(null);
+  const [editingCursoId, setEditingCursoId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -148,7 +150,32 @@ export const ParticipanteInscricoesView: React.FC<ParticipanteInscricoesViewProp
                   {items.map((item) => (
                     <tr key={item.id} className="border-b border-slate-100">
                       <td className="py-3 px-5 font-medium text-slate-900">
-                        {item.curso_titulo}
+                        <div>{item.curso_titulo}</div>
+                        <p className="mt-1 text-[11px] font-normal text-slate-500">
+                          {item.atividades && item.atividades.length > 0
+                            ? `${t('activities.yourActivity')}: ${item.atividades.map((atividade) => atividade.titulo).join(', ')}`
+                            : t('activities.noneChosen')}
+                        </p>
+                        {item.pode_escolher_atividade && !item.inscricao_cancelada && !item.inscricao_reprovada && (
+                          <button
+                            type="button"
+                            className="mt-1 text-[11px] font-semibold text-blue-700"
+                            onClick={() =>
+                              setEditingCursoId((current) =>
+                                current === item.curso_id ? null : item.curso_id,
+                              )
+                            }
+                          >
+                            {t('activities.change')}
+                          </button>
+                        )}
+                        {editingCursoId === item.curso_id && (
+                          <ActivityEnrollmentEditor
+                            token={token}
+                            cursoId={item.curso_id}
+                            onChanged={() => void load()}
+                          />
+                        )}
                       </td>
                       <td className="py-3 px-5 text-slate-600">{item.instituicao_nome}</td>
                       <td className="py-3 px-5 text-slate-500 text-xs">

@@ -560,6 +560,12 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
         verso_conteudos: payload.verso_conteudos,
         verso_observacoes: payload.verso_observacoes,
         limite_participantes: payload.limite_participantes ?? null,
+        permite_varias_atividades: payload.permite_varias_atividades ?? false,
+        atividade_obrigatoria: payload.atividade_obrigatoria ?? false,
+        permitir_selecao_participante: payload.permitir_selecao_participante ?? true,
+        selecao_atividades_ate: payload.selecao_atividades_ate ?? null,
+        certificado_exige_presenca_atividade:
+          payload.certificado_exige_presenca_atividade ?? false,
         atualizar_certificados_emitidos: payload.atualizar_certificados_emitidos === true,
       };
       const updated = await updateCurso(authToken, editingEvent.id, updatePayload);
@@ -1266,6 +1272,8 @@ export function AdminApp({ authUser, authToken, onLogout }: AdminAppProps) {
               onCancelEvent={handleCancelEvent}
               onRevokeCertificatesLote={handleRevokeCertificatesLote}
               onCancelInscritosLote={handleCancelInscritosLote}
+              authToken={authToken}
+              onReloadInscritos={() => loadInscritos(issuingEvent.id)}
             />
           ) : (
             <EventsDirectoryView

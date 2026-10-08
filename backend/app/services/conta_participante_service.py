@@ -17,6 +17,7 @@ from app.models.certificado import Certificado, CertificadoStatus
 from app.models.conta_participante import ContaParticipante
 from app.models.curso import CursoStatus
 from app.models.participante import Participante
+from app.services.curso_atividade_service import CursoAtividadeService
 from app.services.evento_datas import datas_do_curso
 from app.repositories.certificado_repository import CertificadoRepository
 from app.repositories.conta_participante_auditoria_repository import (
@@ -322,6 +323,10 @@ class ContaParticipanteService:
                 cert_by_pair[key] = item
 
         items: list[ContaParticipanteInscricaoItem] = []
+        agora = datetime.now(timezone.utc)
+        resumos = await CursoAtividadeService(self._session).resumos_por_inscricoes(
+            [item.id for item in inscricoes]
+        )
         for inscricao in inscricoes:
             curso = inscricao.curso
             instituicao_nome = (
@@ -361,6 +366,12 @@ class ContaParticipanteService:
                     cancelada_justificativa=inscricao.cancelada_justificativa,
                     inscricao_reprovada=inscricao.reprovada,
                     reprovada_justificativa=inscricao.reprovada_justificativa,
+                    atividades=resumos.get(inscricao.id, []),
+                    pode_escolher_atividade=(
+                        CursoAtividadeService.janela_aberta(curso, agora)
+                        and not inscricao.cancelada
+                        and not inscricao.reprovada
+                    ),
                 )
             )
         return items
@@ -369,6 +380,8 @@ class ContaParticipanteService:
         self,
         conta: ContaParticipante,
         curso_id: UUID,
+        atividade_id: UUID | None = None,
+        atividade_ids: list[UUID] | None = None,
     ) -> ContaParticipanteInscricaoItem:
         """Inscreve a conta autenticada no evento com os dados já cadastrados."""
         curso = await self._cursos.get_publico(curso_id)
@@ -410,6 +423,13 @@ class ContaParticipanteService:
                 curso_id=curso.id,
             )
 
+        await CursoAtividadeService(self._session).aplicar_na_inscricao_publica(
+            inscricao,
+            atividade_ids or ([atividade_id] if atividade_id else None),
+        )
+        atividades = await CursoAtividadeService(self._session).resumos_da_inscricao(
+            inscricao.id
+        )
         await self._session.commit()
         await self._session.refresh(inscricao)
 
@@ -435,6 +455,11 @@ class ContaParticipanteService:
             cancelada_justificativa=None,
             inscricao_reprovada=False,
             reprovada_justificativa=None,
+            atividades=atividades,
+            pode_escolher_atividade=CursoAtividadeService.janela_aberta(
+                curso,
+                datetime.now(timezone.utc),
+            ),
         )
 
     async def cancelar_inscricao(
@@ -467,6 +492,7 @@ class ContaParticipanteService:
         inscricao.cancelada = True
         inscricao.cancelada_em = datetime.now(timezone.utc)
         inscricao.cancelada_justificativa = None
+        await CursoAtividadeService(self._session).cancelar_da_inscricao(inscricao.id)
         await self._session.commit()
 
     async def _match_participantes(

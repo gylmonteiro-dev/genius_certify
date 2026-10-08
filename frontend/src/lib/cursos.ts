@@ -8,6 +8,7 @@ import {
 import { normalizeEventDates } from './eventDates';
 import { ParticipanteApiStatus } from './participantes';
 import { CertificadoApiStatus } from './certificados';
+import { ActivityPublicApi, InscricaoAtividadeResumo, responsibleLabel } from './atividades';
 
 export type CursoApiStatus = 'draft' | 'upcoming' | 'completed' | 'cancelled';
 
@@ -36,6 +37,11 @@ export interface CursoApi {
   verso_conteudos?: string | null;
   verso_observacoes?: string | null;
   limite_participantes?: number | null;
+  permite_varias_atividades?: boolean;
+  atividade_obrigatoria?: boolean;
+  permitir_selecao_participante?: boolean;
+  selecao_atividades_ate?: string | null;
+  certificado_exige_presenca_atividade?: boolean;
   capa_card_url?: string | null;
   capa_detail_url?: string | null;
   capa_foco_x?: number | null;
@@ -67,6 +73,12 @@ export interface CursoPublicApi {
   verso_observacoes?: string | null;
   limite_participantes?: number | null;
   vagas_disponiveis?: number | null;
+  permite_varias_atividades?: boolean;
+  atividade_obrigatoria?: boolean;
+  permitir_selecao_participante?: boolean;
+  selecao_atividades_ate?: string | null;
+  certificado_exige_presenca_atividade?: boolean;
+  atividades?: ActivityPublicApi[];
   capa_card_url?: string | null;
   capa_detail_url?: string | null;
   capa_foco_x?: number | null;
@@ -95,6 +107,11 @@ export interface CursoCreatePayload {
   verso_conteudos?: string | null;
   verso_observacoes?: string | null;
   limite_participantes?: number | null;
+  permite_varias_atividades?: boolean;
+  atividade_obrigatoria?: boolean;
+  permitir_selecao_participante?: boolean;
+  selecao_atividades_ate?: string | null;
+  certificado_exige_presenca_atividade?: boolean;
   instituicao_id?: string;
 }
 
@@ -174,6 +191,12 @@ function mapEventFields(item: {
   capa_foco_y?: number | null;
   cancelamento_justificativa?: string | null;
   cancelado_em?: string | null;
+  permite_varias_atividades?: boolean;
+  atividade_obrigatoria?: boolean;
+  permitir_selecao_participante?: boolean;
+  selecao_atividades_ate?: string | null;
+  certificado_exige_presenca_atividade?: boolean;
+  atividades?: ActivityPublicApi[];
 }): EventItem {
   const eventDates = normalizeEventDates(
     item.datas_evento?.length ? item.datas_evento : [item.data_evento],
@@ -217,6 +240,27 @@ function mapEventFields(item: {
     versoObservacoes: item.verso_observacoes ?? '',
     cancelamentoJustificativa: item.cancelamento_justificativa ?? '',
     canceladoEm: item.cancelado_em ?? null,
+    permiteVariasAtividades: item.permite_varias_atividades ?? false,
+    atividadeObrigatoria: item.atividade_obrigatoria ?? false,
+    permitirSelecaoParticipante: item.permitir_selecao_participante ?? true,
+    selecaoAtividadesAte: item.selecao_atividades_ate ?? null,
+    certificadoExigePresencaAtividade: item.certificado_exige_presenca_atividade ?? false,
+    atividades: (item.atividades ?? []).map((atividade) => ({
+      id: atividade.id,
+      titulo: atividade.titulo,
+      descricao: atividade.descricao,
+      tipo: atividade.tipo,
+      tipoPersonalizado: atividade.tipo_personalizado ?? null,
+      data: atividade.data,
+      horaInicio: atividade.hora_inicio ?? null,
+      horaFim: atividade.hora_fim ?? null,
+      cargaHoraria: atividade.carga_horaria ?? null,
+      local: atividade.local ?? null,
+      limiteParticipantes: atividade.limite_participantes ?? null,
+      vagasDisponiveis: atividade.vagas_disponiveis ?? null,
+      lotada: atividade.lotada,
+      responsaveis: responsibleLabel(atividade.responsaveis),
+    })),
   };
 }
 
@@ -298,7 +342,7 @@ export async function createCurso(
 export async function updateCurso(
   token: string,
   cursoId: string,
-  payload: CursoUpdatePayload,
+  payload: Partial<CursoUpdatePayload>,
 ): Promise<CursoApi> {
   return apiRequest<CursoApi>(
     `/api/cursos/${cursoId}`,
@@ -322,6 +366,7 @@ export interface InscritoApi {
   cancelada_justificativa?: string | null;
   inscricao_reprovada?: boolean;
   reprovada_justificativa?: string | null;
+  atividades?: InscricaoAtividadeResumo[];
 }
 
 export async function listInscritos(
@@ -487,6 +532,10 @@ export async function liberarEmissao(
   );
 }
 
+export async function getCurso(token: string, cursoId: string): Promise<CursoApi> {
+  return apiRequest<CursoApi>(`/api/cursos/${cursoId}`, { method: 'GET' }, token);
+}
+
 export async function listCursosPublicos(): Promise<CursoPublicApi[]> {
   return apiRequest<CursoPublicApi[]>('/api/publico/cursos', { method: 'GET' });
 }
@@ -503,6 +552,8 @@ export async function inscreverCursoPublico(
     documento: string;
     data_nascimento: string;
     senha: string;
+    atividade_id?: string | null;
+    atividade_ids?: string[];
   },
 ): Promise<void> {
   await apiRequest(`/api/publico/cursos/${cursoId}/inscrever`, {

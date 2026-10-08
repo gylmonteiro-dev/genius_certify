@@ -489,7 +489,7 @@
       <p class="validate-url">Para validar este certificado, acesse: {{ url_validacao }}</p>
     </div>
   </div>
-  {% if verso_parcerias or verso_conteudos or verso_observacoes or tem_colaboradores_verso %}
+  {% if verso_parcerias or verso_conteudos or verso_observacoes or tem_colaboradores_verso or tem_atividades_verso %}
   <div class="page verso">
     <div class="pattern"></div>
     <div class="glow-tl"></div>
@@ -523,6 +523,7 @@
         </section>
         {% endif %}
         {% include "_colaboradores_verso.html" %}
+        {% include "_atividades_verso.html" %}
       </div>
       <p class="fine-print">
         {{ instituicao_nome }} · Código de verificação: {{ codigo_validacao }}

@@ -66,6 +66,8 @@ class Certificado(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     verso_parcerias: Mapped[str | None] = mapped_column(Text, nullable=True)
     verso_conteudos: Mapped[str | None] = mapped_column(Text, nullable=True)
     verso_observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Snapshot das atividades elegíveis do participante. NULL não gera seção no verso.
+    atividades: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
     # Snapshot das datas na emissão. Edição do evento não altera este array.
     datas_evento: Mapped[list[date]] = mapped_column(
         ARRAY(Date()),

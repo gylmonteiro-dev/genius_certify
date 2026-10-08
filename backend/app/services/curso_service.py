@@ -59,6 +59,7 @@ from app.services.colaboradores_evento import (
 )
 from app.services.evento_datas import datas_do_curso, resolver_datas_escrita
 from app.services.certificado_service import CertificadoService
+from app.services.curso_atividade_service import CursoAtividadeService
 from app.services.storage_service import get_storage_service
 from app.services.vagas import VAGAS_ESGOTADAS, assert_vaga_disponivel
 
@@ -230,6 +231,11 @@ class CursoService:
             verso_conteudos=self._normalize_optional_text(data.verso_conteudos),
             verso_observacoes=self._normalize_optional_text(data.verso_observacoes),
             limite_participantes=data.limite_participantes,
+            permite_varias_atividades=data.permite_varias_atividades,
+            atividade_obrigatoria=data.atividade_obrigatoria,
+            permitir_selecao_participante=data.permitir_selecao_participante,
+            selecao_atividades_ate=data.selecao_atividades_ate,
+            certificado_exige_presenca_atividade=data.certificado_exige_presenca_atividade,
         )
         await self._cursos.replace_datas(curso, datas)
         await self._cursos.replace_colaboradores(curso, specs)
@@ -361,6 +367,10 @@ class CursoService:
             verso_observacoes=curso.verso_observacoes,
         )
         if novas_datas is not None:
+            await CursoAtividadeService(self._session).assert_datas_cobertas(
+                curso,
+                novas_datas,
+            )
             vinculos = {
                 item.id: list(item.datas_evento) for item in curso.colaboradores
             }
@@ -413,6 +423,9 @@ class CursoService:
             instituicao_id=curso.instituicao_id,
             curso_id=curso.id,
         )
+        resumos = await CursoAtividadeService(self._session).resumos_por_inscricoes(
+            [item.id for item in inscricoes]
+        )
         cert_by_participante: dict = {}
         for item in certificados:
             current = cert_by_participante.get(item.participante_id)
@@ -447,6 +460,7 @@ class CursoService:
                     cancelada_justificativa=inscricao.cancelada_justificativa,
                     inscricao_reprovada=inscricao.reprovada,
                     reprovada_justificativa=inscricao.reprovada_justificativa,
+                    atividades=resumos.get(inscricao.id, []),
                 )
             )
         items.sort(key=lambda item: item.nome.lower())
@@ -567,6 +581,7 @@ class CursoService:
 
         justificativa = self._normalize_justificativa(data.justificativa)
         self._mark_inscricao_cancelada(inscricao, justificativa=justificativa)
+        await CursoAtividadeService(self._session).cancelar_da_inscricao(inscricao.id)
         await self._session.commit()
 
     async def aprovar_inscrito(
@@ -631,6 +646,7 @@ class CursoService:
             )
 
         self._mark_inscricao_reprovada(inscricao, justificativa=justificativa)
+        await CursoAtividadeService(self._session).cancelar_da_inscricao(inscricao.id)
         await self._session.commit()
         return await self._inscrito_response(curso, inscricao, participante)
 
@@ -791,6 +807,7 @@ class CursoService:
                 justificativa=justificativa,
                 when=now,
             )
+            await CursoAtividadeService(self._session).cancelar_da_inscricao(inscricao.id)
             cancelled += 1
 
         await self._session.commit()
@@ -974,6 +991,9 @@ class CursoService:
             cancelada_justificativa=inscricao.cancelada_justificativa,
             inscricao_reprovada=inscricao.reprovada,
             reprovada_justificativa=inscricao.reprovada_justificativa,
+            atividades=await CursoAtividadeService(self._session).resumos_da_inscricao(
+                inscricao.id
+            ),
         )
 
     @staticmethod

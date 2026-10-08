@@ -92,6 +92,11 @@ export const PublicEventRegisterPage: React.FC<PublicEventRegisterPageProps> = (
         documento: form.documentId.replace(/\D/g, ''),
         data_nascimento: form.birthDate,
         senha: form.password,
+        ...(form.atividadeIds && form.atividadeIds.length > 1
+          ? { atividade_ids: form.atividadeIds }
+          : form.atividadeId
+            ? { atividade_id: form.atividadeId }
+            : {}),
       });
       setEvent((current) => {
         if (!current || typeof current.spotsLeft !== 'number') return current;
@@ -107,12 +112,12 @@ export const PublicEventRegisterPage: React.FC<PublicEventRegisterPageProps> = (
     }
   };
 
-  const handleAuthenticatedRegister = async () => {
+  const handleAuthenticatedRegister = async (atividadeIds: string[]) => {
     if (!event || !token) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await inscreverCursoAutenticado(token, event.id);
+      await inscreverCursoAutenticado(token, event.id, atividadeIds);
       setAlreadyEnrolled(true);
       setEvent((current) => {
         if (!current || typeof current.spotsLeft !== 'number') return current;
@@ -159,6 +164,7 @@ export const PublicEventRegisterPage: React.FC<PublicEventRegisterPageProps> = (
           errorMessage={submitError}
           loggedInAccount={conta}
           alreadyEnrolled={alreadyEnrolled}
+          participantToken={token}
         />
       )}
     </PublicLayout>
